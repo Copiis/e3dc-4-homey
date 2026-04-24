@@ -60,23 +60,22 @@ class WallboxDriver extends Homey.Driver {
   }
 
   async onPairListDevices(): Promise<any[]> {
-    // ... dein bestehender Code (unverändert) ...
-    const homePowerStations = this.homey.drivers.getDriver('home-power-station').getDevices()
+    const homePowerStations = this.homey.drivers.getDriver('home-power-station').getDevices();
     return new Promise(async (resolve) => {
-      let devices: any[] = []
-      for(let i = 0; i < homePowerStations.length; i++) {
-        const rawStation = homePowerStations[i]
+      let devices: any[] = [];
+      for (let i = 0; i < homePowerStations.length; i++) {
+        const rawStation = homePowerStations[i];
         let station: HomePowerStation = rawStation as unknown as HomePowerStation;
-        const stationData = rawStation.getData()
+        const stationData = rawStation.getData();
         const stationId = stationData.id;
-        const api = station.getApi()
-        const wallboxes = await api.readConnectedWallboxes(true, this)
-        this.log('Found ' + wallboxes.length + ' wallboxes')
+        const api = station.getApi();
+        const wallboxes = await api.readConnectedWallboxes(true, this);
+        this.log('Found ' + wallboxes.length + ' wallboxes');
         wallboxes.forEach(value => {
           const settings: WallboxConfig = {
             id: value.id,
             stationId: stationId,
-          }
+          };
           devices.push({
             name: rawStation.getName() + ' - ' + value.name,
             data: {
@@ -85,11 +84,11 @@ class WallboxDriver extends Homey.Driver {
             store: {
               settings: settings
             }
-          })
-        })
+          });
+        });
       }
-      resolve(devices)
-    })
+      resolve(devices);
+    });
   }
 }
 
