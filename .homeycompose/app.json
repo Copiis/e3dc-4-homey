@@ -58,3 +58,79 @@
     }
   }
 }
+  "flow": {
+    "triggers": [
+      {
+        "id": "wallbox_charging_started",
+        "title": { "de": "Wallbox hat mit Laden begonnen", "en": "Wallbox charging started" },
+        "args": [{ "type": "device", "name": "device", "filter": "driver_id=wallbox" }]
+      },
+      {
+        "id": "wallbox_charging_stopped",
+        "title": { "de": "Wallbox hat Laden beendet", "en": "Wallbox charging stopped" },
+        "args": [{ "type": "device", "name": "device", "filter": "driver_id=wallbox" }],
+        "tokens": [{ "name": "energy_total", "type": "number", "title": { "de": "Gesamtenergie (Wh)", "en": "Total energy (Wh)" } }]
+      },
+      {
+        "id": "wallbox_plugged_in",
+        "title": { "de": "Fahrzeug wurde angesteckt", "en": "Vehicle plugged in" },
+        "args": [{ "type": "device", "name": "device", "filter": "driver_id=wallbox" }]
+      },
+      {
+        "id": "wallbox_unplugged",
+        "title": { "de": "Fahrzeug wurde abgesteckt", "en": "Vehicle unplugged" },
+        "args": [{ "type": "device", "name": "device", "filter": "driver_id=wallbox" }]
+      }
+    ],
+    "conditions": [
+      {
+        "id": "wallbox_is_charging",
+        "title": { "de": "Wallbox lädt gerade", "en": "Wallbox is charging" },
+        "args": [{ "type": "device", "name": "device", "filter": "driver_id=wallbox" }]
+      },
+      {
+        "id": "wallbox_is_plugged",
+        "title": { "de": "Fahrzeug ist angesteckt", "en": "Vehicle is plugged" },
+        "args": [{ "type": "device", "name": "device", "filter": "driver_id=wallbox" }]
+      },
+      {
+        "id": "wallbox_is_sun_mode",
+        "title": { "de": "Wallbox ist im Sun-Mode", "en": "Wallbox is in Sun Mode" },
+        "args": [{ "type": "device", "name": "device", "filter": "driver_id=wallbox" }]
+      }
+    ],
+    "actions": [
+      {
+        "id": "wallbox_set_max_current",
+        "title": { "de": "Wallbox Lade-Strom auf X Ampere setzen", "en": "Set Wallbox max charging current" },
+        "args": [
+          { "type": "device", "name": "device", "filter": "driver_id=wallbox" },
+          { "type": "number", "name": "current", "title": { "de": "Max. Strom (6-32 A)", "en": "Max current (6-32 A)" }, "min": 6, "max": 32, "step": 1 }
+        ]
+      },
+      {
+        "id": "wallbox_toggle_suspended",
+        "title": { "de": "Wallbox Laden pausieren / fortsetzen", "en": "Toggle Wallbox suspended" },
+        "args": [{ "type": "device", "name": "device", "filter": "driver_id=wallbox" }]
+      },
+      {
+        "id": "wallbox_set_sun_mode",
+        "title": { "de": "Wallbox Sun-Mode ein-/ausschalten", "en": "Set Wallbox Sun Mode" },
+        "args": [
+          { "type": "device", "name": "device", "filter": "driver_id=wallbox" },
+          { "type": "boolean", "name": "enabled", "title": { "de": "Sun-Mode aktiv", "en": "Sun Mode enabled" } }
+        ]
+      },
+      {
+        "id": "wallbox_set_phases",
+        "title": { "de": "Wallbox auf 1- oder 3-Phasen umschalten", "en": "Set Wallbox phases" },
+        "args": [
+          { "type": "device", "name": "device", "filter": "driver_id=wallbox" },
+          { "type": "dropdown", "name": "phases", "title": { "de": "Phasen", "en": "Phases" }, "values": [
+            { "id": "1", "label": { "de": "1-Phase", "en": "1 phase" } },
+            { "id": "3", "label": { "de": "3-Phasen", "en": "3 phases" } }
+          ]}
+        ]
+      }
+    ]
+  }
