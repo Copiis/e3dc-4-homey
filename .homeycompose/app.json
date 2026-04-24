@@ -50,14 +50,13 @@
   "support": "mailto:jochen.zink@jnk-consulting.de",
   "homepage": "https://jnk-cons.github.io/e3dc-4-homey/",
   "homeyCommunityTopicId": 105168,
-  "contributing": {
+    "contributing": {
     "donate": {
       "paypal": {
         "username": "jochenzink84"
       }
     }
-  }
-}
+  },
   "flow": {
     "triggers": [
       {
@@ -134,3 +133,4 @@
       }
     ]
   }
+}
