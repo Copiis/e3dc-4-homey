@@ -6,7 +6,39 @@ import {HomePowerStation} from '../../src/model/home-power-station';
 class WallboxDriver extends Homey.Driver {
 
   async onInit() {
-    this.log('WallboxDriver has been initialized');
+  this.log('WallboxDevice has been initialized');
+
+  // Flow-Karten vorbereiten (WENN / UND)
+  this.homey.flow.getTriggerCard('wallbox_charging_started');
+  this.homey.flow.getTriggerCard('wallbox_charging_stopped');
+  this.homey.flow.getTriggerCard('wallbox_plugged_in');
+  this.homey.flow.getTriggerCard('wallbox_unplugged');
+}
+
+sync(state: WallboxPowerState): void {
+  // Bestehende Werte aktualisieren
+  updateCapabilityValue('measure_wallbox_consumption', state.powerW, this)
+  updateCapabilityValue('measure_wallbox_solarshare', state.solarPowerW, this)
+
+  // Neue Capabilities für UND-Karten (falls noch nicht vorhanden)
+  // → du musst diese später in driver.compose.json unter capabilities ergänzen
+  updateCapabilityValue('wallbox_is_charging', state.charging ?? false, this)
+  updateCapabilityValue('wallbox_is_plugged', state.pluggedIn ?? false, this)
+  updateCapabilityValue('wallbox_is_sun_mode', state.sunMode ?? false, this)
+
+  // === WENN-Karten (Triggers) feuern bei Status-Änderung ===
+  const oldCharging = this.getCapabilityValue('wallbox_is_charging') ?? false;
+  const newCharging = state.charging ?? false;
+
+  if (!oldCharging && newCharging) {
+    this.homey.flow.getTriggerCard('wallbox_charging_started').trigger(this, { energy_total: state.energyTotal ?? 0 });
+  }
+  if (oldCharging && !newCharging) {
+    this.homey.flow.getTriggerCard('wallbox_charging_stopped').trigger(this, { energy_total: state.energyTotal ?? 0 });
+  }
+
+  // plugged/unplugged Trigger kannst du analog hinzufügen, wenn state.pluggedInChanged oder ähnlich verfügbar ist
+}
 
     // === DANN-Karten (Actions) ===
     this.homey.flow.getActionCard('wallbox_set_max_current')
