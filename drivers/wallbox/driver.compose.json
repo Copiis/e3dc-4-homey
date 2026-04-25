@@ -1,7 +1,7 @@
 {
   "name": {
-    "en": "Wallbox",
-    "de": "Wallbox"
+    "en": "E3DC Wallbox",
+    "de": "E3DC Wallbox"
   },
   "class": "other",
   "capabilities": [
@@ -14,11 +14,6 @@
   "connectivity": [
     "lan"
   ],
-  "images": {
-    "small": "{{driverAssetsPath}}/images/small.png",
-    "large": "{{driverAssetsPath}}/images/large.png",
-    "xlarge": "{{driverAssetsPath}}/images/xlarge.png"
-  },
   "pair": [
     {
       "id": "list_my_devices",
@@ -34,5 +29,9 @@
       "id": "add_my_devices",
       "template": "add_devices"
     }
-  ]
+  ],
+  "images": {
+    "small": "/assets/images/small.png",
+    "large": "/assets/images/large.png"
+  }
 }
