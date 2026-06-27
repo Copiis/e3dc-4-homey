@@ -814,7 +814,8 @@ export class RscpApi {
                                 `readWallboxLiveState id=${state.id}: chargingEnabled=${state.chargingEnabled}, `
                                 + `sunMode=${state.sunModeActive}, chargingActive=${state.chargingActive}, `
                                 + `plugged=${state.plugged}, chargingCanceled=${state.chargingCanceled}, `
-                                + `powerW=${state.powerW}, vehicleSoc=${state.socPercent ?? 'n/a'}%, `
+                                + `powerW=${state.powerW}, solarW=${state.solarPowerW}, gridW=${state.gridPowerW ?? 'n/a'}, `
+                                + `vehicleSoc=${state.socPercent ?? 'n/a'}%, `
                                 + `socRaw=${diag?.rscpSocRaw ?? 'n/a'}, algPrecharge=${diag?.algPrecharge ?? 'n/a'}, `
                                 + `algHex=${diag?.algHex ?? 'n/a'}, chargePlanSoc=${diag?.chargePlanSoc ?? 'n/a'}, `
                                 + `chargePlanText=${diag?.chargePlanText ?? 'n/a'}, `

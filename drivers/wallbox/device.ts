@@ -14,6 +14,7 @@ import {
 } from '../../src/utils/wallbox-command-guard';
 import {formatError} from '../../src/utils/error-utils';
 import {wallboxTotalEnergyKwh} from '../../src/utils/energy-meter-integrator';
+import {resolveWallboxPowerW} from '../../src/utils/wallbox-power';
 import {ensureCapabilities} from '../../src/utils/energy-capability-migration';
 
 const SYNC_CACHE_MAX_AGE_MS = 30_000;
@@ -84,8 +85,9 @@ class WallboxDevice extends Homey.Device implements Wallbox {
     this.lastSyncedState = state;
     this.lastSyncedAt = Date.now();
 
-    updateCapabilityValue('measure_power', state.powerW, this);
-    const meterKwh = wallboxTotalEnergyKwh(state.totalEnergyWh, this);
+    const effectivePowerW = resolveWallboxPowerW(state);
+    updateCapabilityValue('measure_power', effectivePowerW, this);
+    const meterKwh = wallboxTotalEnergyKwh(state.totalEnergyWh, effectivePowerW, this);
     if (meterKwh !== undefined) {
       updateCapabilityValue('meter_power', meterKwh, this);
     }

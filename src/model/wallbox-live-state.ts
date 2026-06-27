@@ -11,6 +11,8 @@ export interface WallboxSocDiagnostics {
 
 /** Live wallbox data including power readings and EXTERN_DATA_ALG control status. */
 export interface WallboxLiveState extends WallboxPowerState {
+    /** Grid share of charging power from EXTERN_DATA_NET (W). */
+    gridPowerW?: number;
     totalEnergyWh?: number;
     socPercent: number | undefined;
     socDiagnostics?: WallboxSocDiagnostics;

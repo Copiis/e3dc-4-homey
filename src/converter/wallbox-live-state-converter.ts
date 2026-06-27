@@ -31,6 +31,7 @@ export class WallboxLiveStateConverter implements FrameConverter<WallboxLiveStat
                 const childs = dataBlock.valueAsContainer(this.parser);
                 const index = childs.find(child => child.tag === WBTag.INDEX)?.valueAsNumber();
                 const sunRaw = childs.find(child => child.tag === WBTag.EXTERN_DATA_SUN);
+                const netRaw = childs.find(child => child.tag === WBTag.EXTERN_DATA_NET);
                 const allRaw = childs.find(child => child.tag === WBTag.EXTERN_DATA_ALL);
                 const algRaw = childs.find(child => child.tag === WBTag.EXTERN_DATA_ALG);
                 if (index === undefined || sunRaw === undefined || allRaw === undefined) {
@@ -38,6 +39,7 @@ export class WallboxLiveStateConverter implements FrameConverter<WallboxLiveStat
                 }
                 try {
                     const sun = this.externalDataParser.parseEnergyData(sunRaw);
+                    const net = netRaw ? this.externalDataParser.parseEnergyData(netRaw) : undefined;
                     const all = this.externalDataParser.parseEnergyData(allRaw);
                     const alg = algRaw ? this.algParser.parse(algRaw) : undefined;
                     const blockProbe = probeVehicleSocSources(childs, this.parser);
@@ -47,6 +49,7 @@ export class WallboxLiveStateConverter implements FrameConverter<WallboxLiveStat
                         powerW: all.powerW,
                         totalEnergyWh: all.totalEnergyWh,
                         solarPowerW: sun.powerW,
+                        gridPowerW: net?.powerW,
                         socPercent: pickVehicleSocPercent(
                             rscpSoc,
                             blockProbe.chargePlanSoc,

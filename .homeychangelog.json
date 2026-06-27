@@ -1,4 +1,8 @@
 {
+  "1.6.6": {
+    "de": "- Wallbox: Leistung und Ladeenergie (gesamt) korrigiert — wenn EXTERN_DATA_ALL 0 W liefert, werden Solaranteil + Netzanteil verwendet; Gesamtenergie wird bei stehendem RSCP-Zähler integriert",
+    "en": "- Wallbox: fixed power and total charging energy — when EXTERN_DATA_ALL reports 0 W, solar + grid share is used; total energy is integrated when the RSCP counter stalls"
+  },
   "1.6.5": {
     "de": "- HKW: Debug-Modus entfernt — Support über Diagnosebericht (Einstellungen → Diagnose)",
     "en": "- HPS: removed debug mode — use diagnostic report (Settings → Diagnosis) for support"

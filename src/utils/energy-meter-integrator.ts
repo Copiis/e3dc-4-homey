@@ -105,17 +105,104 @@ export class EnergyMeterIntegrator {
 }
 
 const WALLBOX_METER_STORE_KEY = 'wallboxMeterKwh';
+const WALLBOX_METER_STATE_KEY = 'wallboxMeterState';
+const WALLBOX_INTEGRATION_MIN_POWER_W = 50;
 
-export function wallboxTotalEnergyKwh(totalEnergyWh: number | undefined, device: Homey.Device): number | undefined {
-  if (totalEnergyWh === undefined || totalEnergyWh === null || Number.isNaN(totalEnergyWh)) {
+interface WallboxMeterState {
+  baselineKwh: number;
+  supplementKwh: number;
+  lastRscpWh?: number;
+  lastSampleMs?: number;
+}
+
+function loadWallboxMeterState(device: Homey.Device): WallboxMeterState {
+  const storedState = device.getStoreValue(WALLBOX_METER_STATE_KEY) as WallboxMeterState | undefined;
+  if (storedState) {
+    return {
+      baselineKwh: Number(storedState.baselineKwh) || 0,
+      supplementKwh: Number(storedState.supplementKwh) || 0,
+      lastRscpWh: storedState.lastRscpWh,
+      lastSampleMs: storedState.lastSampleMs,
+    };
+  }
+
+  const legacyKwh = device.getStoreValue(WALLBOX_METER_STORE_KEY) as number | undefined;
+  if (legacyKwh !== undefined) {
+    return {
+      baselineKwh: Number(legacyKwh) || 0,
+      supplementKwh: 0,
+    };
+  }
+
+  return {
+    baselineKwh: 0,
+    supplementKwh: 0,
+  };
+}
+
+function saveWallboxMeterState(device: Homey.Device, state: WallboxMeterState, totalKwh: number): void {
+  device.setStoreValue(WALLBOX_METER_STATE_KEY, state).catch(() => undefined);
+  device.setStoreValue(WALLBOX_METER_STORE_KEY, totalKwh).catch(() => undefined);
+}
+
+function integrateWallboxSupplement(
+  state: WallboxMeterState,
+  effectivePowerW: number,
+  nowMs: number,
+): void {
+  if (
+    state.lastSampleMs === undefined
+    || nowMs <= state.lastSampleMs
+    || effectivePowerW < WALLBOX_INTEGRATION_MIN_POWER_W
+  ) {
+    return;
+  }
+  const deltaHours = (nowMs - state.lastSampleMs) / 3_600_000;
+  state.supplementKwh += (effectivePowerW * deltaHours) / 1000;
+}
+
+export function wallboxTotalEnergyKwh(
+  totalEnergyWh: number | undefined,
+  effectivePowerW: number,
+  device: Homey.Device,
+  nowMs: number = Date.now(),
+): number | undefined {
+  const state = loadWallboxMeterState(device);
+  const hasRscpCounter = totalEnergyWh !== undefined
+    && totalEnergyWh !== null
+    && !Number.isNaN(totalEnergyWh);
+
+  if (hasRscpCounter) {
+    const rscpWh = Math.max(0, totalEnergyWh);
+    const rscpKwh = rscpWh / 1000;
+
+    if (state.lastRscpWh !== undefined && rscpWh < state.lastRscpWh) {
+      device.log(
+        `Wallbox meter reset detected (${(state.lastRscpWh / 1000).toFixed(2)} -> ${rscpKwh.toFixed(2)} kWh)`,
+      );
+      state.baselineKwh = rscpKwh;
+      state.supplementKwh = 0;
+    } else if (state.lastRscpWh !== undefined && rscpWh > state.lastRscpWh) {
+      state.baselineKwh = rscpKwh;
+      state.supplementKwh = 0;
+    } else if (state.lastRscpWh === undefined) {
+      state.baselineKwh = rscpKwh;
+      state.supplementKwh = 0;
+    } else {
+      integrateWallboxSupplement(state, effectivePowerW, nowMs);
+    }
+
+    state.lastRscpWh = rscpWh;
+  } else {
+    integrateWallboxSupplement(state, effectivePowerW, nowMs);
+  }
+
+  state.lastSampleMs = nowMs;
+  const totalKwh = state.baselineKwh + state.supplementKwh;
+  if (totalKwh <= 0 && !hasRscpCounter) {
     return undefined;
   }
-  const kwh = Math.max(0, totalEnergyWh) / 1000;
-  const lastKwh = device.getStoreValue(WALLBOX_METER_STORE_KEY) as number | undefined;
-  if (lastKwh !== undefined && kwh < lastKwh) {
-    device.log(`Wallbox meter reset detected (${lastKwh} -> ${kwh} kWh); keeping last value`);
-    return lastKwh;
-  }
-  device.setStoreValue(WALLBOX_METER_STORE_KEY, kwh).catch(() => undefined);
-  return kwh;
+
+  saveWallboxMeterState(device, state, totalKwh);
+  return totalKwh;
 }
