@@ -13,4 +13,6 @@ doku/
 *.md
 *.txt
 homey-app.json
+backup-file.sh
+install-local-homey.sh
 # app.json wird vom Homey CLI während des Builds in .homeybuild/ generiert - nicht ignorieren!

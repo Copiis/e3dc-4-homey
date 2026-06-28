@@ -12,9 +12,17 @@
     "en": "Not plugged in",
     "de": "Nicht angesteckt"
   },
+  "insightsTitleTrue": {
+    "en": "Vehicle plugged in",
+    "de": "Fahrzeug angesteckt"
+  },
+  "insightsTitleFalse": {
+    "en": "Vehicle unplugged",
+    "de": "Fahrzeug abgezogen"
+  },
   "getable": true,
   "setable": false,
   "uiComponent": "sensor",
   "icon": "/assets/images/ev-station.svg",
-  "insights": false
+  "insights": true
 }

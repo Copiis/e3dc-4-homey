@@ -65,6 +65,13 @@
     "manual-charge-rejected-by-hps": "Manuelle Speicherladung wurde vom Hauskraftwerk ohne Begründung abgelehnt. Evtl. wurde heute bereits eine Ladung durchgeführt",
     "manual-charge-already-running": "Es ist bereits ein manueller Ladevorgang aktiv"
   },
+  "timeline": {
+    "hps-unavailable": "**E3/DC HKW** nicht erreichbar — Verbindung prüfen",
+    "hps-available": "**E3/DC HKW** wieder verbunden",
+    "island-started": "**Inselbetrieb** gestartet (Notstrom)",
+    "island-stopped": "**Inselbetrieb** beendet — Netz wieder da",
+    "firmware-updated": "Firmware aktualisiert: **__OLD__** → **__NEW__**"
+  },
   "result-code": {
     "SUCCESS": "Erfolgreich",
     "UNHANDLED": "Nicht behandelt",

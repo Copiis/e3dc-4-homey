@@ -63,6 +63,13 @@
     "manual-charge-rejected-by-hps": "Manual storage tank charging was rejected by the home power station without explanation. A charge may have already been carried out today",
     "manual-charge-already-running": "A manual charging process is already active"
   },
+  "timeline": {
+    "hps-unavailable": "**E3/DC HPS** unreachable — check connection settings",
+    "hps-available": "**E3/DC HPS** connected again",
+    "island-started": "**Island mode** started (emergency power)",
+    "island-stopped": "**Island mode** ended — grid restored",
+    "firmware-updated": "Firmware updated: **__OLD__** → **__NEW__**"
+  },
   "result-code": {
     "SUCCESS": "Successful",
     "UNHANDLED": "Not treated",

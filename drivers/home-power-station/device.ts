@@ -590,6 +590,9 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
             if (this.syncErrorCount >= MAX_ALLOWED_ERROR_BEFORE_UNAVAILABLE) {
               const unavailableMessage = this.homey.__('messages.hps-not-available')
               this.recordAnalysisEvent('warn', 'HKW nicht verfügbar / unavailable: ' + unavailableMessage)
+              if (this.getAvailable()) {
+                this.postTimelineNotification(this.homey.__('timeline.hps-unavailable'))
+              }
               this.setUnavailable(unavailableMessage).then()
             }
             resolve(undefined)
@@ -771,8 +774,14 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
     this.syncErrorCount = 0
     if (wasUnavailable) {
       this.recordAnalysisEvent('info', 'HKW wieder verfügbar / available again')
+      this.postTimelineNotification(this.homey.__('timeline.hps-available'))
       this.setAvailable().then()
     }
+  }
+
+  private postTimelineNotification(excerpt: string): void {
+    this.homey.notifications.createNotification({ excerpt })
+      .catch(reason => this.error('Timeline notification failed: ' + formatError(reason)))
   }
 
   private handleChargingConfigurationChanges(result: LiveData) {
@@ -808,9 +817,11 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
     if (this.currentEmergencyPowerState) {
       if (this.currentEmergencyPowerState.island && !result.emergencyPowerState.island) {
         this.islandModeStoppedTrigger?.trigger(undefined)
+        this.postTimelineNotification(this.homey.__('timeline.island-stopped'))
       }
       else if (!this.currentEmergencyPowerState.island && result.emergencyPowerState.island) {
         this.islandModeStartedTrigger?.trigger(undefined)
+        this.postTimelineNotification(this.homey.__('timeline.island-started'))
       }
 
       const reserveChange: ValueChanged<number> = {
@@ -831,6 +842,12 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
     const firmwareChange = updateCapabilityValue('firmware_version', result.firmwareVersion, this)
 
     this.firmwareChangedTrigger?.runIfChanged(firmwareChange)
+    if (firmwareChange?.oldValue) {
+      this.postTimelineNotification(this.homey.__('timeline.firmware-updated', {
+        OLD: String(firmwareChange.oldValue),
+        NEW: String(firmwareChange.newValue),
+      }))
+    }
   }
 
   private readActiveMaxChargingLimit(config: ChargingConfiguration): number {

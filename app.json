@@ -1,7 +1,7 @@
 {
   "_comment": "This file is generated. Please edit .homeycompose/app.json instead.",
   "id": "de.jnkconsulting.e3dc.v2",
-  "version": "1.6.6",
+  "version": "1.6.7",
   "compatibility": ">=12.4.5",
   "sdk": 3,
   "brandColor": "#7AB31B",
@@ -3275,11 +3275,19 @@
         "en": "Charging off",
         "de": "Laden aus"
       },
+      "insightsTitleTrue": {
+        "en": "Charging allowed",
+        "de": "Laden freigegeben"
+      },
+      "insightsTitleFalse": {
+        "en": "Charging blocked",
+        "de": "Laden gesperrt"
+      },
       "getable": true,
       "setable": false,
       "uiComponent": "sensor",
       "icon": "/assets/images/ev-station.svg",
-      "insights": false
+      "insights": true
     },
     "wallbox_plug_locked": {
       "type": "boolean",
@@ -3315,11 +3323,19 @@
         "en": "Not plugged in",
         "de": "Nicht angesteckt"
       },
+      "insightsTitleTrue": {
+        "en": "Vehicle plugged in",
+        "de": "Fahrzeug angesteckt"
+      },
+      "insightsTitleFalse": {
+        "en": "Vehicle unplugged",
+        "de": "Fahrzeug abgezogen"
+      },
       "getable": true,
       "setable": false,
       "uiComponent": "sensor",
       "icon": "/assets/images/ev-station.svg",
-      "insights": false
+      "insights": true
     },
     "wallbox_priority_battery_first": {
       "type": "boolean",
@@ -3375,11 +3391,19 @@
         "en": "Sun mode off",
         "de": "Sonnenmodus aus"
       },
+      "insightsTitleTrue": {
+        "en": "Sun mode on",
+        "de": "Sonnenmodus eingeschaltet"
+      },
+      "insightsTitleFalse": {
+        "en": "Sun mode off",
+        "de": "Sonnenmodus ausgeschaltet"
+      },
       "getable": true,
       "setable": false,
       "uiComponent": "sensor",
       "icon": "/assets/images/ev-station-solar.svg",
-      "insights": false
+      "insights": true
     }
   }
 }
