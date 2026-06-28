@@ -70,7 +70,8 @@
     "hps-available": "**E3/DC HKW** wieder verbunden",
     "island-started": "**Inselbetrieb** gestartet (Notstrom)",
     "island-stopped": "**Inselbetrieb** beendet — Netz wieder da",
-    "firmware-updated": "Firmware aktualisiert: **__OLD__** → **__NEW__**"
+    "firmware-updated": "Firmware aktualisiert: **__OLD__** → **__NEW__**",
+    "welcome": "**v__VERSION__**: Zeitleiste aktiv — HKW-Verbindung, Inselbetrieb, Firmware, Wallbox. Push unter Einstellungen → Zeitleiste einstellbar."
   },
   "result-code": {
     "SUCCESS": "Erfolgreich",

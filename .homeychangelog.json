@@ -1,4 +1,8 @@
 {
+  "1.6.8": {
+    "de": "- Zeitleiste: Willkommens-Meldung nach App-Update (Kategorie „E3DC - HKW“ erscheint in den Benachrichtigungseinstellungen)",
+    "en": "- Timeline: welcome notification after app update (category “E3DC - HPS” appears in notification settings)"
+  },
   "1.6.7": {
     "de": "- Zeitleiste: HKW-Verbindung (offline/online), Inselbetrieb, Firmware-Update\n- Wallbox: Stecker, Sonnenmodus und Lade-Freigabe erscheinen in der Zeitleiste",
     "en": "- Timeline: HPS connection (offline/online), island mode, firmware update\n- Wallbox: plug, sun mode and charging allowed/blocked appear in the timeline"

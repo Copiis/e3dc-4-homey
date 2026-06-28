@@ -68,7 +68,8 @@
     "hps-available": "**E3/DC HPS** connected again",
     "island-started": "**Island mode** started (emergency power)",
     "island-stopped": "**Island mode** ended — grid restored",
-    "firmware-updated": "Firmware updated: **__OLD__** → **__NEW__**"
+    "firmware-updated": "Firmware updated: **__OLD__** → **__NEW__**",
+    "welcome": "**v__VERSION__**: Timeline active — HPS connection, island mode, firmware, wallbox. Push configurable under Settings → Timeline."
   },
   "result-code": {
     "SUCCESS": "Successful",
