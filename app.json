@@ -1,7 +1,7 @@
 {
   "_comment": "This file is generated. Please edit .homeycompose/app.json instead.",
   "id": "de.jnkconsulting.e3dc.v2",
-  "version": "1.6.8",
+  "version": "1.7.0",
   "compatibility": ">=12.4.5",
   "sdk": 3,
   "brandColor": "#7AB31B",
@@ -139,6 +139,72 @@
         }
       ],
       "id": "battery-module"
+    },
+    {
+      "name": {
+        "en": "HPS - Energy Summary",
+        "de": "HKW - Energieübersicht"
+      },
+      "class": "sensor",
+      "capabilities": [
+        "measure_power",
+        "measure_house_consumption",
+        "measure_grid_delivery",
+        "measure_battery_delivery",
+        "measure_wallbox_consumption",
+        "measure_pv_surplus"
+      ],
+      "capabilitiesOptions": {
+        "measure_power": {
+          "title": {
+            "en": "PV power",
+            "de": "PV-Leistung"
+          }
+        },
+        "measure_grid_delivery": {
+          "title": {
+            "en": "Grid power",
+            "de": "Netzleistung"
+          }
+        },
+        "measure_battery_delivery": {
+          "title": {
+            "en": "Battery power",
+            "de": "Batterieleistung"
+          }
+        },
+        "measure_wallbox_consumption": {
+          "title": {
+            "en": "Wallbox power",
+            "de": "Wallbox-Leistung"
+          }
+        }
+      },
+      "platforms": [
+        "local"
+      ],
+      "connectivity": [
+        "lan"
+      ],
+      "images": {
+        "small": "/drivers/energy-summary/assets/images/small.png",
+        "large": "/drivers/energy-summary/assets/images/large.png",
+        "xlarge": "/drivers/energy-summary/assets/images/xlarge.png"
+      },
+      "pair": [
+        {
+          "id": "list_my_devices",
+          "template": "list_devices",
+          "navigation": {
+            "next": "add_my_devices"
+          }
+        },
+        {
+          "id": "add_my_devices",
+          "template": "add_devices"
+        }
+      ],
+      "id": "energy-summary"
     },
     {
       "name": {
@@ -296,6 +362,18 @@
         {
           "id": "add_my_devices",
           "template": "add_devices"
+        }
+      ],
+      "repair": [
+        {
+          "id": "connect",
+          "navigation": {
+            "next": "done"
+          }
+        },
+        {
+          "id": "done",
+          "template": "done"
         }
       ],
       "id": "home-power-station",
@@ -945,6 +1023,123 @@
             "type": "device",
             "name": "device",
             "filter": "driver_id=home-power-station"
+          }
+        ]
+      },
+      {
+        "id": "pv_surplus_exceeds",
+        "title": {
+          "de": "PV-Überschuss überschreitet",
+          "en": "PV surplus exceeds"
+        },
+        "titleFormatted": {
+          "de": "PV-Überschuss überschreitet [[threshold]] W",
+          "en": "PV surplus exceeds [[threshold]] W"
+        },
+        "hint": {
+          "de": "Für EMS-Partner (z. B. Ultimate EMS, dynamische Tarife): Wird ausgelöst, wenn der geschätzte PV-Überschuss (PV minus Hausverbrauch minus Batterieladung) die Schwelle erreicht oder überschreitet. Kombiniere mit Wallbox- oder HKW-Aktionen.",
+          "en": "For EMS partners (e.g. Ultimate EMS, dynamic tariffs): triggered when estimated PV surplus (PV minus house consumption minus battery charging) crosses the threshold upward. Combine with wallbox or HPS actions."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=home-power-station"
+          },
+          {
+            "type": "number",
+            "name": "threshold",
+            "title": {
+              "de": "Schwelle (W)",
+              "en": "Threshold (W)"
+            },
+            "required": true,
+            "min": 0,
+            "step": 50,
+            "value": 500
+          }
+        ],
+        "tokens": [
+          {
+            "name": "surplus",
+            "type": "number",
+            "title": {
+              "de": "PV-Überschuss (W)",
+              "en": "PV surplus (W)"
+            }
+          }
+        ]
+      },
+      {
+        "id": "battery_soc_below",
+        "title": {
+          "de": "Batterieladestand fällt unter",
+          "en": "Battery SoC drops below"
+        },
+        "titleFormatted": {
+          "de": "Batterieladestand fällt unter [[percent]] %",
+          "en": "Battery SoC drops below [[percent]] %"
+        },
+        "hint": {
+          "de": "Für EMS-Partner: Wird ausgelöst, wenn der Ladestand von oben nach unten die Schwelle durchbricht (nicht dauerhaft bei jedem Sync unter der Schwelle).",
+          "en": "For EMS partners: triggered when SoC crosses the threshold downward (not on every sync while below)."
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=home-power-station"
+          },
+          {
+            "type": "number",
+            "name": "percent",
+            "title": {
+              "de": "Schwelle (%)",
+              "en": "Threshold (%)"
+            },
+            "required": true,
+            "min": 0,
+            "max": 100,
+            "step": 1,
+            "value": 20
+          }
+        ],
+        "tokens": [
+          {
+            "name": "soc",
+            "type": "number",
+            "title": {
+              "de": "Aktueller Ladestand (%)",
+              "en": "Current SoC (%)"
+            }
+          }
+        ]
+      },
+      {
+        "id": "wallbox_ready",
+        "title": {
+          "de": "Wallbox bereit zum Laden",
+          "en": "Wallbox ready to charge"
+        },
+        "hint": {
+          "de": "Für EMS-Partner: Fahrzeug angesteckt, aber nicht am Laden — guter Zeitpunkt für PV-Überschuss-Laden oder externe EMS-Freigabe.",
+          "en": "For EMS partners: vehicle plugged in but not charging — good moment for PV surplus charging or external EMS release."
+        },
+        "tokens": [
+          {
+            "name": "power",
+            "type": "number",
+            "title": {
+              "de": "Aktuelle Leistung (W)",
+              "en": "Current power (W)"
+            }
+          }
+        ],
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=wallbox"
           }
         ]
       }
@@ -2553,6 +2748,64 @@
     ]
   },
   "widgets": {
+    "live-energy-view": {
+      "name": {
+        "en": "Live energy flow",
+        "de": "Live-Energiefluss"
+      },
+      "transparent": false,
+      "height": 280,
+      "settings": [
+        {
+          "id": "plantId",
+          "type": "autocomplete",
+          "title": {
+            "de": "Hauskraftwerk",
+            "en": "Home power plant"
+          }
+        },
+        {
+          "id": "showWallbox",
+          "type": "checkbox",
+          "value": true,
+          "title": {
+            "de": "Wallbox anzeigen",
+            "en": "Show wallbox"
+          }
+        },
+        {
+          "id": "showBattery",
+          "type": "checkbox",
+          "value": true,
+          "title": {
+            "de": "Batterie anzeigen",
+            "en": "Show battery"
+          }
+        },
+        {
+          "id": "flowThreshold",
+          "type": "number",
+          "value": 30,
+          "min": 0,
+          "max": 500,
+          "title": {
+            "de": "Min. Leistung für Pfeile (W)",
+            "en": "Min. power for arrows (W)"
+          }
+        }
+      ],
+      "api": {
+        "readHomePowerPlants": {
+          "method": "GET",
+          "path": "/"
+        },
+        "log": {
+          "method": "POST",
+          "path": "/log"
+        }
+      },
+      "id": "live-energy-view"
+    },
     "power-overview": {
       "name": {
         "en": "Overview",
@@ -3061,6 +3314,23 @@
       "icon": "/assets/images/solar.svg",
       "insights": false,
       "decimals": 1
+    },
+    "measure_pv_surplus": {
+      "type": "number",
+      "title": {
+        "en": "PV surplus",
+        "de": "PV-Überschuss"
+      },
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "units": {
+        "en": "W",
+        "de": "W"
+      },
+      "icon": "/assets/images/solar.svg",
+      "insights": true,
+      "decimals": 0
     },
     "measure_self_consumption": {
       "type": "number",

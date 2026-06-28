@@ -34,7 +34,18 @@
       "field": {
         "type": "Bereich"
       }
-    }
+    },
+    "repair": {
+      "title": "Verbindung reparieren",
+      "info": "RSCP-Zugangsdaten prüfen oder aktualisieren (z. B. neue IP). Verbindung testen, dann mit „Weiter“ speichern — das Gerät muss nicht neu hinzugefügt werden."
+    },
+    "check": "Verbindung testen"
+  },
+  "energy-summary": {
+    "live-label": "Live"
+  },
+  "ems": {
+    "intro": "EMS-Trigger verbinden E3DC mit externen Apps (Ultimate EMS, Power by the Hour, Tibber, …). PV-Überschuss und SoC-Schwellen am HKW; Wallbox-bereit an der Wallbox."
   },
   "please-wait": "Bitte warten",
   "area": {
@@ -114,6 +125,9 @@
       "no-plants": "Es sind keine Hauskraftwerke konfiguriert. Füge zunächst ein Hauskraftwerk Device hinzu.",
       "data-receive-error": "Die Energiedaten konnten nicht gelesen werden"
     },
-    "external-source": "ext. Quelle"
+    "external-source": "ext. Quelle",
+    "live": {
+      "pv": "PV"
+    }
   }
 }

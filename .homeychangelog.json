@@ -1,4 +1,8 @@
 {
+  "1.7.0": {
+    "de": "- Neues Gerät **HKW - Energieübersicht**: Live-Aggregation von PV, Verbrauch, Netz, Batterie, Wallbox und PV-Überschuss (20 s)\n- Neues Dashboard-Widget **Live-Energiefluss** mit animierten Energiepfeilen\n- **Reparieren** am HKW: RSCP-Daten aktualisieren ohne Gerät zu löschen\n- EMS-Trigger: PV-Überschuss-Schwelle, Batterie-SoC unter Schwelle, Wallbox bereit",
+    "en": "- New device **HPS - Energy Summary**: live aggregation of PV, consumption, grid, battery, wallbox and PV surplus (20 s)\n- New dashboard widget **Live energy flow** with animated energy arrows\n- **Repair** on HPS: update RSCP credentials without deleting the device\n- EMS triggers: PV surplus threshold, battery SoC below threshold, wallbox ready"
+  },
   "1.6.8": {
     "de": "- Zeitleiste: Willkommens-Meldung nach App-Update (Kategorie „E3DC - HKW“ erscheint in den Benachrichtigungseinstellungen)",
     "en": "- Timeline: welcome notification after app update (category “E3DC - HPS” appears in notification settings)"

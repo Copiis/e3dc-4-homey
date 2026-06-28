@@ -1,0 +1,203 @@
+<html>
+<head>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="homey-widget-full">
+<div id="info-message" class="homey-widget hidden">
+  <span id="info-message-value"></span>
+</div>
+<div id="flow-container" class="homey-widget hidden">
+  <div id="plant-title" class="homey-text-bold plant-title"></div>
+  <svg id="flow-svg" viewBox="0 0 320 220" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+        <polygon points="0 0, 8 3, 0 6" class="arrow-head"/>
+      </marker>
+    </defs>
+    <!-- PV top -->
+    <g id="node-pv" class="node" transform="translate(130, 8)">
+      <circle r="28" class="node-circle pv"/>
+      <text y="5" class="node-icon">☀</text>
+      <text y="48" class="node-label" data-i18n="widget.live.pv">PV</text>
+      <text id="pv-value" y="62" class="node-value">0 W</text>
+    </g>
+    <!-- House center -->
+    <g id="node-house" class="node" transform="translate(130, 95)">
+      <circle r="32" class="node-circle house"/>
+      <text y="5" class="node-icon">⌂</text>
+      <text y="52" class="node-label" data-i18n="widget.consumption">Verbrauch</text>
+      <text id="house-value" y="66" class="node-value">0 W</text>
+    </g>
+    <!-- Grid left -->
+    <g id="node-grid" class="node" transform="translate(24, 95)">
+      <circle r="26" class="node-circle grid"/>
+      <text y="5" class="node-icon">⚡</text>
+      <text id="grid-label" y="46" class="node-label">Netz</text>
+      <text id="grid-value" y="60" class="node-value">0 W</text>
+    </g>
+    <!-- Battery right -->
+    <g id="node-battery" class="node" transform="translate(236, 95)">
+      <circle r="26" class="node-circle battery"/>
+      <text y="5" class="node-icon">🔋</text>
+      <text y="46" class="node-label" data-i18n="widget.battery.general">Batterie</text>
+      <text id="battery-value" y="60" class="node-value">0 W</text>
+      <text id="battery-soc" y="74" class="node-soc">0%</text>
+    </g>
+    <!-- Wallbox bottom -->
+    <g id="node-wallbox" class="node" transform="translate(130, 182)">
+      <circle r="24" class="node-circle wallbox"/>
+      <text y="4" class="node-icon">🚗</text>
+      <text y="44" class="node-label" data-i18n="widget.wallbox.consumption">Wallbox</text>
+      <text id="wallbox-value" y="58" class="node-value">0 W</text>
+    </g>
+    <!-- Flow lines -->
+    <line id="flow-pv-house" x1="160" y1="40" x2="160" y2="60" class="flow-line" marker-end="url(#arrowhead)"/>
+    <line id="flow-pv-battery" x1="175" y1="32" x2="218" y2="72" class="flow-line" marker-end="url(#arrowhead)"/>
+    <line id="flow-grid-house" x1="52" y1="95" x2="96" y2="95" class="flow-line" marker-end="url(#arrowhead)"/>
+    <line id="flow-house-grid" x1="96" y1="100" x2="52" y2="100" class="flow-line" marker-end="url(#arrowhead)"/>
+    <line id="flow-battery-house" x1="208" y1="95" x2="164" y2="95" class="flow-line" marker-end="url(#arrowhead)"/>
+    <line id="flow-house-battery" x1="164" y1="100" x2="208" y2="100" class="flow-line" marker-end="url(#arrowhead)"/>
+    <line id="flow-house-wallbox" x1="160" y1="130" x2="160" y2="156" class="flow-line" marker-end="url(#arrowhead)"/>
+    <line id="flow-pv-wallbox" x1="148" y1="36" x2="148" y2="156" class="flow-line" marker-end="url(#arrowhead)"/>
+  </svg>
+</div>
+<script type="text/javascript">
+  const SYNC_INTERVAL = 10000;
+  const WIDGET_HEIGHT = 280;
+
+  function onHomeyReady(Homey) {
+    setTimeout(() => {
+      sync(true).then(() => autoSync());
+    }, 250);
+  }
+
+  function autoSync() {
+    sync(false).then(() => setTimeout(() => autoSync(), SYNC_INTERVAL));
+  }
+
+  function log(msg) {
+    Homey.api('POST', '/log', {
+      widget: 'live-energy-view-' + Homey.getWidgetInstanceId(),
+      message: msg
+    }).catch(console.error);
+  }
+
+  async function sync(asInit) {
+    try {
+      const plant = await resolvePlant(Homey);
+      if (plant.errorMsg) {
+        showMessage(Homey.__(plant.errorMsg));
+        setHeight(Homey, asInit, 60);
+        return;
+      }
+      const settings = Homey.getSettings();
+      updateFlow(plant, settings, Homey);
+      showFlow();
+      setHeight(Homey, asInit, WIDGET_HEIGHT);
+    } catch (e) {
+      showMessage(e.toString());
+      setHeight(Homey, asInit, 60);
+    }
+  }
+
+  function setHeight(Homey, asInit, height) {
+    if (asInit) {
+      Homey.ready({ height });
+    } else {
+      Homey.setHeight(height);
+    }
+  }
+
+  async function resolvePlant(Homey) {
+    const settings = Homey.getSettings();
+    const plants = await Homey.api('GET', '/');
+    if (plants.length === 0) {
+      return { errorMsg: 'widget.info.no-plants' };
+    }
+    if (settings.plantId == null) {
+      if (plants.length === 1) {
+        return plants[0];
+      }
+      return { errorMsg: 'widget.info.no-plant-id' };
+    }
+    const device = plants.find(hps => hps.id === settings.plantId.id);
+    if (!device) {
+      return { errorMsg: 'widget.info.plant-not-found' };
+    }
+    return device;
+  }
+
+  function showMessage(text) {
+    document.getElementById('flow-container').classList.add('hidden');
+    const info = document.getElementById('info-message');
+    info.classList.remove('hidden');
+    document.getElementById('info-message-value').innerText = text;
+  }
+
+  function showFlow() {
+    document.getElementById('info-message').classList.add('hidden');
+    document.getElementById('flow-container').classList.remove('hidden');
+  }
+
+  function formatW(w) {
+    const abs = Math.abs(Math.round(w));
+    if (abs >= 1000) {
+      return (w / 1000).toFixed(1) + ' kW';
+    }
+    return abs + ' W';
+  }
+
+  function setFlowLine(id, active, reverse) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.toggle('active', active);
+    el.classList.toggle('reverse', !!reverse);
+    el.style.opacity = active ? '1' : '0.15';
+  }
+
+  function updateFlow(plant, settings, Homey) {
+    const d = plant.powerState;
+    document.getElementById('plant-title').innerText = plant.name;
+    document.getElementById('pv-value').innerText = formatW(d.pvPower);
+    document.getElementById('house-value').innerText = formatW(d.consumption);
+    document.getElementById('grid-value').innerText = formatW(Math.abs(d.gridPower));
+    document.getElementById('battery-value').innerText = formatW(Math.abs(d.batteryPower));
+    document.getElementById('battery-soc').innerText = Math.round(d.batteryLevel) + '%';
+    document.getElementById('wallbox-value').innerText = formatW(d.wallboxPower);
+
+    const gridImport = d.gridPower < 0;
+    const gridExport = d.gridPower > 0;
+    document.getElementById('grid-label').innerText = gridImport
+      ? Homey.__('widget.grid.purchase')
+      : gridExport
+        ? Homey.__('widget.grid.feed-in')
+        : Homey.__('widget.grid.general');
+
+    const batteryCharge = d.batteryPower > 0;
+    const batteryDischarge = d.batteryPower < 0;
+    const threshold = settings.flowThreshold || 30;
+
+    document.getElementById('node-battery').style.opacity = settings.showBattery !== false ? '1' : '0.25';
+    document.getElementById('node-wallbox').style.opacity = settings.showWallbox !== false ? '1' : '0.25';
+
+    const pvToHouse = d.pvPower > threshold && d.consumption > threshold;
+    const pvToBattery = settings.showBattery !== false && batteryCharge && d.pvPower > threshold;
+    const gridToHouse = gridImport && Math.abs(d.gridPower) > threshold;
+    const houseToGrid = gridExport && Math.abs(d.gridPower) > threshold;
+    const batteryToHouse = settings.showBattery !== false && batteryDischarge && Math.abs(d.batteryPower) > threshold;
+    const houseToBattery = settings.showBattery !== false && batteryCharge && Math.abs(d.batteryPower) > threshold;
+    const houseToWallbox = settings.showWallbox !== false && d.wallboxPower > threshold;
+    const pvToWallbox = settings.showWallbox !== false && d.wallboxSolarShare > threshold;
+
+    setFlowLine('flow-pv-house', pvToHouse, false);
+    setFlowLine('flow-pv-battery', pvToBattery, false);
+    setFlowLine('flow-grid-house', gridToHouse, false);
+    setFlowLine('flow-house-grid', houseToGrid, false);
+    setFlowLine('flow-battery-house', batteryToHouse, false);
+    setFlowLine('flow-house-battery', houseToBattery, false);
+    setFlowLine('flow-house-wallbox', houseToWallbox && !pvToWallbox, false);
+    setFlowLine('flow-pv-wallbox', pvToWallbox, false);
+  }
+</script>
+</body>
+</html>

@@ -16,22 +16,8 @@ class MyApp extends Homey.App {
     process.on('uncaughtException', (err: unknown) => {
       this.error('Uncaught exception: ' + formatError(normalizeError(err)));
     });
-    try {
-      // @ts-ignore
-      const powerOverviewWidget = this.homey.dashboards.getWidget('power-overview')
-      // @ts-ignore
-      powerOverviewWidget.registerSettingAutocompleteListener('plantId', async (query, settings) => {
-        try {
-          const devices = await this.readHomePowerPlants()
-          return devices.filter((item) => item.name.toLowerCase().includes(query.toLowerCase()));
-        } catch (e) {
-          this.error('Widget plantId autocomplete failed: ' + formatError(e));
-          return [];
-        }
-      });
-    } catch (e) {
-      this.error('Widget power-overview setup failed: ' + formatError(e));
-    }
+    this.registerPlantAutocompleteWidget('power-overview');
+    this.registerPlantAutocompleteWidget('live-energy-view');
 
     this.postTimelineWelcomeIfNeeded().catch(reason => {
       this.error('Timeline welcome notification failed: ' + formatError(reason));
@@ -47,6 +33,25 @@ class MyApp extends Homey.App {
     const excerpt = this.homey.__('timeline.welcome', { VERSION: currentVersion });
     await this.homey.notifications.createNotification({ excerpt });
     await this.homey.settings.set('timelineWelcomeVersion', currentVersion);
+  }
+
+  private registerPlantAutocompleteWidget(widgetId: string): void {
+    try {
+      // @ts-ignore
+      const widget = this.homey.dashboards.getWidget(widgetId);
+      // @ts-ignore
+      widget.registerSettingAutocompleteListener('plantId', async (query: string) => {
+        try {
+          const devices = await this.readHomePowerPlants();
+          return devices.filter((item) => item.name.toLowerCase().includes(query.toLowerCase()));
+        } catch (e) {
+          this.error(`Widget ${widgetId} plantId autocomplete failed: ` + formatError(e));
+          return [];
+        }
+      });
+    } catch (e) {
+      this.error(`Widget ${widgetId} setup failed: ` + formatError(e));
+    }
   }
 
   logFromWidget(widget: string, message: string) {

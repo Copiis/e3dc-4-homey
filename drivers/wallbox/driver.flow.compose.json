@@ -425,6 +425,29 @@
       ]
     }
   ],
+  "triggers": [
+    {
+      "id": "wallbox_ready",
+      "title": {
+        "de": "Wallbox bereit zum Laden",
+        "en": "Wallbox ready to charge"
+      },
+      "hint": {
+        "de": "Für EMS-Partner: Fahrzeug angesteckt, aber nicht am Laden — guter Zeitpunkt für PV-Überschuss-Laden oder externe EMS-Freigabe.",
+        "en": "For EMS partners: vehicle plugged in but not charging — good moment for PV surplus charging or external EMS release."
+      },
+      "tokens": [
+        {
+          "name": "power",
+          "type": "number",
+          "title": {
+            "de": "Aktuelle Leistung (W)",
+            "en": "Current power (W)"
+          }
+        }
+      ]
+    }
+  ],
   "conditions": [
     {
       "id": "wallbox_sun_mode_is_active",

@@ -72,5 +72,17 @@
       "id": "add_my_devices",
       "template": "add_devices"
     }
+  ],
+  "repair": [
+    {
+      "id": "connect",
+      "navigation": {
+        "next": "done"
+      }
+    },
+    {
+      "id": "done",
+      "template": "done"
+    }
   ]
 }

@@ -86,6 +86,7 @@ import {
   POWER_MODE_AUTO,
 } from '../../src/cards/action/set-power-mode.action.card';
 import {PowerModeState} from '../../src/model/home-power-station';
+import {calculatePvSurplusW} from '../../src/utils/pv-surplus';
 
 
 const SYNC_INTERVAL = 1000 * 20; // 20 sec
@@ -120,6 +121,7 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
   private lastSyncResult?: 'ok' | 'error'
   private lastSnapshot: Partial<DiagnosticSnapshot> = {}
   private readonly energyMeter = new EnergyMeterIntegrator(this)
+  private lastPvSurplusW = 0
   async onInit() {
     this.log('HomePowerStationDevice has been initialized');
 
@@ -554,7 +556,8 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
               this.gridPowerHasChangedTrigger?.runIfChanged(gridDeliveryChange)
               this.batteryPowerHasChangedTrigger?.runIfChanged(batteryDeliveryChange)
               this.houseConsumptionHasChangedTrigger?.runIfChanged(houseConsumptionChange)
-              updateCapabilityValue('measure_battery', result.batteryChargingLevel * 100, this)
+              const batteryLevelChange = updateCapabilityValue('measure_battery', result.batteryChargingLevel * 100, this)
+              this.handleEmsTriggers(result, batteryLevelChange)
               updateCapabilityValue('external_power_delivery_connected', result.externalPowerConnected, this)
               if (result.externalPowerConnected) {
                 updateCapabilityValue('measure_external_power_delivery', result.externalPowerDelivery, this)
@@ -767,6 +770,33 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
             result.emergencyPowerState)
       }
     })
+  }
+
+  private handleEmsTriggers(result: LiveData, batteryLevelChange: ValueChanged<number> | undefined) {
+    const batteryPowerW = result.batteryDelivery * -1
+    const surplus = calculatePvSurplusW(result.pvDelivery, result.houseConsumption, batteryPowerW)
+    const previousSurplus = this.lastPvSurplusW
+    this.lastPvSurplusW = surplus
+
+    try {
+      const pvSurplusCard = this.homey.flow.getDeviceTriggerCard('pv_surplus_exceeds')
+      pvSurplusCard.trigger(this, { surplus }, { surplus, previousSurplus })
+        .catch(reason => this.error('PV surplus trigger failed: ' + formatError(reason)))
+    } catch (e) {
+      this.error('PV surplus trigger card unavailable: ' + formatError(e))
+    }
+
+    if (batteryLevelChange?.oldValue != null && batteryLevelChange.newValue != null) {
+      try {
+        const socCard = this.homey.flow.getDeviceTriggerCard('battery_soc_below')
+        socCard.trigger(this, { soc: batteryLevelChange.newValue }, {
+          soc: batteryLevelChange.newValue,
+          previousSoc: batteryLevelChange.oldValue,
+        }).catch(reason => this.error('Battery SoC trigger failed: ' + formatError(reason)))
+      } catch (e) {
+        this.error('Battery SoC trigger card unavailable: ' + formatError(e))
+      }
+    }
   }
 
   private handleAvailability() {

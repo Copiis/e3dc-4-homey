@@ -22,28 +22,66 @@ class HomePowerStationDriver extends Homey.Driver {
     rscpSoh: '—',
   }
 
-  onPair(session: PairSession): Promise<void> {
-    session.setHandler('settingsChanged', async (data: PowerStationConfig) => {
-      return await this.onSettingsChanged(data)
-    })
-
-    session.setHandler('checkConnection', async (data: PowerStationConfig) => {
-      return await this.onCheckConnection(data)
-    })
-
-    session.setHandler("list_devices", async () => {
-      return await this.onPairListDevices();
-    });
-
-    session.setHandler("getSettings", async () => {
-      return this.settings;
-    });
-    return new Promise<void>(async (resolve, reject) => resolve());
+  async onInit() {
+    this.log('HomePowerStationDriver has been initialized');
+    this.setupEmsTriggerCards();
   }
 
-  async onCheckConnection(data: PowerStationConfig) {
+  private setupEmsTriggerCards() {
+    const pvSurplusCard = this.homey.flow.getDeviceTriggerCard('pv_surplus_exceeds');
+    pvSurplusCard.registerRunListener(async (args: { threshold: number }, state: { surplus: number, previousSurplus: number }) => {
+      return state.surplus >= args.threshold && state.previousSurplus < args.threshold;
+    });
+
+    const socBelowCard = this.homey.flow.getDeviceTriggerCard('battery_soc_below');
+    socBelowCard.registerRunListener(async (args: { percent: number }, state: { soc: number, previousSoc: number }) => {
+      return state.soc < args.percent && state.previousSoc >= args.percent;
+    });
+  }
+
+  onPair(session: PairSession): Promise<void> {
+    this.registerConnectionHandlers(session, () => this.settings);
+    session.setHandler('list_devices', async () => this.onPairListDevices());
+    return Promise.resolve();
+  }
+
+  onRepair(session: PairSession, device: Homey.Device): Promise<void> {
+    const repairSettings: PowerStationConfig = {
+      ...(device.getSettings() as PowerStationConfig),
+    };
+    this.registerConnectionHandlers(session, () => repairSettings);
+    session.setHandler('done', async () => {
+      repairSettings.stationPort = parseInt(repairSettings.stationPort.toString());
+      if (repairSettings.timeout == undefined) {
+        repairSettings.timeout = 5;
+      }
+      await device.setSettings(repairSettings);
+      if (!device.getAvailable()) {
+        await device.setAvailable();
+      }
+      return true;
+    });
+    return Promise.resolve();
+  }
+
+  private registerConnectionHandlers(session: PairSession, getSettings: () => PowerStationConfig) {
+    session.setHandler('settingsChanged', async (data: PowerStationConfig) => {
+      return await this.onSettingsChanged(data, getSettings);
+    });
+
+    session.setHandler('checkConnection', async (data: PowerStationConfig) => {
+      return await this.onCheckConnection(data, getSettings);
+    });
+
+    session.setHandler('getSettings', async () => getSettings());
+  }
+
+  async onCheckConnection(data: PowerStationConfig, settingsTarget?: { (): PowerStationConfig }) {
     return new Promise<string>(async (resolve, reject) => {
       this.settings = data
+      if (settingsTarget) {
+        Object.assign(settingsTarget(), data);
+      }
       const validationError = this.validateSettings()
       if (validationError) {
         resolve(validationError)
@@ -73,8 +111,11 @@ class HomePowerStationDriver extends Homey.Driver {
     })
   }
 
-  async onSettingsChanged(data: PowerStationConfig) {
+  async onSettingsChanged(data: PowerStationConfig, settingsTarget?: { (): PowerStationConfig }) {
     this.settings = data
+    if (settingsTarget) {
+      Object.assign(settingsTarget(), data);
+    }
     return true
   }
 

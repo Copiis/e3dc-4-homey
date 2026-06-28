@@ -34,7 +34,18 @@
       "field": {
         "type": "Range"
       }
-    }
+    },
+    "repair": {
+      "title": "Repair connection",
+      "info": "Check or update RSCP credentials (e.g. new IP). Test the connection, then press Next to save — no need to re-add the device."
+    },
+    "check": "Test connection"
+  },
+  "energy-summary": {
+    "live-label": "Live"
+  },
+  "ems": {
+    "intro": "EMS triggers connect E3DC with external apps (Ultimate EMS, Power by the Hour, Tibber, …). PV surplus and SoC thresholds on the HPS; wallbox ready on the wallbox device."
   },
   "please-wait": "Please wait",
   "area": {
@@ -112,6 +123,9 @@
       "no-plants": "No home power stations are configured. First add a home power station device.",
       "data-receive-error": "The energy data could not be read."
     },
-    "external-source": "ext. source"
+    "external-source": "ext. source",
+    "live": {
+      "pv": "PV"
+    }
   }
 }

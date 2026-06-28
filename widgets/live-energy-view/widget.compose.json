@@ -1,0 +1,57 @@
+{
+  "name": {
+    "en": "Live energy flow",
+    "de": "Live-Energiefluss"
+  },
+  "transparent": false,
+  "height": 280,
+  "settings": [
+    {
+      "id": "plantId",
+      "type": "autocomplete",
+      "title": {
+        "de": "Hauskraftwerk",
+        "en": "Home power plant"
+      }
+    },
+    {
+      "id": "showWallbox",
+      "type": "checkbox",
+      "value": true,
+      "title": {
+        "de": "Wallbox anzeigen",
+        "en": "Show wallbox"
+      }
+    },
+    {
+      "id": "showBattery",
+      "type": "checkbox",
+      "value": true,
+      "title": {
+        "de": "Batterie anzeigen",
+        "en": "Show battery"
+      }
+    },
+    {
+      "id": "flowThreshold",
+      "type": "number",
+      "value": 30,
+      "min": 0,
+      "max": 500,
+      "title": {
+        "de": "Min. Leistung für Pfeile (W)",
+        "en": "Min. power for arrows (W)"
+      }
+    }
+  ],
+  "api": {
+    "readHomePowerPlants": {
+      "method": "GET",
+      "path": "/"
+    },
+    "log": {
+      "method": "POST",
+      "path": "/log"
+    }
+  }
+}

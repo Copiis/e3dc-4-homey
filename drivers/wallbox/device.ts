@@ -42,6 +42,7 @@ class WallboxDevice extends Homey.Device implements Wallbox {
   private lastSyncedState?: WallboxLiveState;
   private lastSyncedAt = 0;
   private capabilitiesReady = false;
+  private wasReadyToCharge = false;
 
   async onInit() {
     this.log('WallboxDevice has been initialized');
@@ -105,6 +106,22 @@ class WallboxDevice extends Homey.Device implements Wallbox {
     if (state.activePhases !== undefined) {
       updateCapabilityValue('measure_wallbox_phases', state.activePhases, this);
     }
+
+    this.handleWallboxReadyTrigger(state, effectivePowerW);
+  }
+
+  private handleWallboxReadyTrigger(state: WallboxLiveState, powerW: number): void {
+    const ready = state.plugged && !state.chargingEnabled && Math.abs(powerW) < 50;
+    if (ready && !this.wasReadyToCharge) {
+      try {
+        const card = this.homey.flow.getDeviceTriggerCard('wallbox_ready');
+        card.trigger(this, { power: powerW }, { power: powerW })
+          .catch(reason => this.error('Wallbox ready trigger failed: ' + formatError(reason)));
+      } catch (e) {
+        this.error('Wallbox ready trigger card unavailable: ' + formatError(e));
+      }
+    }
+    this.wasReadyToCharge = ready;
   }
 
   syncEmsSettings(settings: Partial<WallboxEmsSettings>): void {

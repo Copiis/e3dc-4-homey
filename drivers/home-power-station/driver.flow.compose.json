@@ -899,6 +899,85 @@
           }
         }
       ]
+    },
+    {
+      "id": "pv_surplus_exceeds",
+      "title": {
+        "de": "PV-Überschuss überschreitet",
+        "en": "PV surplus exceeds"
+      },
+      "titleFormatted": {
+        "de": "PV-Überschuss überschreitet [[threshold]] W",
+        "en": "PV surplus exceeds [[threshold]] W"
+      },
+      "hint": {
+        "de": "Für EMS-Partner (z. B. Ultimate EMS, dynamische Tarife): Wird ausgelöst, wenn der geschätzte PV-Überschuss (PV minus Hausverbrauch minus Batterieladung) die Schwelle erreicht oder überschreitet. Kombiniere mit Wallbox- oder HKW-Aktionen.",
+        "en": "For EMS partners (e.g. Ultimate EMS, dynamic tariffs): triggered when estimated PV surplus (PV minus house consumption minus battery charging) crosses the threshold upward. Combine with wallbox or HPS actions."
+      },
+      "args": [
+        {
+          "type": "number",
+          "name": "threshold",
+          "title": {
+            "de": "Schwelle (W)",
+            "en": "Threshold (W)"
+          },
+          "required": true,
+          "min": 0,
+          "step": 50,
+          "value": 500
+        }
+      ],
+      "tokens": [
+        {
+          "name": "surplus",
+          "type": "number",
+          "title": {
+            "de": "PV-Überschuss (W)",
+            "en": "PV surplus (W)"
+          }
+        }
+      ]
+    },
+    {
+      "id": "battery_soc_below",
+      "title": {
+        "de": "Batterieladestand fällt unter",
+        "en": "Battery SoC drops below"
+      },
+      "titleFormatted": {
+        "de": "Batterieladestand fällt unter [[percent]] %",
+        "en": "Battery SoC drops below [[percent]] %"
+      },
+      "hint": {
+        "de": "Für EMS-Partner: Wird ausgelöst, wenn der Ladestand von oben nach unten die Schwelle durchbricht (nicht dauerhaft bei jedem Sync unter der Schwelle).",
+        "en": "For EMS partners: triggered when SoC crosses the threshold downward (not on every sync while below)."
+      },
+      "args": [
+        {
+          "type": "number",
+          "name": "percent",
+          "title": {
+            "de": "Schwelle (%)",
+            "en": "Threshold (%)"
+          },
+          "required": true,
+          "min": 0,
+          "max": 100,
+          "step": 1,
+          "value": 20
+        }
+      ],
+      "tokens": [
+        {
+          "name": "soc",
+          "type": "number",
+          "title": {
+            "de": "Aktueller Ladestand (%)",
+            "en": "Current SoC (%)"
+          }
+        }
+      ]
     }
   ],
   "conditions": [

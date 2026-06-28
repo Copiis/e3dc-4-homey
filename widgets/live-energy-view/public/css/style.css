@@ -1,0 +1,99 @@
+#info-message {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: var(--homey-su-4);
+  text-align: center;
+}
+
+#flow-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--homey-su-2) var(--homey-su-3);
+  height: 100%;
+}
+
+.plant-title {
+  margin-bottom: var(--homey-su-1);
+  font-size: 13px;
+  text-align: center;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#flow-svg {
+  width: 100%;
+  max-width: 340px;
+  height: auto;
+  flex: 1;
+}
+
+.node-circle {
+  fill: var(--homey-color-mono-100);
+  stroke: var(--homey-color-line);
+  stroke-width: 1.5;
+}
+
+.node-circle.pv { stroke: #e6a817; }
+.node-circle.house { stroke: var(--homey-color-primary); }
+.node-circle.grid { stroke: #5b8def; }
+.node-circle.battery { stroke: #7AB31B; }
+.node-circle.wallbox { stroke: #8b6cc1; }
+
+.node-icon {
+  text-anchor: middle;
+  font-size: 18px;
+  fill: var(--homey-color-text);
+}
+
+.node-label, .node-value, .node-soc {
+  text-anchor: middle;
+  fill: var(--homey-color-text);
+  font-size: 10px;
+}
+
+.node-value {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.node-soc {
+  font-size: 9px;
+  opacity: 0.75;
+}
+
+.flow-line {
+  stroke: var(--homey-color-primary);
+  stroke-width: 2.5;
+  fill: none;
+  opacity: 0.15;
+  transition: opacity 0.4s ease;
+}
+
+.flow-line.active {
+  opacity: 1;
+  stroke-dasharray: 6 4;
+  animation: flow-dash 1s linear infinite;
+}
+
+.flow-line.active.reverse {
+  animation-direction: reverse;
+}
+
+.arrow-head {
+  fill: var(--homey-color-primary);
+}
+
+@keyframes flow-dash {
+  to {
+    stroke-dashoffset: -20;
+  }
+}
+
+.hidden {
+  display: none !important;
+}

@@ -1,0 +1,65 @@
+{
+  "name": {
+    "en": "HPS - Energy Summary",
+    "de": "HKW - Energieübersicht"
+  },
+  "class": "sensor",
+  "capabilities": [
+    "measure_power",
+    "measure_house_consumption",
+    "measure_grid_delivery",
+    "measure_battery_delivery",
+    "measure_wallbox_consumption",
+    "measure_pv_surplus"
+  ],
+  "capabilitiesOptions": {
+    "measure_power": {
+      "title": {
+        "en": "PV power",
+        "de": "PV-Leistung"
+      }
+    },
+    "measure_grid_delivery": {
+      "title": {
+        "en": "Grid power",
+        "de": "Netzleistung"
+      }
+    },
+    "measure_battery_delivery": {
+      "title": {
+        "en": "Battery power",
+        "de": "Batterieleistung"
+      }
+    },
+    "measure_wallbox_consumption": {
+      "title": {
+        "en": "Wallbox power",
+        "de": "Wallbox-Leistung"
+      }
+    }
+  },
+  "platforms": [
+    "local"
+  ],
+  "connectivity": [
+    "lan"
+  ],
+  "images": {
+    "small": "{{driverAssetsPath}}/images/small.png",
+    "large": "{{driverAssetsPath}}/images/large.png",
+    "xlarge": "{{driverAssetsPath}}/images/xlarge.png"
+  },
+  "pair": [
+    {
+      "id": "list_my_devices",
+      "template": "list_devices",
+      "navigation": {
+        "next": "add_my_devices"
+      }
+    },
+    {
+      "id": "add_my_devices",
+      "template": "add_devices"
+    }
+  ]
+}
