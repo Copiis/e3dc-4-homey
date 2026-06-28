@@ -1,12 +1,13 @@
 'use strict';
 
+const {readHomePowerPlantsForHomey} = require('../../src/utils/home-power-plants.js');
+
 module.exports = {
   async readHomePowerPlants({homey, query}) {
-    return await homey.app.readHomePowerPlants()
+    return readHomePowerPlantsForHomey(homey);
   },
 
   async log({homey, body}) {
-    return homey.app.logFromWidget(body.widget, body.message)
+    return homey.app.logFromWidget(body.widget, body.message);
   },
-
 };

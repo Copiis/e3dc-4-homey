@@ -6,6 +6,7 @@ import {updateCapabilityValue} from '../../src/utils/capability-utils';
 import {calculatePvSurplusW} from '../../src/utils/pv-surplus';
 import {clearTimeout} from 'node:timers';
 import {formatError} from '../../src/utils/error-utils';
+import {readCapabilityNumber} from '../../src/utils/read-capability-number';
 
 const SYNC_INTERVAL_ENERGY_SUMMARY = 1000 * 20;
 const MAX_ALLOWED_ERROR_BEFORE_UNAVAILABLE = 5;
@@ -31,14 +32,6 @@ class EnergySummaryDevice extends Homey.Device {
       });
   }
 
-  private readLinkedNumber(station: Homey.Device, capability: string, fallback = 0): number {
-    if (!station.hasCapability(capability)) {
-      return fallback;
-    }
-    const value = station.getCapabilityValue(capability);
-    return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
-  }
-
   private aggregateWallboxPowerW(stationId: string): number {
     const wallboxDevices = this.homey.drivers.getDriver('wallbox').getDevices();
     let total = 0;
@@ -47,7 +40,7 @@ class EnergySummaryDevice extends Homey.Device {
       if (config?.stationId !== stationId) {
         return;
       }
-      total += this.readLinkedNumber(device, 'measure_power', 0);
+      total += readCapabilityNumber(device, 'measure_power', 0);
     });
     return total;
   }
@@ -79,10 +72,10 @@ class EnergySummaryDevice extends Homey.Device {
     }
 
     try {
-      const pvPower = this.readLinkedNumber(stationToUse, 'measure_power');
-      const houseConsumption = this.readLinkedNumber(stationToUse, 'measure_house_consumption');
-      const gridDelivery = this.readLinkedNumber(stationToUse, 'measure_grid_delivery');
-      const batteryPower = this.readLinkedNumber(stationToUse, 'measure_battery_delivery');
+      const pvPower = readCapabilityNumber(stationToUse, 'measure_power');
+      const houseConsumption = readCapabilityNumber(stationToUse, 'measure_house_consumption');
+      const gridDelivery = readCapabilityNumber(stationToUse, 'measure_grid_delivery');
+      const batteryPower = readCapabilityNumber(stationToUse, 'measure_battery_delivery');
       const wallboxPower = this.aggregateWallboxPowerW(ownConfig.stationId);
       const pvSurplus = calculatePvSurplusW(pvPower, houseConsumption, batteryPower);
 

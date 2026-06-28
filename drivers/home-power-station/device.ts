@@ -87,6 +87,7 @@ import {
 } from '../../src/cards/action/set-power-mode.action.card';
 import {PowerModeState} from '../../src/model/home-power-station';
 import {calculatePvSurplusW} from '../../src/utils/pv-surplus';
+import {buildPowerStateFromLiveData, publishPlantPowerStateFromStation, setPlantPowerState} from '../../src/utils/plant-power-cache';
 
 
 const SYNC_INTERVAL = 1000 * 20; // 20 sec
@@ -174,6 +175,7 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
       this.error('Initial diagnostic report failed: ' + formatError(reason))
     })
 
+    publishPlantPowerStateFromStation(this)
     setTimeout(() => {
       this.autoSync()
     }, 2000)
@@ -481,6 +483,26 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
         })
   }
 
+  private publishWidgetPowerCache(result: LiveData): void {
+    const stationId = String(this.getData().id);
+    let wallboxPower = 0;
+    let wallboxSolarShare = 0;
+    const wallboxDevices = this.homey.drivers.getDriver('wallbox').getDevices();
+    wallboxDevices.forEach(device => {
+      const config = device.getStoreValue('settings') as { stationId?: string } | undefined;
+      if (String(config?.stationId) !== stationId) {
+        return;
+      }
+      if (device.hasCapability('measure_power')) {
+        wallboxPower += Number(device.getCapabilityValue('measure_power')) || 0;
+      }
+      if (device.hasCapability('measure_wallbox_solarshare')) {
+        wallboxSolarShare += Number(device.getCapabilityValue('measure_wallbox_solarshare')) || 0;
+      }
+    });
+    setPlantPowerState(stationId, buildPowerStateFromLiveData(result, wallboxPower, wallboxSolarShare));
+  }
+
   getId(): string {
     return this.getData().id;
   }
@@ -573,6 +595,7 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
               this.handleManualChargeStateChanges(result)
               this.handleEmergencyPowerStateChanges(result)
               this.handleWallbox(result)
+              this.publishWidgetPowerCache(result)
               this.updateLinkedGridMeter(result)
               this.handleAvailability();
               this.recordSyncSuccess(result)

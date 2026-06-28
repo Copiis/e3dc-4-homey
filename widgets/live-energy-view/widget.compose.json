@@ -4,7 +4,7 @@
     "de": "Live-Energiefluss"
   },
   "transparent": false,
-  "height": 280,
+  "height": 310,
   "settings": [
     {
       "id": "plantId",

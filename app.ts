@@ -1,5 +1,6 @@
 import Homey from 'homey';
 import {formatError, normalizeError} from './src/utils/error-utils';
+import {readHomePowerPlantsForHomey} from './src/utils/home-power-plants';
 
 class MyApp extends Homey.App {
 
@@ -78,41 +79,16 @@ class MyApp extends Homey.App {
     // }
   }
 
-  private readCapabilityNumber(device: Homey.Device, capability: string, fallback = 0): number {
-    if (!device.hasCapability(capability)) {
-      return fallback;
-    }
-    const value = device.getCapabilityValue(capability);
-    return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
-  }
-
   async readHomePowerPlants(): Promise<HomePowerPlant[]> {
-    const homePowerStations = this.homey.drivers.getDriver('home-power-station').getDevices()
-    const devices: HomePowerPlant[] = []
-    for (let i = 0; i < homePowerStations.length; i++) {
-      const station = homePowerStations[i];
-      const stationData = await station.getData();
-      const stationId = stationData.id;
-      const name = station.getName()
-      devices.push({
-        name: name,
-        id: stationId,
-        powerState: {
-          consumption: this.readCapabilityNumber(station, 'measure_house_consumption'),
-          pvPower: this.readCapabilityNumber(station, 'measure_power'),
-          gridPower: this.readCapabilityNumber(station, 'measure_grid_delivery') * -1,
-          batteryPower: this.readCapabilityNumber(station, 'measure_battery_delivery'),
-          batteryLevel: this.readCapabilityNumber(station, 'measure_battery'),
-          wallboxPower: this.readCapabilityNumber(station, 'measure_wallbox_consumption'),
-          wallboxSolarShare: this.readCapabilityNumber(station, 'measure_wallbox_solarshare'),
-          externalPowerConnected: station.hasCapability('external_power_delivery_connected')
-            ? !!station.getCapabilityValue('external_power_delivery_connected')
-            : false,
-          externalPower: this.readCapabilityNumber(station, 'measure_external_power_delivery'),
-        }
-      })
+    const devices = await readHomePowerPlantsForHomey(this.homey);
+    for (const device of devices) {
+      const station = this.homey.drivers.getDriver('home-power-station').getDevices()
+        .find(s => String(s.getData().id) === device.id);
+      if (station && !station.getAvailable()) {
+        this.log(`Widget data: HKW "${device.name}" is unavailable — values may be stale`);
+      }
     }
-    return devices
+    return devices;
   }
 
   async demoTest(): Promise<string> {
