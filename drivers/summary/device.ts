@@ -5,6 +5,7 @@ import {updateCapabilityValue} from '../../src/utils/capability-utils';
 import {getTypeName} from '../../src/utils/i18n-utils';
 import {I18n} from '../../src/internal-api/i18n';
 import {clearTimeout} from 'node:timers';
+import {reorderCapabilitiesIfNeeded, SUMMARY_CAPABILITY_ORDER} from '../../src/utils/capability-order';
 import {formatError} from '../../src/utils/error-utils';
 
 const SYNC_INTERVAL_SUMMARY = 1000 * 60 * 5; // 5 min
@@ -18,6 +19,11 @@ class SummaryDevice extends Homey.Device implements I18n{
 
   async onInit() {
     this.log('SummaryDevice has been initialized');
+    try {
+      await reorderCapabilitiesIfNeeded(this, SUMMARY_CAPABILITY_ORDER);
+    } catch (e) {
+      this.error('Summary capability migration failed: ' + formatError(e));
+    }
 
     setTimeout(() => {
       this.autoSync()

@@ -15,27 +15,15 @@ import {
 import {formatError} from '../../src/utils/error-utils';
 import {wallboxTotalEnergyKwh} from '../../src/utils/energy-meter-integrator';
 import {resolveWallboxPowerW} from '../../src/utils/wallbox-power';
+import {
+  hideCapabilitiesFromTile,
+  reorderCapabilitiesIfNeeded,
+  WALLBOX_CAPABILITY_ORDER,
+  WALLBOX_TILE_HIDDEN_CAPABILITIES,
+} from '../../src/utils/capability-order';
 import {ensureCapabilities} from '../../src/utils/energy-capability-migration';
 
 const SYNC_CACHE_MAX_AGE_MS = 30_000;
-
-/** Must match drivers/wallbox/driver.compose.json — existing devices may lack caps added in later releases. */
-const WALLBOX_DRIVER_CAPABILITIES = [
-  'measure_power',
-  'meter_power',
-  'wallbox_charging',
-  'wallbox_sun_mode',
-  'measure_wallbox_solarshare',
-  'measure_wallbox_max_current',
-  'measure_wallbox_phases',
-  'wallbox_plugged',
-  'wallbox_plug_locked',
-  'wallbox_schuko',
-  'wallbox_priority_battery_first',
-  'wallbox_battery_discharge_sun',
-  'measure_wallbox_discharge_soc',
-  'wallbox_battery_discharge_mix',
-] as const;
 
 class WallboxDevice extends Homey.Device implements Wallbox {
 
@@ -55,7 +43,9 @@ class WallboxDevice extends Homey.Device implements Wallbox {
   }
 
   private async migrateCapabilities(): Promise<void> {
-    await ensureCapabilities(this, [...WALLBOX_DRIVER_CAPABILITIES]);
+    await ensureCapabilities(this, [...WALLBOX_CAPABILITY_ORDER]);
+    await reorderCapabilitiesIfNeeded(this, WALLBOX_CAPABILITY_ORDER);
+    await hideCapabilitiesFromTile(this, WALLBOX_TILE_HIDDEN_CAPABILITIES);
     const legacyCapabilities = [
       'evcharger_charging',
       'evcharger_charging_state',

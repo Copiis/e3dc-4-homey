@@ -6,14 +6,14 @@
   "class": "solarpanel",
   "capabilities": [
     "measure_power",
-    "meter_power",
+    "measure_house_consumption",
     "measure_grid_delivery",
     "measure_battery_delivery",
-    "measure_house_consumption",
     "measure_battery",
-    "firmware_version",
     "charge_time",
-    "diagnostic_report"
+    "meter_power",
+    "diagnostic_report",
+    "firmware_version"
   ],
   "platforms": [
     "local"

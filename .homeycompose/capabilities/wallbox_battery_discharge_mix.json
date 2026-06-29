@@ -14,7 +14,7 @@
   },
   "getable": true,
   "setable": false,
-  "uiComponent": "sensor",
+  "uiComponent": null,
   "icon": "/assets/images/battery-unload.svg",
   "insights": false
 }

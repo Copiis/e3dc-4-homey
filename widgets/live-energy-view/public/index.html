@@ -329,6 +329,18 @@
     return abs + ' W';
   }
 
+  /** Batterieladung: zuerst PV-Überschuss nach Hausverbrauch, Rest über Netz (Haus als Verteiler). */
+  function splitBatteryChargeW(powerState) {
+    const batteryChargeW = Math.max(0, powerState.batteryPower);
+    if (batteryChargeW <= 0) {
+      return { fromPvW: 0, fromGridW: 0 };
+    }
+    const pvAfterHouse = Math.max(0, powerState.pvPower - powerState.consumption);
+    const fromPvW = Math.min(batteryChargeW, pvAfterHouse);
+    const fromGridW = Math.max(0, batteryChargeW - fromPvW);
+    return { fromPvW, fromGridW };
+  }
+
   function setFlowLine(id, active, reverse, powerW) {
     const el = document.getElementById(id);
     if (!el) return;
@@ -368,28 +380,30 @@
         ? Homey.__('widget.grid.feed-in')
         : Homey.__('widget.grid.general'));
 
-    const batteryCharge = d.batteryPower > 0;
     const batteryDischarge = d.batteryPower < 0;
     const threshold = settings.flowThreshold != null ? settings.flowThreshold : 30;
+    const showBattery = settings.showBattery !== false;
+    const chargeSplit = splitBatteryChargeW(d);
 
-    document.getElementById('node-battery').style.opacity = settings.showBattery !== false ? '1' : '0.25';
+    document.getElementById('node-battery').style.opacity = showBattery ? '1' : '0.25';
     document.getElementById('node-wallbox').style.opacity = settings.showWallbox !== false ? '1' : '0.25';
 
-    const pvToHouse = d.pvPower > threshold;
-    const pvToBattery = settings.showBattery !== false && batteryCharge && d.pvPower > threshold;
+    const pvToHouseW = Math.max(0, Math.min(d.pvPower, d.consumption));
+    const pvToHouse = pvToHouseW > threshold;
+    const pvToBattery = showBattery && chargeSplit.fromPvW > threshold;
     const gridToHouse = gridImport && Math.abs(d.gridPower) > threshold;
     const houseToGrid = gridExport && Math.abs(d.gridPower) > threshold;
-    const batteryToHouse = settings.showBattery !== false && batteryDischarge && Math.abs(d.batteryPower) > threshold;
-    const houseToBattery = settings.showBattery !== false && batteryCharge && Math.abs(d.batteryPower) > threshold;
+    const batteryToHouse = showBattery && batteryDischarge && Math.abs(d.batteryPower) > threshold;
+    const houseToBattery = showBattery && chargeSplit.fromGridW > threshold;
     const houseToWallbox = settings.showWallbox !== false && d.wallboxPower > threshold;
     const pvToWallbox = settings.showWallbox !== false && d.wallboxSolarShare > threshold;
 
-    setFlowLine('flow-pv-house', pvToHouse, false, d.pvPower);
-    setFlowLine('flow-pv-battery', pvToBattery, false, d.pvPower);
+    setFlowLine('flow-pv-house', pvToHouse, false, pvToHouseW);
+    setFlowLine('flow-pv-battery', pvToBattery, false, chargeSplit.fromPvW);
     setFlowLine('flow-grid-house', gridToHouse, false, d.gridPower);
     setFlowLine('flow-house-grid', houseToGrid, true, d.gridPower);
     setFlowLine('flow-battery-house', batteryToHouse, false, d.batteryPower);
-    setFlowLine('flow-house-battery', houseToBattery, true, d.batteryPower);
+    setFlowLine('flow-house-battery', houseToBattery, false, chargeSplit.fromGridW);
     setFlowLine('flow-house-wallbox', houseToWallbox && !pvToWallbox, false, d.wallboxPower);
     setFlowLine('flow-pv-wallbox', pvToWallbox, false, d.wallboxSolarShare);
   }

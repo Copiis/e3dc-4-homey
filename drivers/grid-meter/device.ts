@@ -5,6 +5,7 @@ import {GridMeterConfig} from '../../src/model/grid-meter.config';
 import {HomePowerStation} from '../../src/model/home-power-station';
 import {SummaryType} from '../../src/model/summary.config';
 import {updateCapabilityValue} from '../../src/utils/capability-utils';
+import {GRID_METER_CAPABILITY_ORDER, reorderCapabilitiesIfNeeded} from '../../src/utils/capability-order';
 import {ensureCapabilities} from '../../src/utils/energy-capability-migration';
 import {formatError} from '../../src/utils/error-utils';
 import {
@@ -41,6 +42,7 @@ class GridMeterDevice extends Homey.Device implements GridMeter {
         'measure_grid_in',
         'measure_grid_out',
       ]);
+      await reorderCapabilitiesIfNeeded(this, GRID_METER_CAPABILITY_ORDER);
       this.ensureCumulativeLogicVersion();
       const archive = this.loadArchive();
       this.lastSyncedDate = archive.lastSyncedDate;

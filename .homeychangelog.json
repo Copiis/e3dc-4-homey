@@ -1,4 +1,8 @@
 {
+  "1.8.7": {
+    "de": "- **Kachel-Sortierung** verbessert: HKW, Netz, Wallbox und Statistiken (bestehende Geräte werden beim Update automatisch umgeordnet)\n- **Wallbox-Kachel:** weniger Experten-Felder sichtbar (Verriegelung, Schuko, Batterie-Mischmodus u. a. bleiben für Flows verfügbar)\n- **Widget Live-Energiefluss:** Batterie-Pfeile korrekt; Ladung getrennt als PV → Batterie bzw. Netz → Haus → Batterie",
+    "en": "- **Improved tile order** for HPS, grid meter, wallbox and statistics (existing devices reordered automatically on update)\n- **Wallbox tile:** fewer expert fields on tile (lock, Schuko, battery mix mode etc. still available for flows)\n- **Live energy flow widget:** correct battery arrow direction; charging split into PV → battery vs grid → house → battery"
+  },
   "1.8.6": {
     "de": "- PV-Prognose: verständlichere Hinweise zu **Wirkungsgrad-Faktor** und **Kalibrierungsfaktor** in den Geräteeinstellungen",
     "en": "- PV forecast: clearer hints for **performance ratio** and **calibration factor** in device settings"

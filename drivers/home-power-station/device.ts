@@ -77,6 +77,7 @@ import {
 import {ExportDiagnosticReportActionCard} from '../../src/cards/action/export-diagnostic-report.action.card';
 import {EnergyMeterIntegrator} from '../../src/utils/energy-meter-integrator';
 import {ensureCapabilities} from '../../src/utils/energy-capability-migration';
+import {HKW_CAPABILITY_ORDER, reorderCapabilitiesIfNeeded} from '../../src/utils/capability-order';
 import {
   SetPowerModeAutoActionCard,
   SetPowerModeChargeActionCard,
@@ -162,6 +163,7 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
         this.error(`Failed to remove legacy capability ${capability}: ${formatError(e)}`)
       }
     }
+    await reorderCapabilitiesIfNeeded(this, HKW_CAPABILITY_ORDER)
   }
 
   private doInit() {

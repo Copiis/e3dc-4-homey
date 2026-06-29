@@ -1,7 +1,7 @@
 {
   "_comment": "This file is generated. Please edit .homeycompose/app.json instead.",
   "id": "de.jnkconsulting.e3dc.v2",
-  "version": "1.8.6",
+  "version": "1.8.7",
   "compatibility": ">=12.4.5",
   "sdk": 3,
   "brandColor": "#7AB31B",
@@ -216,10 +216,10 @@
       "class": "sensor",
       "capabilities": [
         "measure_power",
-        "meter_power.imported",
-        "meter_power.exported",
+        "measure_grid_out",
         "measure_grid_in",
-        "measure_grid_out"
+        "meter_power.imported",
+        "meter_power.exported"
       ],
       "capabilitiesOptions": {
         "measure_power": {
@@ -299,14 +299,14 @@
       "class": "solarpanel",
       "capabilities": [
         "measure_power",
-        "meter_power",
+        "measure_house_consumption",
         "measure_grid_delivery",
         "measure_battery_delivery",
-        "measure_house_consumption",
         "measure_battery",
-        "firmware_version",
         "charge_time",
-        "diagnostic_report"
+        "meter_power",
+        "diagnostic_report",
+        "firmware_version"
       ],
       "platforms": [
         "local"
@@ -1005,16 +1005,30 @@
       },
       "class": "sensor",
       "capabilities": [
-        "date_range",
         "measure_pv_summary",
         "measure_house_consumption_summary",
-        "measure_grid_in",
         "measure_grid_out",
+        "measure_grid_in",
         "measure_battery_in",
         "measure_battery_out",
+        "measure_self_consumption",
         "measure_autarky",
-        "measure_self_consumption"
+        "date_range"
       ],
+      "capabilitiesOptions": {
+        "measure_grid_out": {
+          "title": {
+            "en": "Grid import",
+            "de": "Netzbezug"
+          }
+        },
+        "measure_grid_in": {
+          "title": {
+            "en": "Grid export",
+            "de": "Netzeinspeisung"
+          }
+        }
+      },
       "platforms": [
         "local"
       ],
@@ -1059,33 +1073,21 @@
       "class": "evcharger",
       "capabilities": [
         "measure_power",
-        "meter_power",
+        "wallbox_plugged",
         "wallbox_charging",
         "wallbox_sun_mode",
         "measure_wallbox_solarshare",
         "measure_wallbox_max_current",
         "measure_wallbox_phases",
-        "wallbox_plugged",
+        "meter_power",
         "wallbox_plug_locked",
         "wallbox_schuko",
         "wallbox_priority_battery_first",
-        "wallbox_battery_discharge_sun",
         "measure_wallbox_discharge_soc",
+        "wallbox_battery_discharge_sun",
         "wallbox_battery_discharge_mix"
       ],
       "capabilitiesOptions": {
-        "wallbox_charging": {
-          "preventInsights": true,
-          "preventTag": true
-        },
-        "wallbox_sun_mode": {
-          "preventInsights": true,
-          "preventTag": true
-        },
-        "wallbox_plugged": {
-          "preventInsights": true,
-          "preventTag": true
-        },
         "wallbox_plug_locked": {
           "preventInsights": true,
           "preventTag": true
@@ -1098,11 +1100,26 @@
           "preventInsights": true,
           "preventTag": true
         },
+        "measure_wallbox_discharge_soc": {
+          "uiComponent": null
+        },
         "wallbox_battery_discharge_sun": {
           "preventInsights": true,
           "preventTag": true
         },
         "wallbox_battery_discharge_mix": {
+          "preventInsights": true,
+          "preventTag": true
+        },
+        "wallbox_charging": {
+          "preventInsights": true,
+          "preventTag": true
+        },
+        "wallbox_sun_mode": {
+          "preventInsights": true,
+          "preventTag": true
+        },
+        "wallbox_plugged": {
           "preventInsights": true,
           "preventTag": true
         },
@@ -3937,7 +3954,7 @@
       },
       "getable": true,
       "setable": false,
-      "uiComponent": "sensor",
+      "uiComponent": null,
       "units": {
         "en": "%",
         "de": "%"
@@ -4015,7 +4032,7 @@
       },
       "getable": true,
       "setable": false,
-      "uiComponent": "sensor",
+      "uiComponent": null,
       "icon": "/assets/images/battery-unload.svg",
       "insights": false
     },
@@ -4035,7 +4052,7 @@
       },
       "getable": true,
       "setable": false,
-      "uiComponent": "sensor",
+      "uiComponent": null,
       "icon": "/assets/images/battery-unload.svg",
       "insights": false
     },
@@ -4083,7 +4100,7 @@
       },
       "getable": true,
       "setable": false,
-      "uiComponent": "sensor",
+      "uiComponent": null,
       "icon": "/assets/images/ev-station.svg",
       "insights": false
     },
@@ -4131,7 +4148,7 @@
       },
       "getable": true,
       "setable": false,
-      "uiComponent": "sensor",
+      "uiComponent": null,
       "icon": "/assets/images/battery.svg",
       "insights": false
     },
@@ -4151,7 +4168,7 @@
       },
       "getable": true,
       "setable": false,
-      "uiComponent": "sensor",
+      "uiComponent": null,
       "icon": "/assets/images/ev-station.svg",
       "insights": false
     },

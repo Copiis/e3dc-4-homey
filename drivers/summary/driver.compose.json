@@ -5,16 +5,30 @@
   },
   "class": "sensor",
   "capabilities": [
-    "date_range",
     "measure_pv_summary",
     "measure_house_consumption_summary",
-    "measure_grid_in",
     "measure_grid_out",
+    "measure_grid_in",
     "measure_battery_in",
     "measure_battery_out",
+    "measure_self_consumption",
     "measure_autarky",
-    "measure_self_consumption"
+    "date_range"
   ],
+  "capabilitiesOptions": {
+    "measure_grid_out": {
+      "title": {
+        "en": "Grid import",
+        "de": "Netzbezug"
+      }
+    },
+    "measure_grid_in": {
+      "title": {
+        "en": "Grid export",
+        "de": "Netzeinspeisung"
+      }
+    }
+  },
   "platforms": [
     "local"
   ],

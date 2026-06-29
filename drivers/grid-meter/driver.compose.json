@@ -6,10 +6,10 @@
   "class": "sensor",
   "capabilities": [
     "measure_power",
-    "meter_power.imported",
-    "meter_power.exported",
+    "measure_grid_out",
     "measure_grid_in",
-    "measure_grid_out"
+    "meter_power.imported",
+    "meter_power.exported"
   ],
   "capabilitiesOptions": {
     "measure_power": {
