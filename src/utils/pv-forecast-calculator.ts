@@ -63,6 +63,52 @@ function filterHoursAfter(hours: HourlyIrradiance[], startMs: number): HourlyIrr
   return hours.filter(hour => hourTimestampMs(hour.time) > startMs);
 }
 
+export interface PvForecastSegmentInput {
+  hours: HourlyIrradiance[];
+  installedKwp: number;
+}
+
+export function calculateMultiSegmentPvForecast(
+  segments: PvForecastSegmentInput[],
+  calibrationFactor: number,
+  performanceRatio: number | undefined,
+  nowMs: number,
+  actualKwhSoFar: number,
+): PvForecastResult {
+  let baselineKwh = 0;
+  let expectedKwhSoFar = 0;
+  let remainingKwh = 0;
+
+  for (const segment of segments) {
+    const partial = calculatePvForecast({
+      hours: segment.hours,
+      installedKwp: segment.installedKwp,
+      calibrationFactor,
+      performanceRatio,
+      nowMs,
+      actualKwhSoFar: 0,
+    });
+    baselineKwh += partial.baselineKwh;
+    expectedKwhSoFar += partial.expectedKwhSoFar;
+    remainingKwh += partial.adjustedKwh;
+  }
+
+  const actualKwh = Math.max(0, actualKwhSoFar);
+  let correctionFactor = 1;
+  if (expectedKwhSoFar >= MIN_EXPECTED_KWH_FOR_CORRECTION && actualKwh > 0) {
+    correctionFactor = actualKwh / expectedKwhSoFar;
+    correctionFactor = Math.max(CORRECTION_MIN, Math.min(CORRECTION_MAX, correctionFactor));
+  }
+
+  const adjustedKwh = actualKwh + remainingKwh * correctionFactor;
+  return {
+    baselineKwh: roundKwh(baselineKwh),
+    adjustedKwh: roundKwh(Math.max(actualKwh, adjustedKwh)),
+    expectedKwhSoFar: roundKwh(expectedKwhSoFar),
+    correctionFactor: Math.round(correctionFactor * 1000) / 1000,
+  };
+}
+
 export function calculatePvForecast(inputs: PvForecastInputs): PvForecastResult {
   const nowMs = inputs.nowMs ?? Date.now();
   const pr = performanceRatio(inputs.performanceRatio);

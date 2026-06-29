@@ -25,7 +25,15 @@
       "id": "list_my_devices",
       "template": "list_devices",
       "navigation": {
-        "next": "add_my_devices"
+        "next": "configure_pv"
+      }
+    },
+    {
+      "id": "configure_pv",
+      "template": "device_settings",
+      "navigation": {
+        "next": "add_my_devices",
+        "prev": "list_my_devices"
       }
     },
     {

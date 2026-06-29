@@ -47,7 +47,8 @@
   "pv-forecast": {
     "label": "PV forecast",
     "errors": {
-      "missing-location": "No location: set latitude and longitude in device settings or enable Homey location.",
+      "missing-kwp": "Please configure at least one PV surface (kWp, tilt, compass) — enter each roof or wall section separately.",
+      "missing-location": "No location: enter latitude and longitude in device settings or set location under Homey → Settings → General (app “Location” permission required).",
       "no-weather-data": "Could not load weather forecast."
     }
   },

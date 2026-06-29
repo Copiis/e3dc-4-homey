@@ -5,33 +5,81 @@ import {
   PvForecastDayState,
   PvForecastSettings,
   PvForecastStoreConfig,
+  PvSegmentConfig,
 } from '../../src/model/pv-forecast.config';
 import {SummaryType} from '../../src/model/summary.config';
 import {DailyIrradianceForecast, fetchTodayTiltedIrradianceForecast} from '../../src/services/open-meteo-forecast';
 import {updateCapabilityValue} from '../../src/utils/capability-utils';
 import {formatError} from '../../src/utils/error-utils';
-import {calculatePvForecast, localDateString, roundKwh} from '../../src/utils/pv-forecast-calculator';
+import {calculateMultiSegmentPvForecast, localDateString, roundKwh} from '../../src/utils/pv-forecast-calculator';
+import {
+  PV_SEGMENT_SETTING_PREFIXES,
+  pvForecastConfigHash,
+  readPvForecastSettings,
+  weatherCacheKey,
+} from '../../src/utils/pv-segment-settings';
 
 const SYNC_INTERVAL_MS = 1000 * 60 * 5;
 const WEATHER_REFRESH_MS = 1000 * 60 * 60;
-const MAX_ALLOWED_ERROR_BEFORE_UNAVAILABLE = 5;
+const MAX_ALLOWED_ERROR_BEFORE_UNAVAILABLE = 3;
 
 const STORE_DAY_STATE_KEY = 'pvForecastDayState';
-const STORE_WEATHER_KEY = 'pvForecastWeather';
+const STORE_WEATHER_KEY = 'pvForecastWeatherBySurface';
+
+type WeatherCache = Record<string, DailyIrradianceForecast>;
 
 class PvForecastDevice extends Homey.Device {
 
   private loopId: NodeJS.Timeout | null = null;
   private syncErrorCount = 0;
-  private cachedWeather: DailyIrradianceForecast | null = null;
+  private cachedWeather: WeatherCache = {};
 
   async onInit() {
     this.log('PvForecastDevice has been initialized');
-    this.cachedWeather = this.getStoreValue(STORE_WEATHER_KEY) ?? null;
+    this.cachedWeather = this.getStoreValue(STORE_WEATHER_KEY) ?? {};
+    await this.migrateLegacySettingsOnce();
+    this.restoreDisplayFromCache();
     setTimeout(() => this.autoSync(), 4000);
   }
 
-  async onSettings() {
+  private async migrateLegacySettingsOnce(): Promise<void> {
+    const raw = this.getSettings() as Record<string, unknown>;
+    if (Number(raw.segment1Kwp) > 0) {
+      return;
+    }
+    const legacyKwp = Number(raw.installedKwp) || 0;
+    if (legacyKwp <= 0) {
+      return;
+    }
+    this.log(`PV forecast: migrating legacy installedKwp=${legacyKwp} to segment 1`);
+    await this.setSettings({
+      ...raw,
+      segment1Kwp: legacyKwp,
+      segment1Tilt: Number.isFinite(Number(raw.tilt)) ? Number(raw.tilt) : 30,
+      segment1Orientation: typeof raw.orientation === 'string' ? raw.orientation : 'S',
+      installedKwp: 0,
+    });
+    await this.unsetStoreValue(STORE_DAY_STATE_KEY).catch(() => undefined);
+    this.cachedWeather = {};
+    await this.unsetStoreValue(STORE_WEATHER_KEY).catch(() => undefined);
+  }
+
+  async onSettings({
+    changedKeys,
+  }: {
+    changedKeys: string[];
+  }): Promise<string | void> {
+    const pvSettingKeys = [
+      ...PV_SEGMENT_SETTING_PREFIXES,
+      'installedKwp', 'tilt', 'orientation', 'azimuth',
+      'calibrationFactor', 'performanceRatio', 'latitude', 'longitude',
+    ];
+    if (changedKeys.some(key => pvSettingKeys.includes(key))) {
+      this.cachedWeather = {};
+      await this.unsetStoreValue(STORE_WEATHER_KEY).catch(() => undefined);
+      await this.unsetStoreValue(STORE_DAY_STATE_KEY).catch(() => undefined);
+      this.log('PV forecast settings changed — weather and day cache cleared');
+    }
     this.homey.setTimeout(() => this.sync().catch(() => undefined), 1000);
   }
 
@@ -44,6 +92,24 @@ class PvForecastDevice extends Homey.Device {
         this.error('Auto sync failed: ' + formatError(reason));
         this.loopId = setTimeout(() => this.autoSync(), SYNC_INTERVAL_MS);
       });
+  }
+
+  private restoreDisplayFromCache(): void {
+    const timezone = this.homey.clock.getTimezone();
+    const settings = readPvForecastSettings(this);
+    const dayState = this.loadDayState(localDateString(timezone), pvForecastConfigHash(settings));
+    if (!dayState) {
+      return;
+    }
+    if (dayState.baselineKwh != null) {
+      updateCapabilityValue('measure_pv_forecast_baseline', dayState.baselineKwh, this);
+    }
+    if (dayState.adjustedKwh != null) {
+      updateCapabilityValue('measure_pv_forecast_adjusted', dayState.adjustedKwh, this);
+    }
+    if (dayState.actualKwh != null) {
+      updateCapabilityValue('measure_pv_actual_today', dayState.actualKwh, this);
+    }
   }
 
   private resolveLinkedStation(): HomePowerStation | null {
@@ -59,17 +125,8 @@ class PvForecastDevice extends Homey.Device {
     return station ? station as unknown as HomePowerStation : null;
   }
 
-  private readSettings(): PvForecastSettings {
-    const settings = this.getSettings() as Partial<PvForecastSettings>;
-    return {
-      installedKwp: Number(settings.installedKwp) > 0 ? Number(settings.installedKwp) : 10,
-      latitude: Number(settings.latitude) || 0,
-      longitude: Number(settings.longitude) || 0,
-      azimuth: Number.isFinite(Number(settings.azimuth)) ? Number(settings.azimuth) : 180,
-      tilt: Number.isFinite(Number(settings.tilt)) ? Number(settings.tilt) : 30,
-      calibrationFactor: Number(settings.calibrationFactor) > 0 ? Number(settings.calibrationFactor) : 1,
-      performanceRatio: Number(settings.performanceRatio) > 0 ? Number(settings.performanceRatio) : 0.85,
-    };
+  private isMissingKwpError(reason: unknown): boolean {
+    return formatError(reason).includes(this.homey.__('pv-forecast.errors.missing-kwp'));
   }
 
   private async resolveCoordinates(settings: PvForecastSettings): Promise<{ latitude: number; longitude: number } | null> {
@@ -80,6 +137,13 @@ class PvForecastDevice extends Homey.Device {
       const latitude = this.homey.geolocation.getLatitude();
       const longitude = this.homey.geolocation.getLongitude();
       if (Number.isFinite(latitude) && Number.isFinite(longitude) && (latitude !== 0 || longitude !== 0)) {
+        const current = this.getSettings();
+        await this.setSettings({
+          ...current,
+          latitude,
+          longitude,
+        });
+        this.log(`PV forecast: using Homey location ${latitude}, ${longitude}`);
         return { latitude, longitude };
       }
     } catch (e) {
@@ -88,9 +152,9 @@ class PvForecastDevice extends Homey.Device {
     return null;
   }
 
-  private loadDayState(localDate: string): PvForecastDayState | undefined {
+  private loadDayState(localDate: string, configHash: string): PvForecastDayState | undefined {
     const state = this.getStoreValue(STORE_DAY_STATE_KEY) as PvForecastDayState | undefined;
-    if (state?.localDate === localDate) {
+    if (state?.localDate === localDate && state?.configHash === configHash) {
       return state;
     }
     return undefined;
@@ -109,34 +173,95 @@ class PvForecastDevice extends Homey.Device {
     return nowMs - dayState.lastWeatherFetchMs > WEATHER_REFRESH_MS;
   }
 
-  private async fetchWeatherIfNeeded(
+  private uniqueSurfaceKeys(segments: PvSegmentConfig[]): string[] {
+    const keys = new Set<string>();
+    for (const segment of segments) {
+      keys.add(weatherCacheKey(segment.tilt, segment.openMeteoAzimuth));
+    }
+    return [...keys];
+  }
+
+  private async fetchWeatherForSegments(
     settings: PvForecastSettings,
     timezone: string,
     dayState: PvForecastDayState | undefined,
     nowMs: number,
-  ): Promise<DailyIrradianceForecast | null> {
-    if (this.cachedWeather && !this.shouldRefreshWeather(dayState, nowMs)) {
-      return this.cachedWeather;
+  ): Promise<WeatherCache> {
+    const refresh = this.shouldRefreshWeather(dayState, nowMs);
+    const requiredKeys = this.uniqueSurfaceKeys(settings.segments);
+    const result: WeatherCache = refresh ? {} : { ...this.cachedWeather };
+
+    const missingKeys = requiredKeys.filter(key => !result[key]?.hours?.length);
+    if (!refresh && missingKeys.length === 0) {
+      return result;
     }
+
     const coords = await this.resolveCoordinates(settings);
     if (!coords) {
       throw new Error(this.homey.__('pv-forecast.errors.missing-location'));
     }
-    const forecast = await fetchTodayTiltedIrradianceForecast(
-      coords.latitude,
-      coords.longitude,
-      settings.tilt,
-      settings.azimuth,
-      timezone,
-    );
-    this.cachedWeather = forecast;
-    await this.setStoreValue(STORE_WEATHER_KEY, forecast);
-    return forecast;
+
+    const keysToFetch = refresh ? requiredKeys : missingKeys;
+    for (const key of keysToFetch) {
+      const sample = settings.segments.find(
+        segment => weatherCacheKey(segment.tilt, segment.openMeteoAzimuth) === key,
+      );
+      if (!sample) {
+        continue;
+      }
+      const forecast = await fetchTodayTiltedIrradianceForecast(
+        coords.latitude,
+        coords.longitude,
+        sample.tilt,
+        sample.openMeteoAzimuth,
+        timezone,
+      );
+      if (!forecast.hours.length) {
+        throw new Error(this.homey.__('pv-forecast.errors.no-weather-data'));
+      }
+      result[key] = forecast;
+    }
+
+    this.cachedWeather = result;
+    await this.setStoreValue(STORE_WEATHER_KEY, result);
+    return result;
   }
 
   private async readActualPvTodayKwh(station: HomePowerStation, timezone: string): Promise<number> {
-    const result = await station.getApi().readSummaryData(SummaryType.TODAY, true, this, timezone);
-    return roundKwh(Math.max(0, result.pvDelivery) / 1000);
+    try {
+      const result = await station.getApi().readSummaryData(SummaryType.TODAY, true, this, timezone);
+      return roundKwh(Math.max(0, result.pvDelivery) / 1000);
+    } catch (e) {
+      this.log('PV today from HKW summary unavailable, using 0 for correction: ' + formatError(e));
+      return 0;
+    }
+  }
+
+  private isMissingLocationError(reason: unknown): boolean {
+    return formatError(reason).includes(this.homey.__('pv-forecast.errors.missing-location'));
+  }
+
+  private publishForecastValues(
+    baselineKwh: number,
+    adjustedKwh: number,
+    actualKwh: number,
+    dayState: PvForecastDayState,
+  ): void {
+    updateCapabilityValue('measure_pv_forecast_baseline', baselineKwh, this);
+    updateCapabilityValue('measure_pv_forecast_adjusted', adjustedKwh, this);
+    updateCapabilityValue('measure_pv_actual_today', actualKwh, this);
+    this.saveDayState({
+      ...dayState,
+      baselineKwh,
+      adjustedKwh,
+      actualKwh,
+    });
+  }
+
+  private formatSegmentLog(segments: PvSegmentConfig[]): string {
+    return segments
+      .map(segment => `${segment.kwp}kWp/${segment.tilt}°/${segment.orientation}`)
+      .join(' + ');
   }
 
   async sync() {
@@ -153,35 +278,41 @@ class PvForecastDevice extends Homey.Device {
       await this.setUnavailable(this.homey.__('messages.hps-device-not-found'));
       return;
     }
-    const stationDevice = station as unknown as Homey.Device;
 
-    if (!stationDevice.getAvailable()) {
-      await this.setUnavailable(this.homey.__('messages.hps-not-available'));
-      this.syncErrorCount++;
+    const settings = readPvForecastSettings(this);
+    if (settings.totalKwp <= 0 || settings.segments.length === 0) {
+      await this.setUnavailable(this.homey.__('pv-forecast.errors.missing-kwp'));
       return;
     }
 
-    const settings = this.readSettings();
     const timezone = this.homey.clock.getTimezone();
     const nowMs = Date.now();
     const today = localDateString(timezone, nowMs);
-    let dayState = this.loadDayState(today);
+    const configHash = pvForecastConfigHash(settings);
+    let dayState = this.loadDayState(today, configHash);
 
     try {
-      const weather = await this.fetchWeatherIfNeeded(settings, timezone, dayState, nowMs);
-      if (!weather || weather.hours.length === 0) {
-        throw new Error(this.homey.__('pv-forecast.errors.no-weather-data'));
-      }
+      const weatherBySurface = await this.fetchWeatherForSegments(settings, timezone, dayState, nowMs);
+      const segmentInputs = settings.segments.map(segment => {
+        const key = weatherCacheKey(segment.tilt, segment.openMeteoAzimuth);
+        const weather = weatherBySurface[key];
+        if (!weather?.hours?.length) {
+          throw new Error(this.homey.__('pv-forecast.errors.no-weather-data'));
+        }
+        return {
+          hours: weather.hours,
+          installedKwp: segment.kwp,
+        };
+      });
 
       const actualKwh = await this.readActualPvTodayKwh(station, timezone);
-      const forecast = calculatePvForecast({
-        hours: weather.hours,
-        installedKwp: settings.installedKwp,
-        calibrationFactor: settings.calibrationFactor,
-        performanceRatio: settings.performanceRatio,
+      const forecast = calculateMultiSegmentPvForecast(
+        segmentInputs,
+        settings.calibrationFactor,
+        settings.performanceRatio,
         nowMs,
-        actualKwhSoFar: actualKwh,
-      });
+        actualKwh,
+      );
 
       let baselineKwh = dayState?.baselineKwh;
       if (baselineKwh == null) {
@@ -190,28 +321,35 @@ class PvForecastDevice extends Homey.Device {
 
       dayState = {
         localDate: today,
+        configHash,
         baselineKwh,
         lastWeatherFetchMs: nowMs,
       };
-      this.saveDayState(dayState);
-
-      updateCapabilityValue('measure_pv_forecast_baseline', baselineKwh, this);
-      updateCapabilityValue('measure_pv_forecast_adjusted', forecast.adjustedKwh, this);
-      updateCapabilityValue('measure_pv_actual_today', actualKwh, this);
+      this.publishForecastValues(baselineKwh, forecast.adjustedKwh, actualKwh, dayState);
 
       this.syncErrorCount = 0;
       if (!this.getAvailable()) {
         await this.setAvailable();
       }
       this.log(
-        `PV forecast sync: baseline=${baselineKwh} kWh adjusted=${forecast.adjustedKwh} kWh `
-        + `actual=${actualKwh} kWh correction=${forecast.correctionFactor}`,
+        `PV forecast sync: surfaces=[${this.formatSegmentLog(settings.segments)}] total=${settings.totalKwp} kWp `
+        + `baseline=${baselineKwh} kWh adjusted=${forecast.adjustedKwh} kWh actual=${actualKwh} kWh `
+        + `correction=${forecast.correctionFactor}`,
       );
     } catch (e) {
       this.error('PV forecast sync failed: ' + formatError(e));
       this.syncErrorCount++;
-      if (this.syncErrorCount >= MAX_ALLOWED_ERROR_BEFORE_UNAVAILABLE) {
-        await this.setUnavailable(formatError(e));
+      if (
+        this.isMissingLocationError(e)
+        || this.isMissingKwpError(e)
+        || this.syncErrorCount >= MAX_ALLOWED_ERROR_BEFORE_UNAVAILABLE
+      ) {
+        const message = this.isMissingLocationError(e)
+          ? this.homey.__('pv-forecast.errors.missing-location')
+          : this.isMissingKwpError(e)
+            ? this.homey.__('pv-forecast.errors.missing-kwp')
+            : formatError(e);
+        await this.setUnavailable(message);
       }
     }
   }

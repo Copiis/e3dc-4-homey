@@ -1,4 +1,24 @@
 {
+  "1.8.6": {
+    "de": "- PV-Prognose: verständlichere Hinweise zu **Wirkungsgrad-Faktor** und **Kalibrierungsfaktor** in den Geräteeinstellungen",
+    "en": "- PV forecast: clearer hints for **performance ratio** and **calibration factor** in device settings"
+  },
+  "1.8.5": {
+    "de": "- **PV-Prognose:** Ist-Wert „heute“ wieder korrekt vom HKW-Tageszähler (nicht kumulativer `meter_power`)\n- Tagesprognose wird neu berechnet, wenn sich deine PV-Flächen-Einstellungen ändern",
+    "en": "- **PV forecast:** actual “today” again from HPS daily counter (not cumulative `meter_power`)\n- Daily forecast recalculates when your PV surface settings change"
+  },
+  "1.8.4": {
+    "de": "- **PV-Prognose:** bis zu **3 PV-Flächen** einzeln konfigurierbar (kWp, Neigung, Himmelsrichtung) — für Flachdach Ost/West + Wand Süd u. ä.\n- Wetter und Prognose werden pro Fläche berechnet und summiert",
+    "en": "- **PV forecast:** up to **3 configurable PV surfaces** (kWp, tilt, compass) — e.g. flat roof east/west + south wall\n- Weather and forecast are calculated per surface and summed"
+  },
+  "1.8.3": {
+    "de": "- **PV-Prognose:** Pflichtangaben kWp, Neigung und **Himmelsrichtung** (Dropdown) — keine utopischen Standardwerte mehr\n- Korrekte Open-Meteo-Ausrichtung; Einstellungen beim Hinzufügen des Geräts\n- Prognose wird neu berechnet, wenn du die Anlagen-Daten änderst",
+    "en": "- **PV forecast:** required kWp, tilt and **compass orientation** (dropdown) — no more unrealistic defaults\n- Correct Open-Meteo azimuth; settings step when adding the device\n- Forecast recalculates when you change system data"
+  },
+  "1.8.2": {
+    "de": "- **PV-Prognose:** Werte werden wieder angezeigt — App nutzt Homey-Standort (neue Berechtigung) und liest Ist-PV vom HKW-Zähler statt extra RSCP-Abfrage\n- Letzte Prognose-Werte bleiben nach App-Neustart sichtbar",
+    "en": "- **PV forecast:** values display again — app uses Homey location (new permission) and reads actual PV from HPS meter instead of extra RSCP call\n- Last forecast values persist across app restarts"
+  },
   "1.8.1": {
     "de": "- App-Absturz behoben, wenn das HKW nicht erreichbar ist (z. B. `EHOSTUNREACH` / falsches Netzwerk)\n- RSCP-Verbindungsfehler werden abgefangen; Gerät wird stattdessen als nicht verfügbar markiert",
     "en": "- Fixed app crash when the HPS is unreachable (e.g. `EHOSTUNREACH` / wrong network)\n- RSCP connection errors are handled; device is marked unavailable instead"

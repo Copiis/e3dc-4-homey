@@ -47,7 +47,8 @@
   "pv-forecast": {
     "label": "PV-Prognose",
     "errors": {
-      "missing-location": "Kein Standort: Breiten- und Längengrad in den Geräteeinstellungen eintragen oder Homey-Standort aktivieren.",
+      "missing-kwp": "Bitte mindestens eine PV-Fläche eintragen (kWp, Neigung, Himmelsrichtung) — jede Dach- oder Wandfläche einzeln.",
+      "missing-location": "Kein Standort: Breiten- und Längengrad in den Geräteeinstellungen eintragen oder unter Homey → Einstellungen → Allgemein den Standort setzen (App-Berechtigung „Standort“ erforderlich).",
       "no-weather-data": "Wetterprognose konnte nicht geladen werden."
     }
   },

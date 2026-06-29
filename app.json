@@ -1,7 +1,7 @@
 {
   "_comment": "This file is generated. Please edit .homeycompose/app.json instead.",
   "id": "de.jnkconsulting.e3dc.v2",
-  "version": "1.8.1",
+  "version": "1.8.6",
   "compatibility": ">=12.4.5",
   "sdk": 3,
   "brandColor": "#7AB31B",
@@ -19,7 +19,9 @@
   "category": [
     "energy"
   ],
-  "permissions": [],
+  "permissions": [
+    "homey:manager:geolocation"
+  ],
   "images": {
     "small": "/assets/images/small.png",
     "large": "/assets/images/large.png",
@@ -568,7 +570,15 @@
           "id": "list_my_devices",
           "template": "list_devices",
           "navigation": {
-            "next": "add_my_devices"
+            "next": "configure_pv"
+          }
+        },
+        {
+          "id": "configure_pv",
+          "template": "device_settings",
+          "navigation": {
+            "next": "add_my_devices",
+            "prev": "list_my_devices"
           }
         },
         {
@@ -581,28 +591,41 @@
         {
           "type": "group",
           "label": {
-            "en": "PV system",
-            "de": "PV-Anlage"
+            "en": "Your PV surfaces",
+            "de": "Deine PV-Flächen"
           },
           "children": [
             {
-              "id": "installedKwp",
+              "id": "segmentHint",
+              "type": "label",
+              "label": {
+                "en": "Enter each roof/wall section separately (kWp, tilt, compass). Set kWp to 0 for unused rows. At least one surface is required.",
+                "de": "Jede Dach-/Wandfläche einzeln eintragen (kWp, Neigung, Himmelsrichtung). kWp = 0 = Fläche aus. Mindestens eine Fläche ist Pflicht."
+              }
+            }
+          ]
+        },
+        {
+          "type": "group",
+          "label": {
+            "en": "PV surface 1",
+            "de": "PV-Fläche 1"
+          },
+          "children": [
+            {
+              "id": "segment1Kwp",
               "type": "number",
               "label": {
-                "en": "Installed PV power (kWp)",
-                "de": "Installierte PV-Leistung (kWp)"
+                "en": "Power (kWp)",
+                "de": "Leistung (kWp)"
               },
-              "value": 10,
-              "min": 0.1,
+              "value": 0,
+              "min": 0,
               "max": 200,
-              "step": 0.1,
-              "hint": {
-                "en": "Peak power of your PV system as installed",
-                "de": "Spitzenleistung deiner PV-Anlage laut Installation"
-              }
+              "step": 0.1
             },
             {
-              "id": "tilt",
+              "id": "segment1Tilt",
               "type": "number",
               "label": {
                 "en": "Tilt (°)",
@@ -612,39 +635,290 @@
               "min": 0,
               "max": 90,
               "hint": {
-                "en": "Panel tilt angle from horizontal",
-                "de": "Modulneigung zur Horizontalen"
+                "en": "0 = flat, 90 = vertical wall",
+                "de": "0 = flach, 90 = senkrecht (Wand)"
               }
             },
             {
-              "id": "azimuth",
+              "id": "segment1Orientation",
+              "type": "dropdown",
+              "label": {
+                "en": "Compass",
+                "de": "Himmelsrichtung"
+              },
+              "value": "S",
+              "values": [
+                {
+                  "id": "S",
+                  "label": {
+                    "en": "South",
+                    "de": "Süd"
+                  }
+                },
+                {
+                  "id": "SO",
+                  "label": {
+                    "en": "South-east",
+                    "de": "Südost"
+                  }
+                },
+                {
+                  "id": "O",
+                  "label": {
+                    "en": "East",
+                    "de": "Ost"
+                  }
+                },
+                {
+                  "id": "NO",
+                  "label": {
+                    "en": "North-east",
+                    "de": "Nordost"
+                  }
+                },
+                {
+                  "id": "N",
+                  "label": {
+                    "en": "North",
+                    "de": "Nord"
+                  }
+                },
+                {
+                  "id": "NW",
+                  "label": {
+                    "en": "North-west",
+                    "de": "Nordwest"
+                  }
+                },
+                {
+                  "id": "W",
+                  "label": {
+                    "en": "West",
+                    "de": "West"
+                  }
+                },
+                {
+                  "id": "SW",
+                  "label": {
+                    "en": "South-west",
+                    "de": "Südwest"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "group",
+          "label": {
+            "en": "PV surface 2 (optional)",
+            "de": "PV-Fläche 2 (optional)"
+          },
+          "children": [
+            {
+              "id": "segment2Kwp",
               "type": "number",
               "label": {
-                "en": "Azimuth (°)",
-                "de": "Ausrichtung (°)"
+                "en": "Power (kWp)",
+                "de": "Leistung (kWp)"
               },
-              "value": 180,
+              "value": 0,
               "min": 0,
-              "max": 360,
-              "hint": {
-                "en": "180 = south, 90 = east, 270 = west (Open-Meteo convention)",
-                "de": "180 = Süd, 90 = Ost, 270 = West (Open-Meteo-Konvention)"
-              }
+              "max": 200,
+              "step": 0.1
             },
             {
-              "id": "calibrationFactor",
+              "id": "segment2Tilt",
               "type": "number",
               "label": {
-                "en": "Calibration factor",
-                "de": "Kalibrierungsfaktor"
+                "en": "Tilt (°)",
+                "de": "Neigung (°)"
               },
-              "value": 1,
-              "min": 0.5,
-              "max": 1.5,
-              "step": 0.05,
-              "hint": {
-                "en": "Fine-tune if the estimate is systematically too high or low",
-                "de": "Feinabstimmung, wenn die Schätzung dauerhaft zu hoch oder zu niedrig ist"
+              "value": 30,
+              "min": 0,
+              "max": 90
+            },
+            {
+              "id": "segment2Orientation",
+              "type": "dropdown",
+              "label": {
+                "en": "Compass",
+                "de": "Himmelsrichtung"
+              },
+              "value": "O",
+              "values": [
+                {
+                  "id": "S",
+                  "label": {
+                    "en": "South",
+                    "de": "Süd"
+                  }
+                },
+                {
+                  "id": "SO",
+                  "label": {
+                    "en": "South-east",
+                    "de": "Südost"
+                  }
+                },
+                {
+                  "id": "O",
+                  "label": {
+                    "en": "East",
+                    "de": "Ost"
+                  }
+                },
+                {
+                  "id": "NO",
+                  "label": {
+                    "en": "North-east",
+                    "de": "Nordost"
+                  }
+                },
+                {
+                  "id": "N",
+                  "label": {
+                    "en": "North",
+                    "de": "Nord"
+                  }
+                },
+                {
+                  "id": "NW",
+                  "label": {
+                    "en": "North-west",
+                    "de": "Nordwest"
+                  }
+                },
+                {
+                  "id": "W",
+                  "label": {
+                    "en": "West",
+                    "de": "West"
+                  }
+                },
+                {
+                  "id": "SW",
+                  "label": {
+                    "en": "South-west",
+                    "de": "Südwest"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "group",
+          "label": {
+            "en": "PV surface 3 (optional)",
+            "de": "PV-Fläche 3 (optional)"
+          },
+          "children": [
+            {
+              "id": "segment3Kwp",
+              "type": "number",
+              "label": {
+                "en": "Power (kWp)",
+                "de": "Leistung (kWp)"
+              },
+              "value": 0,
+              "min": 0,
+              "max": 200,
+              "step": 0.1
+            },
+            {
+              "id": "segment3Tilt",
+              "type": "number",
+              "label": {
+                "en": "Tilt (°)",
+                "de": "Neigung (°)"
+              },
+              "value": 90,
+              "min": 0,
+              "max": 90
+            },
+            {
+              "id": "segment3Orientation",
+              "type": "dropdown",
+              "label": {
+                "en": "Compass",
+                "de": "Himmelsrichtung"
+              },
+              "value": "S",
+              "values": [
+                {
+                  "id": "S",
+                  "label": {
+                    "en": "South",
+                    "de": "Süd"
+                  }
+                },
+                {
+                  "id": "SO",
+                  "label": {
+                    "en": "South-east",
+                    "de": "Südost"
+                  }
+                },
+                {
+                  "id": "O",
+                  "label": {
+                    "en": "East",
+                    "de": "Ost"
+                  }
+                },
+                {
+                  "id": "NO",
+                  "label": {
+                    "en": "North-east",
+                    "de": "Nordost"
+                  }
+                },
+                {
+                  "id": "N",
+                  "label": {
+                    "en": "North",
+                    "de": "Nord"
+                  }
+                },
+                {
+                  "id": "NW",
+                  "label": {
+                    "en": "North-west",
+                    "de": "Nordwest"
+                  }
+                },
+                {
+                  "id": "W",
+                  "label": {
+                    "en": "West",
+                    "de": "West"
+                  }
+                },
+                {
+                  "id": "SW",
+                  "label": {
+                    "en": "South-west",
+                    "de": "Südwest"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "group",
+          "label": {
+            "en": "Fine tuning",
+            "de": "Feinabstimmung"
+          },
+          "children": [
+            {
+              "id": "fineTuningHint",
+              "type": "label",
+              "label": {
+                "en": "Performance ratio = how much sunshine your system can turn into power in theory (cables, inverter, heat). Set once, rarely change. Calibration factor = your personal tweak if the forecast is still consistently too high or low after a few days.",
+                "de": "Wirkungsgrad-Faktor = wie viel Sonne deine Anlage grundsätzlich in Strom umsetzen kann (Kabel, Wechselrichter, Wärme). Einmal einstellen, selten ändern. Kalibrierungsfaktor = dein persönlicher Feinschliff, wenn die Prognose nach ein paar Tagen noch dauerhaft zu hoch oder zu niedrig ist."
               }
             },
             {
@@ -659,8 +933,24 @@
               "max": 1,
               "step": 0.01,
               "hint": {
-                "en": "Typical 0.80–0.90 (cables, inverter, temperature)",
-                "de": "Typisch 0,80–0,90 (Kabel, Wechselrichter, Temperatur)"
+                "en": "Typical 0.80–0.90. Lower = more losses (long cables, older inverter). Leave at 0.85 unless you know your system is very efficient or rather weak.",
+                "de": "Typisch 0,80–0,90. Niedriger = mehr Verluste (lange Kabel, älterer Wechselrichter). 0,85 ist ein guter Start — nur ändern, wenn du deine Anlage kennst."
+              }
+            },
+            {
+              "id": "calibrationFactor",
+              "type": "number",
+              "label": {
+                "en": "Calibration factor",
+                "de": "Kalibrierungsfaktor"
+              },
+              "value": 1,
+              "min": 0.5,
+              "max": 1.5,
+              "step": 0.05,
+              "hint": {
+                "en": "1.0 = no extra correction. Example: 0.90 lowers the forecast by 10 % if it is often too optimistic. Adjust only after comparing forecast vs. actual yield over several days.",
+                "de": "1,0 = keine Extra-Korrektur. Beispiel: 0,90 senkt die Prognose um 10 %, wenn sie oft zu hoch liegt. Erst anpassen, wenn du Prognose und Ist-Wert einige Tage verglichen hast."
               }
             }
           ]
@@ -684,8 +974,8 @@
               "max": 90,
               "step": 0.0001,
               "hint": {
-                "en": "Required for weather forecast (e.g. 52.52). 0 = try Homey location on first sync",
-                "de": "Pflicht für Wetterprognose (z. B. 52,52). 0 = beim ersten Sync Homey-Standort versuchen"
+                "en": "0 = Homey location",
+                "de": "0 = Homey-Standort"
               }
             },
             {
@@ -700,8 +990,8 @@
               "max": 180,
               "step": 0.0001,
               "hint": {
-                "en": "Required for weather forecast (e.g. 13.41). 0 = try Homey location on first sync",
-                "de": "Pflicht für Wetterprognose (z. B. 13,41). 0 = beim ersten Sync Homey-Standort versuchen"
+                "en": "0 = Homey location",
+                "de": "0 = Homey-Standort"
               }
             }
           ]
