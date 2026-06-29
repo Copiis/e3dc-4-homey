@@ -6,18 +6,18 @@
   "class": "battery",
   "capabilities": [
     "measure_power",
+    "measure_battery",
     "measure_emergency_power_reserve",
-    "measure_capacity",
-    "measure_temperature",
-    "measure_temperature_min",
-    "measure_temperature_max",
     "measure_max_charging_power",
     "measure_max_discharging_power",
     "measure_battery_charged_total",
     "measure_battery_discharged_total",
+    "measure_capacity",
+    "measure_temperature",
+    "measure_temperature_min",
+    "measure_temperature_max",
     "measure_voltage",
     "measure_dcbcount",
-    "measure_battery",
     "meter_power.charged",
     "meter_power.discharged",
     "device_name"
@@ -26,7 +26,19 @@
     "device_name": {
       "uiComponent": null
     },
-    "measure_battery": {
+    "measure_temperature": {
+      "uiComponent": null
+    },
+    "measure_temperature_min": {
+      "uiComponent": null
+    },
+    "measure_temperature_max": {
+      "uiComponent": null
+    },
+    "measure_voltage": {
+      "uiComponent": null
+    },
+    "measure_dcbcount": {
       "uiComponent": null
     },
     "meter_power.charged": {

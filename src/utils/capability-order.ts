@@ -4,24 +4,24 @@ import {formatError} from './error-utils';
 /** Tile order — must match drivers/battery-module/driver.compose.json (visible grid first) */
 export const BATTERY_MODULE_CAPABILITY_ORDER = [
   'measure_power',
+  'measure_battery',
   'measure_emergency_power_reserve',
-  'measure_capacity',
-  'measure_temperature',
-  'measure_temperature_min',
-  'measure_temperature_max',
   'measure_max_charging_power',
   'measure_max_discharging_power',
   'measure_battery_charged_total',
   'measure_battery_discharged_total',
+  'measure_capacity',
+  'measure_temperature',
+  'measure_temperature_min',
+  'measure_temperature_max',
   'measure_voltage',
   'measure_dcbcount',
-  'measure_battery',
   'meter_power.charged',
   'meter_power.discharged',
   'device_name',
 ] as const;
 
-export const BATTERY_MODULE_ORDER_VERSION = 6;
+export const BATTERY_MODULE_ORDER_VERSION = 8;
 
 const BATTERY_MODULE_ENERGY_CONFIG = {
   homeBattery: true,
@@ -34,9 +34,13 @@ type DeviceWithEnergy = Homey.Device & {
 };
 export const BATTERY_MODULE_ORDER_VERSION_KEY = 'batteryModuleCapabilityOrderVersion';
 
-/** Capabilities kept for sync/Homey Energy/SOC but hidden from the sensor tile */
+/** Capabilities kept for sync/Flows/Insights but hidden from the sensor tile */
 export const BATTERY_MODULE_TILE_HIDDEN_CAPABILITIES = [
-  'measure_battery',
+  'measure_temperature',
+  'measure_temperature_min',
+  'measure_temperature_max',
+  'measure_voltage',
+  'measure_dcbcount',
   'meter_power.charged',
   'meter_power.discharged',
   'device_name',
@@ -182,7 +186,7 @@ function batteryOrderMatches(device: Homey.Device): boolean {
 export async function migrateBatteryModuleTile(device: Homey.Device): Promise<void> {
   const target = [...BATTERY_MODULE_CAPABILITY_ORDER];
   if (batteryOrderMatches(device)) {
-    await hideCapabilitiesFromTile(device, BATTERY_MODULE_TILE_HIDDEN_CAPABILITIES);
+    await applyBatteryModuleTileVisibility(device);
     return;
   }
 
@@ -237,12 +241,35 @@ export async function migrateBatteryModuleTile(device: Homey.Device): Promise<vo
     }
   }
 
-  await hideCapabilitiesFromTile(device, BATTERY_MODULE_TILE_HIDDEN_CAPABILITIES);
+  await applyBatteryModuleTileVisibility(device);
 
   const after = device.getCapabilities();
   device.log(`Battery tile migrate done (now: ${after.join(', ')})`);
   if (!batteryOrderMatches(device)) {
     device.error(`Battery tile order still wrong after migrate: ${after.join(', ')}`);
+  }
+}
+
+const BATTERY_MODULE_TILE_UI_COMPONENTS: Record<string, string> = {
+  measure_battery: 'battery',
+};
+
+export async function applyBatteryModuleTileVisibility(device: Homey.Device): Promise<void> {
+  const hidden = new Set<string>(BATTERY_MODULE_TILE_HIDDEN_CAPABILITIES);
+  for (const capabilityId of BATTERY_MODULE_CAPABILITY_ORDER) {
+    if (!device.hasCapability(capabilityId)) {
+      continue;
+    }
+    try {
+      if (hidden.has(capabilityId)) {
+        await device.setCapabilityOptions(capabilityId, { uiComponent: null });
+      } else {
+        const uiComponent = BATTERY_MODULE_TILE_UI_COMPONENTS[capabilityId] ?? 'sensor';
+        await device.setCapabilityOptions(capabilityId, { uiComponent });
+      }
+    } catch (error) {
+      device.error(`Failed to set tile visibility for ${capabilityId}: ${formatError(error)}`);
+    }
   }
 }
 

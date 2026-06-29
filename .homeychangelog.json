@@ -1,4 +1,8 @@
 {
+  "1.8.9": {
+    "de": "- **Batteriemonitor-Kachel:** Ladestand wieder sichtbar\n- Temperaturen, Spannung und Modulanzahl von der Kachel ausgeblendet (weiterhin per Sync/Flows verfügbar)\n- Kapazität an letzter Stelle\n- Bestehende Geräte: automatische Migration beim App-Start",
+    "en": "- **Battery monitor tile:** charge level visible again\n- Temperatures, voltage and module count hidden from tile (still synced / available for flows)\n- Capacity moved to last position\n- Existing devices: automatic migration on app start"
+  },
   "1.8.8": {
     "de": "- **Batteriemonitor-Kachel:** Felder in sinnvoller Reihenfolge (Leistung, Notstromreserve, Kapazität, Temperaturen, Lade-/Entladeleistung, Ladung/Entladung gesamt, Spannung, Modulanzahl)\n- Bestehende Akku-Geräte: automatische Migration beim App-Start; bei falscher Anzeige einmal entfernen und neu hinzufügen",
     "en": "- **Battery monitor tile:** fields in a sensible order (power, emergency reserve, capacity, temperatures, charge/discharge limits, total charge/discharge, voltage, module count)\n- Existing battery devices: automatic migration on app start; if the layout is wrong, remove and re-add once"
