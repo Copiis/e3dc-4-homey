@@ -1,6 +1,47 @@
 import Homey from 'homey';
 import {formatError} from './error-utils';
 
+/** Tile order — must match drivers/battery-module/driver.compose.json (visible grid first) */
+export const BATTERY_MODULE_CAPABILITY_ORDER = [
+  'measure_power',
+  'measure_emergency_power_reserve',
+  'measure_capacity',
+  'measure_temperature',
+  'measure_temperature_min',
+  'measure_temperature_max',
+  'measure_max_charging_power',
+  'measure_max_discharging_power',
+  'measure_battery_charged_total',
+  'measure_battery_discharged_total',
+  'measure_voltage',
+  'measure_dcbcount',
+  'measure_battery',
+  'meter_power.charged',
+  'meter_power.discharged',
+  'device_name',
+] as const;
+
+export const BATTERY_MODULE_ORDER_VERSION = 6;
+
+const BATTERY_MODULE_ENERGY_CONFIG = {
+  homeBattery: true,
+  meterPowerImportedCapability: 'meter_power.charged',
+  meterPowerExportedCapability: 'meter_power.discharged',
+} as const;
+
+type DeviceWithEnergy = Homey.Device & {
+  setEnergy?(config: Record<string, unknown>): Promise<void>;
+};
+export const BATTERY_MODULE_ORDER_VERSION_KEY = 'batteryModuleCapabilityOrderVersion';
+
+/** Capabilities kept for sync/Homey Energy/SOC but hidden from the sensor tile */
+export const BATTERY_MODULE_TILE_HIDDEN_CAPABILITIES = [
+  'measure_battery',
+  'meter_power.charged',
+  'meter_power.discharged',
+  'device_name',
+] as const;
+
 /** Tile order for HKW-Statistiken — must match drivers/summary/driver.compose.json */
 export const SUMMARY_CAPABILITY_ORDER = [
   'measure_pv_summary',
@@ -78,13 +119,14 @@ function sameOrder(current: string[], target: string[]): boolean {
 export async function reorderCapabilitiesIfNeeded(
   device: Homey.Device,
   desiredOrder: readonly string[],
+  force = false,
 ): Promise<void> {
   const current = device.getCapabilities();
   const ordered = desiredOrder.filter(cap => current.includes(cap));
   const trailing = current.filter(cap => !desiredOrder.includes(cap));
   const target = [...ordered, ...trailing];
 
-  if (sameOrder(current, target)) {
+  if (!force && sameOrder(current, target)) {
     return;
   }
 
@@ -120,6 +162,88 @@ export async function reorderCapabilitiesIfNeeded(
   }
 
   device.log(`Capabilities reordered: ${target.join(', ')}`);
+}
+
+function batteryCapabilityTarget(device: Homey.Device): string[] {
+  const current = device.getCapabilities();
+  const ordered = BATTERY_MODULE_CAPABILITY_ORDER.filter(cap => current.includes(cap));
+  const trailing = current.filter(cap => !BATTERY_MODULE_CAPABILITY_ORDER.includes(cap as typeof BATTERY_MODULE_CAPABILITY_ORDER[number]));
+  return [...ordered, ...trailing];
+}
+
+function batteryOrderMatches(device: Homey.Device): boolean {
+  return sameOrder(device.getCapabilities(), batteryCapabilityTarget(device));
+}
+
+/**
+ * Full capability rebuild for Batteriemonitor. Homey blocks removing meter_power.*
+ * while energy import/export is bound — strip bindings first, then remove + re-add all.
+ */
+export async function migrateBatteryModuleTile(device: Homey.Device): Promise<void> {
+  const target = [...BATTERY_MODULE_CAPABILITY_ORDER];
+  if (batteryOrderMatches(device)) {
+    await hideCapabilitiesFromTile(device, BATTERY_MODULE_TILE_HIDDEN_CAPABILITIES);
+    return;
+  }
+
+  const current = device.getCapabilities();
+  const values: Record<string, unknown> = {};
+  for (const cap of current) {
+    values[cap] = device.getCapabilityValue(cap);
+  }
+
+  device.log(`Battery tile migrate start (was: ${current.join(', ')})`);
+
+  const deviceWithEnergy = device as DeviceWithEnergy;
+  if (deviceWithEnergy.setEnergy) {
+    try {
+      await deviceWithEnergy.setEnergy({homeBattery: true});
+    } catch (error) {
+      device.error(`setEnergy strip failed: ${formatError(error)}`);
+    }
+  }
+
+  for (let i = current.length - 1; i >= 0; i--) {
+    const cap = current[i];
+    if (!device.hasCapability(cap)) {
+      continue;
+    }
+    try {
+      await device.removeCapability(cap);
+    } catch (error) {
+      device.error(`Remove ${cap} failed: ${formatError(error)}`);
+    }
+  }
+
+  for (const cap of target) {
+    try {
+      if (!device.hasCapability(cap)) {
+        await device.addCapability(cap);
+      }
+      const value = values[cap];
+      if (value !== undefined && value !== null) {
+        await device.setCapabilityValue(cap, value);
+      }
+    } catch (error) {
+      device.error(`Add ${cap} failed: ${formatError(error)}`);
+    }
+  }
+
+  if (deviceWithEnergy.setEnergy) {
+    try {
+      await deviceWithEnergy.setEnergy({...BATTERY_MODULE_ENERGY_CONFIG});
+    } catch (error) {
+      device.error(`setEnergy restore failed: ${formatError(error)}`);
+    }
+  }
+
+  await hideCapabilitiesFromTile(device, BATTERY_MODULE_TILE_HIDDEN_CAPABILITIES);
+
+  const after = device.getCapabilities();
+  device.log(`Battery tile migrate done (now: ${after.join(', ')})`);
+  if (!batteryOrderMatches(device)) {
+    device.error(`Battery tile order still wrong after migrate: ${after.join(', ')}`);
+  }
 }
 
 export async function hideCapabilitiesFromTile(

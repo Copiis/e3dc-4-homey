@@ -4,6 +4,11 @@ import {updateCapabilityValue} from '../../src/utils/capability-utils';
 import {BatteryModule} from '../../src/model/battery-module';
 import {ChargingConfiguration, EmergencyPowerState} from 'easy-rscp';
 import {EnergyMeterIntegrator} from '../../src/utils/energy-meter-integrator';
+import {
+  BATTERY_MODULE_ORDER_VERSION,
+  BATTERY_MODULE_ORDER_VERSION_KEY,
+  migrateBatteryModuleTile,
+} from '../../src/utils/capability-order';
 import {ensureCapabilities} from '../../src/utils/energy-capability-migration';
 import {formatError} from '../../src/utils/error-utils';
 
@@ -14,7 +19,18 @@ class BatterModuleDevice extends Homey.Device implements BatteryModule{
   async onInit() {
     this.log('BatterModuleDevice has been initialized');
     try {
-      await ensureCapabilities(this, ['meter_power.charged', 'meter_power.discharged']);
+      await ensureCapabilities(this, [
+        'meter_power.charged',
+        'meter_power.discharged',
+        'measure_battery_charged_total',
+        'measure_battery_discharged_total',
+      ]);
+      await migrateBatteryModuleTile(this);
+      const storedOrderVersion = this.getStoreValue(BATTERY_MODULE_ORDER_VERSION_KEY) as number | undefined;
+      if (storedOrderVersion !== BATTERY_MODULE_ORDER_VERSION) {
+        await this.setStoreValue(BATTERY_MODULE_ORDER_VERSION_KEY, BATTERY_MODULE_ORDER_VERSION);
+        this.log(`Capability order version set to v${BATTERY_MODULE_ORDER_VERSION}`);
+      }
     } catch (e) {
       this.error('Battery module onInit failed: ' + formatError(e));
     }
@@ -29,7 +45,9 @@ class BatterModuleDevice extends Homey.Device implements BatteryModule{
     updateCapabilityValue('measure_power', batteryPowerW, this)
     const meter = this.energyMeter.integrateBattery(batteryPowerW)
     updateCapabilityValue('meter_power.charged', meter.chargedKwh, this)
+    updateCapabilityValue('measure_battery_charged_total', meter.chargedKwh, this)
     updateCapabilityValue('meter_power.discharged', meter.dischargedKwh, this)
+    updateCapabilityValue('measure_battery_discharged_total', meter.dischargedKwh, this)
     updateCapabilityValue('measure_battery', rsoc, this)
     this.updatePowerLimits(chargingConfiguration, emergencyPower)
   }

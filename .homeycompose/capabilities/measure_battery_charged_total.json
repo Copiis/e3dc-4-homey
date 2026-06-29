@@ -1,0 +1,17 @@
+{
+  "type": "number",
+  "title": {
+    "en": "Battery charged (total)",
+    "de": "Batterie-Ladung (gesamt)"
+  },
+  "getable": true,
+  "setable": false,
+  "uiComponent": "sensor",
+  "units": {
+    "en": "kWh",
+    "de": "kWh"
+  },
+  "icon": "/assets/images/battery-load.svg",
+  "insights": true,
+  "decimals": 2
+}

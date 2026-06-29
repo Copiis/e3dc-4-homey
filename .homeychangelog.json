@@ -1,4 +1,8 @@
 {
+  "1.8.8": {
+    "de": "- **Batteriemonitor-Kachel:** Felder in sinnvoller Reihenfolge (Leistung, Notstromreserve, Kapazität, Temperaturen, Lade-/Entladeleistung, Ladung/Entladung gesamt, Spannung, Modulanzahl)\n- Bestehende Akku-Geräte: automatische Migration beim App-Start; bei falscher Anzeige einmal entfernen und neu hinzufügen",
+    "en": "- **Battery monitor tile:** fields in a sensible order (power, emergency reserve, capacity, temperatures, charge/discharge limits, total charge/discharge, voltage, module count)\n- Existing battery devices: automatic migration on app start; if the layout is wrong, remove and re-add once"
+  },
   "1.8.7": {
     "de": "- **Kachel-Sortierung** verbessert: HKW, Netz, Wallbox und Statistiken (bestehende Geräte werden beim Update automatisch umgeordnet)\n- **Wallbox-Kachel:** weniger Experten-Felder sichtbar (Verriegelung, Schuko, Batterie-Mischmodus u. a. bleiben für Flows verfügbar)\n- **Widget Live-Energiefluss:** Batterie-Pfeile korrekt; Ladung getrennt als PV → Batterie bzw. Netz → Haus → Batterie",
     "en": "- **Improved tile order** for HPS, grid meter, wallbox and statistics (existing devices reordered automatically on update)\n- **Wallbox tile:** fewer expert fields on tile (lock, Schuko, battery mix mode etc. still available for flows)\n- **Live energy flow widget:** correct battery arrow direction; charging split into PV → battery vs grid → house → battery"

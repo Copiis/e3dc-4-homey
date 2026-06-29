@@ -6,40 +6,40 @@
   "class": "battery",
   "capabilities": [
     "measure_power",
-    "meter_power.charged",
-    "meter_power.discharged",
-    "device_name",
-    "measure_dcbcount",
-    "measure_battery",
+    "measure_emergency_power_reserve",
     "measure_capacity",
-    "measure_voltage",
     "measure_temperature",
-    "measure_temperature_max",
     "measure_temperature_min",
+    "measure_temperature_max",
     "measure_max_charging_power",
     "measure_max_discharging_power",
-    "measure_emergency_power_reserve"
+    "measure_battery_charged_total",
+    "measure_battery_discharged_total",
+    "measure_voltage",
+    "measure_dcbcount",
+    "measure_battery",
+    "meter_power.charged",
+    "meter_power.discharged",
+    "device_name"
   ],
   "capabilitiesOptions": {
+    "device_name": {
+      "uiComponent": null
+    },
+    "measure_battery": {
+      "uiComponent": null
+    },
+    "meter_power.charged": {
+      "uiComponent": null
+    },
+    "meter_power.discharged": {
+      "uiComponent": null
+    },
     "measure_power": {
       "title": {
         "en": "Battery power",
         "de": "Batterieleistung"
       }
-    },
-    "meter_power.charged": {
-      "title": {
-        "en": "Battery charged (total)",
-        "de": "Batterie-Ladung (gesamt)"
-      },
-      "icon": "/assets/images/battery-load.svg"
-    },
-    "meter_power.discharged": {
-      "title": {
-        "en": "Battery discharged (total)",
-        "de": "Batterie-Entladung (gesamt)"
-      },
-      "icon": "/assets/images/battery-unload.svg"
     }
   },
   "platforms": [
