@@ -44,6 +44,13 @@
   "energy-summary": {
     "live-label": "Live"
   },
+  "pv-forecast": {
+    "label": "PV forecast",
+    "errors": {
+      "missing-location": "No location: set latitude and longitude in device settings or enable Homey location.",
+      "no-weather-data": "Could not load weather forecast."
+    }
+  },
   "ems": {
     "intro": "EMS triggers connect E3DC with external apps (Ultimate EMS, Power by the Hour, Tibber, …). PV surplus and SoC thresholds on the HPS; wallbox ready on the wallbox device."
   },

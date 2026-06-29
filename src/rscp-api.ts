@@ -42,7 +42,8 @@ import {WallboxLiveStateConverter} from './converter/wallbox-live-state-converte
 import {SummaryData} from './model/summary-data';
 import {SummaryType} from './model/summary.config';
 import {Logger} from './internal-api/logger';
-import {formatError, rejectAsError} from './utils/error-utils';
+import {formatError, normalizeError, rejectAsError} from './utils/error-utils';
+import {SafeSocketFactory} from './rscp-safe-socket-factory';
 import {startOfLocalCalendarDay} from './utils/grid-cumulative-archive';
 import {BatteryData, DCBData} from './model/battery-data';
 import {
@@ -69,6 +70,7 @@ import {resolveUsableCapacityWh} from './utils/battery-capacity';
 
 const connectionMap: Map<string, HomePowerPlantConnection> = new Map<string, HomePowerPlantConnection>()
 const connectionFactoryMap: Map<string, HomePowerPlantConnectionFactory> = new Map<string, HomePowerPlantConnectionFactory>()
+const pendingOpenMap: Map<string, Promise<HomePowerPlantConnection>> = new Map<string, Promise<HomePowerPlantConnection>>()
 
 export class RscpApi {
 
@@ -80,7 +82,11 @@ export class RscpApi {
             this.closeConnection(currentConnection, log).then()
         }
         this.connectionData = data
-        const newFactory = new DefaultHomePowerPlantConnectionFactory(this.connectionData)
+        const newFactory = new DefaultHomePowerPlantConnectionFactory(
+            this.connectionData,
+            undefined,
+            new SafeSocketFactory(),
+        )
         connectionFactoryMap.set(this.getKey(), newFactory)
     }
 
@@ -91,28 +97,50 @@ export class RscpApi {
     private getConnectionFactory(): HomePowerPlantConnectionFactory {
         return connectionFactoryMap.get(this.getKey())!!
     }
+    private evictConnection(connection: HomePowerPlantConnection | undefined): void {
+        if (!connection) {
+            return
+        }
+        const key = this.getKey()
+        if (connectionMap.get(key) === connection) {
+            connectionMap.delete(key)
+        }
+    }
+
     private getOpenConnection(log: Logger): Promise<HomePowerPlantConnection> {
-        return new Promise<HomePowerPlantConnection>((resolve, reject) => {
-            const currentConnection = connectionMap.get(this.getKey())
-            if (currentConnection && currentConnection.isConnected()) {
-                log.log('getOpenConnection: Returning existing connection')
-                resolve(currentConnection)
-            }
-            else {
-                log.log('getOpenConnection: Creating new connection')
-                this.getConnectionFactory().openConnection()
-                    .then(con => {
-                        log.log('getOpenConnection: Returning new connection')
-                        connectionMap.set(this.getKey(), con);
-                        resolve(con)
-                    })
-                    .catch(e => {
-                        log.error('getOpenConnection: Creating new connection failed')
-                        log.error(formatError(e))
-                        rejectAsError(reject, e)
-                    })
-            }
-        })
+        const key = this.getKey()
+        const currentConnection = connectionMap.get(key)
+        if (currentConnection?.isConnected()) {
+            log.log('getOpenConnection: Returning existing connection')
+            return Promise.resolve(currentConnection)
+        }
+
+        const pendingOpen = pendingOpenMap.get(key)
+        if (pendingOpen) {
+            log.log('getOpenConnection: Waiting for pending connection')
+            return pendingOpen
+        }
+
+        log.log('getOpenConnection: Creating new connection')
+        const openPromise = this.getConnectionFactory()
+            .openConnection()
+            .then(con => {
+                log.log('getOpenConnection: Returning new connection')
+                connectionMap.set(key, con)
+                return con
+            })
+            .catch(e => {
+                log.error('getOpenConnection: Creating new connection failed')
+                log.error(formatError(e))
+                connectionMap.delete(key)
+                throw normalizeError(e)
+            })
+            .finally(() => {
+                pendingOpenMap.delete(key)
+            })
+
+        pendingOpenMap.set(key, openPromise)
+        return openPromise
     }
 
     closeOwnConnection(log: Logger): Promise<any> {
@@ -122,22 +150,24 @@ export class RscpApi {
     }
 
     closeConnection(connection: HomePowerPlantConnection | undefined, log: Logger):Promise<any> {
-        return new Promise((resolve, reject) => {
-            if (connection) {
-                log.log('closeConnection: closing connection')
-                connection
-                    .disconnect()
-                    .then()
-                    .finally(() => {
-                        setTimeout(() => {
-                            log.log('closeConnection: Connection closed')
-                            resolve(undefined)
-                        }, 2000)
-                    })
-            }
-            else {
+        return new Promise(resolve => {
+            if (!connection) {
                 resolve(undefined)
+                return
             }
+            log.log('closeConnection: closing connection')
+            connection
+                .disconnect()
+                .catch(reason => {
+                    log.log('closeConnection: disconnect error (ignored): ' + formatError(reason))
+                })
+                .finally(() => {
+                    this.evictConnection(connection)
+                    setTimeout(() => {
+                        log.log('closeConnection: Connection closed')
+                        resolve(undefined)
+                    }, 2000)
+                })
         })
     }
 

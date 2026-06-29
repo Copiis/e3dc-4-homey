@@ -1,4 +1,12 @@
 {
+  "1.8.1": {
+    "de": "- App-Absturz behoben, wenn das HKW nicht erreichbar ist (z. B. `EHOSTUNREACH` / falsches Netzwerk)\n- RSCP-Verbindungsfehler werden abgefangen; Gerät wird stattdessen als nicht verfügbar markiert",
+    "en": "- Fixed app crash when the HPS is unreachable (e.g. `EHOSTUNREACH` / wrong network)\n- RSCP connection errors are handled; device is marked unavailable instead"
+  },
+  "1.8.0": {
+    "de": "- Neues Gerät **HKW – PV-Prognose**: geschätzte Tages-PV-Erzeugung (kWh) über Wetterdaten (Open-Meteo)\n- **Ursprungs-Prognose** (Tagesanfang) und **angepasste Prognose** (laufend mit Ist-Werten vom HKW)\n- Einstellungen: kWp, Neigung, Ausrichtung, Standort, Kalibrierung",
+    "en": "- New device **HPS – PV forecast**: estimated daily PV yield (kWh) via weather data (Open-Meteo)\n- **Baseline forecast** (start of day) and **adjusted forecast** (updated with actual HPS readings)\n- Settings: kWp, tilt, azimuth, location, calibration"
+  },
   "1.7.1": {
     "de": "- Dashboard-Widgets **Live-Energiefluss** und **Übersicht**: Live-Werte werden wieder korrekt angezeigt (Daten direkt aus HKW-Sync statt leerer Capability-Abfrage)\n- Live-Energiefluss: animierte Fluss-Pfeile, rechteckiges Layout, bessere Lesbarkeit auf Homey Mobile",
     "en": "- Dashboard widgets **Live energy flow** and **Overview**: live values display correctly again (data from HPS sync instead of empty capability reads)\n- Live energy flow: animated flow arrows, rectangular layout, improved readability on Homey Mobile"

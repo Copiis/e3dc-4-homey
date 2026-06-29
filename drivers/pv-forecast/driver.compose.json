@@ -1,0 +1,36 @@
+{
+  "name": {
+    "en": "HPS - PV forecast",
+    "de": "HKW - PV-Prognose"
+  },
+  "class": "sensor",
+  "capabilities": [
+    "measure_pv_forecast_baseline",
+    "measure_pv_forecast_adjusted",
+    "measure_pv_actual_today"
+  ],
+  "platforms": [
+    "local"
+  ],
+  "connectivity": [
+    "lan"
+  ],
+  "images": {
+    "small": "{{driverAssetsPath}}/images/small.png",
+    "large": "{{driverAssetsPath}}/images/large.png",
+    "xlarge": "{{driverAssetsPath}}/images/xlarge.png"
+  },
+  "pair": [
+    {
+      "id": "list_my_devices",
+      "template": "list_devices",
+      "navigation": {
+        "next": "add_my_devices"
+      }
+    },
+    {
+      "id": "add_my_devices",
+      "template": "add_devices"
+    }
+  ]
+}

@@ -44,6 +44,13 @@
   "energy-summary": {
     "live-label": "Live"
   },
+  "pv-forecast": {
+    "label": "PV-Prognose",
+    "errors": {
+      "missing-location": "Kein Standort: Breiten- und Längengrad in den Geräteeinstellungen eintragen oder Homey-Standort aktivieren.",
+      "no-weather-data": "Wetterprognose konnte nicht geladen werden."
+    }
+  },
   "ems": {
     "intro": "EMS-Trigger verbinden E3DC mit externen Apps (Ultimate EMS, Power by the Hour, Tibber, …). PV-Überschuss und SoC-Schwellen am HKW; Wallbox-bereit an der Wallbox."
   },

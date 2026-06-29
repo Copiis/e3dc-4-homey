@@ -1,7 +1,7 @@
 {
   "_comment": "This file is generated. Please edit .homeycompose/app.json instead.",
   "id": "de.jnkconsulting.e3dc.v2",
-  "version": "1.7.1",
+  "version": "1.8.1",
   "compatibility": ">=12.4.5",
   "sdk": 3,
   "brandColor": "#7AB31B",
@@ -535,6 +535,173 @@
               "hint": {
                 "en": "Select all, copy, paste into the forum thread. Top section = current status; analysis log below keeps error events (not cleared by new syncs). Flow card “Create diagnostic report” also works.",
                 "de": "Alles markieren, kopieren, im Forum-Thread einfügen. Oben = aktueller Stand; Analyse-Protokoll unten behält Fehler-Ereignisse (wird nicht von neuen Syncs gelöscht). Flow-Karte „Diagnosebericht erstellen“ geht auch."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": {
+        "en": "HPS - PV forecast",
+        "de": "HKW - PV-Prognose"
+      },
+      "class": "sensor",
+      "capabilities": [
+        "measure_pv_forecast_baseline",
+        "measure_pv_forecast_adjusted",
+        "measure_pv_actual_today"
+      ],
+      "platforms": [
+        "local"
+      ],
+      "connectivity": [
+        "lan"
+      ],
+      "images": {
+        "small": "/drivers/pv-forecast/assets/images/small.png",
+        "large": "/drivers/pv-forecast/assets/images/large.png",
+        "xlarge": "/drivers/pv-forecast/assets/images/xlarge.png"
+      },
+      "pair": [
+        {
+          "id": "list_my_devices",
+          "template": "list_devices",
+          "navigation": {
+            "next": "add_my_devices"
+          }
+        },
+        {
+          "id": "add_my_devices",
+          "template": "add_devices"
+        }
+      ],
+      "id": "pv-forecast",
+      "settings": [
+        {
+          "type": "group",
+          "label": {
+            "en": "PV system",
+            "de": "PV-Anlage"
+          },
+          "children": [
+            {
+              "id": "installedKwp",
+              "type": "number",
+              "label": {
+                "en": "Installed PV power (kWp)",
+                "de": "Installierte PV-Leistung (kWp)"
+              },
+              "value": 10,
+              "min": 0.1,
+              "max": 200,
+              "step": 0.1,
+              "hint": {
+                "en": "Peak power of your PV system as installed",
+                "de": "Spitzenleistung deiner PV-Anlage laut Installation"
+              }
+            },
+            {
+              "id": "tilt",
+              "type": "number",
+              "label": {
+                "en": "Tilt (°)",
+                "de": "Neigung (°)"
+              },
+              "value": 30,
+              "min": 0,
+              "max": 90,
+              "hint": {
+                "en": "Panel tilt angle from horizontal",
+                "de": "Modulneigung zur Horizontalen"
+              }
+            },
+            {
+              "id": "azimuth",
+              "type": "number",
+              "label": {
+                "en": "Azimuth (°)",
+                "de": "Ausrichtung (°)"
+              },
+              "value": 180,
+              "min": 0,
+              "max": 360,
+              "hint": {
+                "en": "180 = south, 90 = east, 270 = west (Open-Meteo convention)",
+                "de": "180 = Süd, 90 = Ost, 270 = West (Open-Meteo-Konvention)"
+              }
+            },
+            {
+              "id": "calibrationFactor",
+              "type": "number",
+              "label": {
+                "en": "Calibration factor",
+                "de": "Kalibrierungsfaktor"
+              },
+              "value": 1,
+              "min": 0.5,
+              "max": 1.5,
+              "step": 0.05,
+              "hint": {
+                "en": "Fine-tune if the estimate is systematically too high or low",
+                "de": "Feinabstimmung, wenn die Schätzung dauerhaft zu hoch oder zu niedrig ist"
+              }
+            },
+            {
+              "id": "performanceRatio",
+              "type": "number",
+              "label": {
+                "en": "Performance ratio",
+                "de": "Wirkungsgrad-Faktor"
+              },
+              "value": 0.85,
+              "min": 0.5,
+              "max": 1,
+              "step": 0.01,
+              "hint": {
+                "en": "Typical 0.80–0.90 (cables, inverter, temperature)",
+                "de": "Typisch 0,80–0,90 (Kabel, Wechselrichter, Temperatur)"
+              }
+            }
+          ]
+        },
+        {
+          "type": "group",
+          "label": {
+            "en": "Location",
+            "de": "Standort"
+          },
+          "children": [
+            {
+              "id": "latitude",
+              "type": "number",
+              "label": {
+                "en": "Latitude",
+                "de": "Breitengrad"
+              },
+              "value": 0,
+              "min": -90,
+              "max": 90,
+              "step": 0.0001,
+              "hint": {
+                "en": "Required for weather forecast (e.g. 52.52). 0 = try Homey location on first sync",
+                "de": "Pflicht für Wetterprognose (z. B. 52,52). 0 = beim ersten Sync Homey-Standort versuchen"
+              }
+            },
+            {
+              "id": "longitude",
+              "type": "number",
+              "label": {
+                "en": "Longitude",
+                "de": "Längengrad"
+              },
+              "value": 0,
+              "min": -180,
+              "max": 180,
+              "step": 0.0001,
+              "hint": {
+                "en": "Required for weather forecast (e.g. 13.41). 0 = try Homey location on first sync",
+                "de": "Pflicht für Wetterprognose (z. B. 13,41). 0 = beim ersten Sync Homey-Standort versuchen"
               }
             }
           ]
@@ -3281,6 +3448,23 @@
       "insights": true,
       "decimals": 0
     },
+    "measure_pv_actual_today": {
+      "type": "number",
+      "title": {
+        "en": "PV generated today",
+        "de": "PV erzeugt heute"
+      },
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "units": {
+        "en": "kWh",
+        "de": "kWh"
+      },
+      "icon": "/assets/images/solar.svg",
+      "insights": true,
+      "decimals": 1
+    },
     "measure_pv_delivery": {
       "type": "number",
       "title": {
@@ -3297,6 +3481,40 @@
       "icon": "/assets/images/solar.svg",
       "insights": true,
       "decimals": 2
+    },
+    "measure_pv_forecast_adjusted": {
+      "type": "number",
+      "title": {
+        "en": "PV forecast (adjusted)",
+        "de": "PV-Prognose (angepasst)"
+      },
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "units": {
+        "en": "kWh",
+        "de": "kWh"
+      },
+      "icon": "/assets/images/solar.svg",
+      "insights": true,
+      "decimals": 1
+    },
+    "measure_pv_forecast_baseline": {
+      "type": "number",
+      "title": {
+        "en": "PV forecast (baseline)",
+        "de": "PV-Prognose (Ursprung)"
+      },
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "units": {
+        "en": "kWh",
+        "de": "kWh"
+      },
+      "icon": "/assets/images/solar.svg",
+      "insights": true,
+      "decimals": 1
     },
     "measure_pv_summary": {
       "type": "number",
