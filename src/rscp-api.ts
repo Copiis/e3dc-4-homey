@@ -1212,20 +1212,39 @@ export class RscpApi {
         })
     }
 
+    /**
+     * Toggle charging pause (python-e3dc toggle_wallbox_charging).
+     * EXTERN byte 4 = 1 flips chargingCanceled — same command resumes and pauses.
+     */
+    toggleWallboxCharging(wallboxId: number, allowReconnect: boolean = true, log: Logger): Promise<boolean> {
+        log.log(`toggleWallboxCharging(id=${wallboxId})`)
+        return this.setWallboxExtern(wallboxId, [0, 0, 0, 0, 1, 0], allowReconnect, log)
+    }
+
     stopWallboxCharging(wallboxId: number, allowReconnect: boolean = true, log: Logger): Promise<boolean> {
         log.log(`stopWallboxCharging(id=${wallboxId})`)
-        return this.setWallboxExtern(wallboxId, [0, 0, 0, 0, 1, 0], allowReconnect, log)
+        return this.toggleWallboxCharging(wallboxId, allowReconnect, log)
             .catch(reason => {
-                log.log('stopWallboxCharging: extern abort failed, trying REQ_SET_MODE stop')
+                log.log('stopWallboxCharging: extern toggle failed, trying REQ_SET_MODE stop')
                 log.log(reason)
                 return this.setWallboxMode(wallboxId, WALLBOX_MODE_STOP, 0, allowReconnect, log)
             })
     }
 
-    startWallboxCharging(wallboxId: number, maxCurrentA: number = DEFAULT_WALLBOX_CURRENT_A, allowReconnect: boolean = true, log: Logger): Promise<boolean> {
-        log.log(`startWallboxCharging(id=${wallboxId}, maxA=${maxCurrentA})`)
+    startWallboxCharging(
+        wallboxId: number,
+        maxCurrentA: number = DEFAULT_WALLBOX_CURRENT_A,
+        chargingCanceled: boolean = false,
+        allowReconnect: boolean = true,
+        log: Logger,
+    ): Promise<boolean> {
+        log.log(`startWallboxCharging(id=${wallboxId}, maxA=${maxCurrentA}, canceled=${chargingCanceled})`)
         const current = Math.max(6, Math.min(32, Math.round(maxCurrentA)))
-        return this.setWallboxExtern(wallboxId, [WALLBOX_EXTERN_MIXED_MODE, current, 0, 0, 0, 0], allowReconnect, log)
+        const resumeIfPaused = chargingCanceled
+            ? this.toggleWallboxCharging(wallboxId, allowReconnect, log)
+            : Promise.resolve(true)
+        return resumeIfPaused
+            .then(() => this.setWallboxExtern(wallboxId, [WALLBOX_EXTERN_MIXED_MODE, current, 0, 0, 0, 0], allowReconnect, log))
             .then(() => this.setWallboxMode(wallboxId, WALLBOX_MODE_MIXED, current, false, log))
     }
 

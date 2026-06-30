@@ -1,3 +1,5 @@
+import {formatWallboxAlgHexSummary} from './wallbox-charging-state';
+
 export type DiagnosticLevel = 'info' | 'warn' | 'error';
 
 export interface DiagnosticAnalysisEntry {
@@ -163,6 +165,10 @@ export class DeviceDiagnostic {
             lines.push(`  RSCP socRaw: ${formatRaw(snapshot.wallboxSocRaw)}`);
             lines.push(`  RSCP algPrecharge: ${formatRaw(snapshot.wallboxAlgPrecharge)}`);
             lines.push(`  RSCP algHex: ${snapshot.wallboxAlgHex ?? '—'}`);
+            const algSummary = formatWallboxAlgHexSummary(snapshot.wallboxAlgHex);
+            if (algSummary) {
+                lines.push(`  RSCP algDecode: ${algSummary}`);
+            }
             lines.push(`  RSCP chargePlanSoc: ${formatRaw(snapshot.wallboxChargePlanSoc)}`);
             if (snapshot.wallboxChargePlanText) {
                 lines.push(`  RSCP chargePlanText: ${snapshot.wallboxChargePlanText}`);

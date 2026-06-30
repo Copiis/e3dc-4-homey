@@ -11,5 +11,9 @@ export function resolveWallboxFlowResult(
         reject(rejectMessage);
         return;
     }
-    resolve({ ...payload, skipped: result.skipped });
+    if (result.skipped) {
+        resolve({ ...payload, skipped: true, verified: false });
+        return;
+    }
+    resolve({ ...payload, skipped: false, verified: true });
 }

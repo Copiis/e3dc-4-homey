@@ -1600,34 +1600,6 @@
             }
           }
         ]
-      },
-      {
-        "id": "wallbox_ready",
-        "title": {
-          "de": "Wallbox bereit zum Laden",
-          "en": "Wallbox ready to charge"
-        },
-        "hint": {
-          "de": "Für EMS-Partner: Fahrzeug angesteckt, aber nicht am Laden — guter Zeitpunkt für PV-Überschuss-Laden oder externe EMS-Freigabe.",
-          "en": "For EMS partners: vehicle plugged in but not charging — good moment for PV surplus charging or external EMS release."
-        },
-        "tokens": [
-          {
-            "name": "power",
-            "type": "number",
-            "title": {
-              "de": "Aktuelle Leistung (W)",
-              "en": "Current power (W)"
-            }
-          }
-        ],
-        "args": [
-          {
-            "type": "device",
-            "name": "device",
-            "filter": "driver_id=wallbox"
-          }
-        ]
       }
     ],
     "conditions": [
@@ -1888,19 +1860,14 @@
           "en": "Sun mode is on"
         },
         "titleFormatted": {
-          "de": "[[device]] Sonnenmodus ist an",
-          "en": "[[device]] sun mode is on"
+          "de": "Sonnenmodus ist an",
+          "en": "Sun mode is on"
         },
         "hint": {
           "de": "Prüft den Kachel-Sensor. Für „Sonnenmodus aus“ oder Benachrichtigung „Sonnenmodus an“ nutzen.",
           "en": "Checks the tile sensor. Use for \"Sun mode off\" or a \"sun mode on\" notification."
         },
         "args": [
-          {
-            "type": "device",
-            "name": "device",
-            "filter": "driver_id=wallbox"
-          },
           {
             "type": "device",
             "name": "device",
@@ -1915,19 +1882,14 @@
           "en": "Charging is allowed"
         },
         "titleFormatted": {
-          "de": "[[device]] Laden ist freigegeben",
-          "en": "[[device]] charging is allowed"
+          "de": "Laden ist freigegeben",
+          "en": "Charging is allowed"
         },
         "hint": {
           "de": "Prüft den Kachel-Sensor. Für „Laden sperren“ oder Benachrichtigung „Laden an“ nutzen.",
           "en": "Checks the tile sensor. Use for \"Block charging\" or a \"charging on\" notification."
         },
         "args": [
-          {
-            "type": "device",
-            "name": "device",
-            "filter": "driver_id=wallbox"
-          },
           {
             "type": "device",
             "name": "device",
@@ -1942,19 +1904,14 @@
           "en": "Sun mode is off"
         },
         "titleFormatted": {
-          "de": "[[device]] Sonnenmodus ist aus",
-          "en": "[[device]] sun mode is off"
+          "de": "Sonnenmodus ist aus",
+          "en": "Sun mode is off"
         },
         "hint": {
           "de": "Prüft den Kachel-Sensor. Davor schalten, damit „Sonnenmodus ein“ und Folgekarten (z. B. Benachrichtigung) nur laufen, wenn wirklich aus.",
           "en": "Checks the tile sensor. Place before \"Sun mode on\" so follow-up cards (e.g. notifications) only run when off."
         },
         "args": [
-          {
-            "type": "device",
-            "name": "device",
-            "filter": "driver_id=wallbox"
-          },
           {
             "type": "device",
             "name": "device",
@@ -1969,19 +1926,14 @@
           "en": "Charging is blocked"
         },
         "titleFormatted": {
-          "de": "[[device]] Laden ist gesperrt",
-          "en": "[[device]] charging is blocked"
+          "de": "Laden ist gesperrt",
+          "en": "Charging is blocked"
         },
         "hint": {
           "de": "Prüft den Kachel-Sensor. Davor schalten, damit „Laden freigeben“ und Folgekarten nur laufen, wenn wirklich gesperrt.",
           "en": "Checks the tile sensor. Place before \"Allow charging\" so follow-up cards only run when blocked."
         },
         "args": [
-          {
-            "type": "device",
-            "name": "device",
-            "filter": "driver_id=wallbox"
-          },
           {
             "type": "device",
             "name": "device",
@@ -2754,19 +2706,14 @@
           "en": "Allow charging"
         },
         "titleFormatted": {
-          "de": "[[device]] Laden freigeben (max. [[current]] A)",
-          "en": "[[device]] allow charging (max. [[current]] A)"
+          "de": "Laden freigeben (max. [[current]] A)",
+          "en": "Allow charging (max. [[current]] A)"
         },
         "hint": {
           "de": "Erlaubt das Laden an der Wallbox (Mischmodus). Liest zuerst den RSCP-Zustand — kein Befehl, wenn bereits freigegeben.",
           "en": "Allows wallbox charging (mixed mode). Reads RSCP state first — skips if already allowed."
         },
         "args": [
-          {
-            "type": "device",
-            "name": "device",
-            "filter": "driver_id=wallbox"
-          },
           {
             "type": "device",
             "name": "device",
@@ -2794,19 +2741,14 @@
           "en": "Block charging"
         },
         "titleFormatted": {
-          "de": "[[device]] Laden sperren",
-          "en": "[[device]] block charging"
+          "de": "Laden sperren",
+          "en": "Block charging"
         },
         "hint": {
           "de": "Stoppt bzw. sperrt das Laden. Liest zuerst den RSCP-Zustand — kein Befehl, wenn bereits gesperrt.",
           "en": "Stops or blocks charging. Reads RSCP state first — skips if already blocked."
         },
         "args": [
-          {
-            "type": "device",
-            "name": "device",
-            "filter": "driver_id=wallbox"
-          },
           {
             "type": "device",
             "name": "device",
@@ -2821,19 +2763,14 @@
           "en": "Sun mode on"
         },
         "titleFormatted": {
-          "de": "[[device]] Sonnenmodus ein (max. [[current]] A)",
-          "en": "[[device]] sun mode on (max. [[current]] A)"
+          "de": "Sonnenmodus ein (max. [[current]] A)",
+          "en": "Sun mode on (max. [[current]] A)"
         },
         "hint": {
           "de": "Aktiviert den PV-Überschuss-Modus. Liest zuerst den RSCP-Zustand — kein Befehl, wenn bereits aktiv.",
           "en": "Enables PV surplus mode. Reads RSCP state first — skips if already active."
         },
         "args": [
-          {
-            "type": "device",
-            "name": "device",
-            "filter": "driver_id=wallbox"
-          },
           {
             "type": "device",
             "name": "device",
@@ -2861,19 +2798,14 @@
           "en": "Sun mode off"
         },
         "titleFormatted": {
-          "de": "[[device]] Sonnenmodus aus",
-          "en": "[[device]] sun mode off"
+          "de": "Sonnenmodus aus",
+          "en": "Sun mode off"
         },
         "hint": {
           "de": "Deaktiviert den Sonnenmodus (Mischmodus). Liest zuerst den RSCP-Zustand — kein Befehl, wenn bereits aus.",
           "en": "Disables sun mode (mixed mode). Reads RSCP state first — skips if already off."
         },
         "args": [
-          {
-            "type": "device",
-            "name": "device",
-            "filter": "driver_id=wallbox"
-          },
           {
             "type": "device",
             "name": "device",
@@ -2888,19 +2820,14 @@
           "en": "Start wallbox charging"
         },
         "titleFormatted": {
-          "de": "[[device]] Laden starten (max. [[current]] A)",
-          "en": "[[device]] start charging (max. [[current]] A)"
+          "de": "Laden starten (max. [[current]] A)",
+          "en": "Start charging (max. [[current]] A)"
         },
         "hint": {
           "de": "Setzt die Wallbox in den Mischmodus und erlaubt das Laden (max. Stromstärke in Ampere). Standard 16 A. Das Fahrzeug muss angesteckt sein.",
           "en": "Enables wallbox charging in mixed mode with the given max current (Amps). Default 16 A. The vehicle must be plugged in."
         },
         "args": [
-          {
-            "type": "device",
-            "name": "device",
-            "filter": "driver_id=wallbox"
-          },
           {
             "type": "device",
             "name": "device",
@@ -2928,19 +2855,14 @@
           "en": "Stop wallbox charging"
         },
         "titleFormatted": {
-          "de": "[[device]] Laden stoppen",
-          "en": "[[device]] stop charging"
+          "de": "Laden stoppen",
+          "en": "Stop charging"
         },
         "hint": {
           "de": "Stoppt bzw. pausiert das Laden an der Wallbox (RSCP EXTERN_DATA Abort). Zum Fortsetzen die Karte „Laden starten“ verwenden.",
           "en": "Stops or pauses charging at the wallbox (RSCP EXTERN_DATA abort). Use \"Start charging\" to resume."
         },
         "args": [
-          {
-            "type": "device",
-            "name": "device",
-            "filter": "driver_id=wallbox"
-          },
           {
             "type": "device",
             "name": "device",
@@ -2955,19 +2877,14 @@
           "en": "Set wallbox sun mode"
         },
         "titleFormatted": {
-          "de": "[[device]] Sonnenmodus [[enabled]] (max. [[current]] A)",
-          "en": "[[device]] sun mode [[enabled]] (max. [[current]] A)"
+          "de": "Sonnenmodus [[enabled]] (max. [[current]] A)",
+          "en": "Sun mode [[enabled]] (max. [[current]] A)"
         },
         "hint": {
           "de": "Schaltet den PV-Überschuss-Modus (Sonnenmodus) der Wallbox ein oder aus. Im Sonnenmodus wird vorrangig Solarstrom genutzt.",
           "en": "Enables or disables PV surplus (sun) mode on the wallbox. In sun mode, solar power is preferred."
         },
         "args": [
-          {
-            "type": "device",
-            "name": "device",
-            "filter": "driver_id=wallbox"
-          },
           {
             "type": "device",
             "name": "device",
@@ -3003,19 +2920,14 @@
           "en": "Set wallbox charging current"
         },
         "titleFormatted": {
-          "de": "[[device]] Lade-Stromstärke auf [[current]] A setzen",
-          "en": "[[device]] set charge current to [[current]] A"
+          "de": "Lade-Stromstärke auf [[current]] A setzen",
+          "en": "Set charge current to [[current]] A"
         },
         "hint": {
           "de": "Ändert nur die maximale Stromstärke (6–32 A). Der aktive Modus (Misch- oder Sonnenmodus) bleibt unverändert. Zum Starten, Stoppen oder Moduswechsel die anderen Wallbox-Karten verwenden.",
           "en": "Changes only the max charging current (6–32 A). The active mode stays unchanged. Use the other wallbox cards to start, stop, or switch mode."
         },
         "args": [
-          {
-            "type": "device",
-            "name": "device",
-            "filter": "driver_id=wallbox"
-          },
           {
             "type": "device",
             "name": "device",
@@ -3042,19 +2954,14 @@
           "en": "Charging priority (sun mode only)"
         },
         "titleFormatted": {
-          "de": "[[device]] Ladepriorität: [[priority]]",
-          "en": "[[device]] charging priority: [[priority]]"
+          "de": "Ladepriorität: [[priority]]",
+          "en": "Charging priority: [[priority]]"
         },
         "hint": {
           "de": "Ladepriorisierung im Sonnenmodus: „Batterie zuerst“ oder „Wallbox zuerst“. Entspricht der E3/DC-Maske „Ladepriorisierung“.",
           "en": "Charging priority in sun mode: battery first or wallbox first. Matches the E3/DC portal “Ladepriorisierung” page."
         },
         "args": [
-          {
-            "type": "device",
-            "name": "device",
-            "filter": "driver_id=wallbox"
-          },
           {
             "type": "device",
             "name": "device",
@@ -3094,19 +3001,14 @@
           "en": "Battery discharge in sun mode"
         },
         "titleFormatted": {
-          "de": "[[device]] Batterieentladung im Sonnenmodus: [[permission]]",
-          "en": "[[device]] battery discharge in sun mode: [[permission]]"
+          "de": "Batterieentladung im Sonnenmodus: [[permission]]",
+          "en": "Battery discharge in sun mode: [[permission]]"
         },
         "hint": {
           "de": "Batterieentladung durch Wallbox im Sonnenmodus: „Erlaubt“ oder „Unterbunden“. Systemweite E3/DC-Einstellung.",
           "en": "Battery discharge via wallbox in sun mode: allowed or prevented. System-wide E3/DC setting."
         },
         "args": [
-          {
-            "type": "device",
-            "name": "device",
-            "filter": "driver_id=wallbox"
-          },
           {
             "type": "device",
             "name": "device",
@@ -3146,19 +3048,14 @@
           "en": "Battery discharge limit"
         },
         "titleFormatted": {
-          "de": "[[device]] Batterie Entladegrenze [[percent]] %",
-          "en": "[[device]] battery discharge limit [[percent]] %"
+          "de": "Batterie Entladegrenze [[percent]] %",
+          "en": "Battery discharge limit [[percent]] %"
         },
         "hint": {
           "de": "Legt fest, bis zu welchem Ladezustand (SOC in %) der Hausakku fürs Auto-Laden entladen werden darf. Entspricht E3/DC „Bis Ladezustand“.",
           "en": "Sets how far (SOC in %) the home battery may be discharged for EV charging. Matches E3/DC “Down to state of charge”."
         },
         "args": [
-          {
-            "type": "device",
-            "name": "device",
-            "filter": "driver_id=wallbox"
-          },
           {
             "type": "device",
             "name": "device",
@@ -3186,19 +3083,14 @@
           "en": "Battery discharge in mixed mode"
         },
         "titleFormatted": {
-          "de": "[[device]] Batterieentladung im Mischmodus: [[permission]]",
-          "en": "[[device]] battery discharge in mixed mode: [[permission]]"
+          "de": "Batterieentladung im Mischmodus: [[permission]]",
+          "en": "Battery discharge in mixed mode: [[permission]]"
         },
         "hint": {
           "de": "Batterieentladung durch Wallbox im Mischmodus und während Haltezeit und Zeitfunktion: „Erlaubt“ oder „Unterbunden“.",
           "en": "Battery discharge via wallbox in mixed mode and during hold/time function: allowed or prevented."
         },
         "args": [
-          {
-            "type": "device",
-            "name": "device",
-            "filter": "driver_id=wallbox"
-          },
           {
             "type": "device",
             "name": "device",
