@@ -1,4 +1,8 @@
 {
+  "1.8.11": {
+    "de": "- **App Store:** deutsche Store-Beschreibung (`README.de.txt`) — langer Text auf homey.app/de-de jetzt auf Deutsch",
+    "en": "- **App Store:** German store description (`README.de.txt`) — long text on homey.app/de-de now in German"
+  },
   "1.8.10": {
     "de": "- **Widget-Previews** für App Store angepasst (Athom-Richtlinien: vereinfachte Grafiken ohne Text)",
     "en": "- **Widget previews** updated for App Store (Athom guidelines: simplified graphics without text)"
