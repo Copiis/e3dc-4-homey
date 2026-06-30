@@ -1,4 +1,8 @@
 {
+  "1.8.12": {
+    "de": "- **Lade-/Entladegrenzen:** Flows warten jetzt auf die echte RSCP-Antwort (kein vorgetäuschter Erfolg mehr)\n- **Pairing/Repair:** Verbindungstest blockiert nicht mehr bei Standard-Port 5033\n- **HKW löschen:** kein Absturz mehr durch uninitialisierte RSCP-Verbindung\n- **Batteriemonitor:** Min-/Max-Temperatur korrekt; keine Division durch Null ohne Sensoren\n- **Restladezeit:** zeigt „—“ wenn die Batterie praktisch stillsteht (< 50 W)\n- **Manueller Ladevorgang:** startet auch vor dem ersten Sync (nicht mehr fälschlich „läuft bereits“)",
+    "en": "- **Charge/discharge limits:** flows now wait for the real RSCP response (no more fake instant success)\n- **Pairing/repair:** connection test no longer fails on standard port 5033\n- **Delete HPS:** no crash from uninitialized RSCP connection cleanup\n- **Battery monitor:** correct min/max temperature; no divide-by-zero without sensors\n- **Remaining charge time:** shows “—” when the battery is effectively idle (< 50 W)\n- **Manual charge:** can start before the first sync (no longer wrongly “already running”)"
+  },
   "1.8.11": {
     "de": "- **App Store:** deutsche Store-Beschreibung (`README.de.txt`) — langer Text auf homey.app/de-de jetzt auf Deutsch",
     "en": "- **App Store:** German store description (`README.de.txt`) — long text on homey.app/de-de now in German"

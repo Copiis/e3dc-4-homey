@@ -59,26 +59,28 @@ class BatterModuleDevice extends Homey.Device implements BatteryModule{
     updateCapabilityValue('measure_dcbcount', batteryData.dcbs.length, this)
     updateCapabilityValue('measure_capacity', capacity, this)
     updateCapabilityValue('measure_voltage', batteryData.voltage, this)
-    let minTemp = 0
-    let maxTemp: number = 0
-    let sumTemp: number = 0
+    let minTemp = Infinity
+    let maxTemp = -Infinity
+    let sumTemp = 0
     let sensorCount = 0
     for (let moduleIndex = 0; moduleIndex < batteryData.dcbs.length; moduleIndex++) {
       for (let tempIndex = 0; tempIndex < batteryData.dcbs[moduleIndex].temperaturesCelsius.length; tempIndex++) {
         const temp = batteryData.dcbs[moduleIndex].temperaturesCelsius[tempIndex]
-        if (minTemp == 0 || minTemp > temp) {
+        if (temp < minTemp) {
           minTemp = temp
         }
-        if (maxTemp == 0 || maxTemp < temp) {
+        if (temp > maxTemp) {
           maxTemp = temp
         }
         sumTemp += temp
         sensorCount++
       }
     }
-    updateCapabilityValue('measure_temperature', sumTemp / sensorCount, this)
-    updateCapabilityValue('measure_temperature_max', maxTemp, this)
-    updateCapabilityValue('measure_temperature_min', minTemp, this)
+    if (sensorCount > 0) {
+      updateCapabilityValue('measure_temperature', sumTemp / sensorCount, this)
+      updateCapabilityValue('measure_temperature_max', maxTemp, this)
+      updateCapabilityValue('measure_temperature_min', minTemp, this)
+    }
   }
 
   private updatePowerLimits(chargingConfiguration: ChargingConfiguration, emergencyPower: EmergencyPowerState) {

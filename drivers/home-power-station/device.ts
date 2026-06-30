@@ -465,7 +465,7 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
       return this.homey.__('messages.invalid-percentage')
     }
     if (value < 0) {
-      return this.homey.__('messages.to-low-limit"')
+      return this.homey.__('messages.to-low-limit')
     }
 
     return undefined
@@ -689,27 +689,32 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
             targetWh = Math.abs(capacityWh * (1-data.batteryChargingLevel))
           }
 
-          const minutes =  targetWh / Math.abs(data.batteryDelivery) * 60
-          const batteryRemainingHours = Math.floor(minutes / 60);
-          let batteryRemainingMin = Math.floor(minutes % 60);
-          let hoursAsString = '' + batteryRemainingHours
-          let minAsString = '' + batteryRemainingMin
-          if (hoursAsString.length == 1) {
-            hoursAsString = '0' + hoursAsString
-          }
-          if (minAsString.length == 1) {
-            minAsString = '0' + minAsString
-          }
+          const batteryPowerW = Math.abs(data.batteryDelivery)
+          let finalValue: string
+          if (batteryPowerW < 50) {
+            finalValue = '—'
+          } else {
+            const minutes = targetWh / batteryPowerW * 60
+            const batteryRemainingHours = Math.floor(minutes / 60)
+            let batteryRemainingMin = Math.floor(minutes % 60)
+            let hoursAsString = '' + batteryRemainingHours
+            let minAsString = '' + batteryRemainingMin
+            if (hoursAsString.length == 1) {
+              hoursAsString = '0' + hoursAsString
+            }
+            if (minAsString.length == 1) {
+              minAsString = '0' + minAsString
+            }
 
-          let finalValue;
-          if (batteryRemainingHours > 24) {
-            finalValue = '> 24h'
-          }
-          else if (batteryRemainingHours == 0 && batteryRemainingMin < 10) {
-            finalValue = '< 10min'
-          }
-          else {
-            finalValue = hoursAsString + ':' + minAsString
+            if (batteryRemainingHours > 24) {
+              finalValue = '> 24h'
+            }
+            else if (batteryRemainingHours == 0 && batteryRemainingMin < 10) {
+              finalValue = '< 10min'
+            }
+            else {
+              finalValue = hoursAsString + ':' + minAsString
+            }
           }
 
           updateCapabilityValue('charge_time', finalValue, this)
@@ -1069,7 +1074,11 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
     if (this.powerModeLoopId) {
       clearTimeout(this.powerModeLoopId)
     }
-    new RscpApi().closeOwnConnection(this).then()
+    if (this.api) {
+      this.api.closeOwnConnection(this).catch(reason => {
+        this.log('closeOwnConnection on delete failed: ' + formatError(reason))
+      })
+    }
   }
 
   translate(key: string | Object, tags?: Object | undefined): string {

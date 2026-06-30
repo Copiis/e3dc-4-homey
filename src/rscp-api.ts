@@ -211,14 +211,6 @@ export class RscpApi {
     writeChargingLimits(limits: ChargingLimits, allowReconnect: boolean = true, log: Logger): Promise<WriteChargingLimitsResult> {
         return new Promise<WriteChargingLimitsResult>((resolve, reject) => {
             log.log('writeChargingLimits: Requesting connection ...')
-            setTimeout(() => {
-                resolve({
-                    maxCurrentChargingPower: ResultCode.SUCCESS,
-                    chargingLimitationsEnabled: ResultCode.SUCCESS,
-                    dischargeStartPower: ResultCode.SUCCESS,
-                    maxCurrentDischargingPower: ResultCode.SUCCESS,
-                })
-            })
             this.getOpenConnection(log)
                 .then(con => {
                     log.log('writeChargingLimits: Connection received')

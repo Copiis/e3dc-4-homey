@@ -38,7 +38,7 @@ export class StartManualBatteryChargeActionPercentageCard implements RunListener
             const amount: number = args.amount
             hps.log('StartManualBatteryChargingActionCard: triggered -> ' + amount + '%')
             const currentState = hps.getManualChargeState()
-            if (currentState && !currentState.active) {
+            if (!currentState?.active) {
                 hps.getBatteryCapacity()
                     .then(capacity => {
                         const wh = capacity * (amount / 100.0)
@@ -77,7 +77,7 @@ export class StartManualBatteryChargeWhActionCard implements RunListener {
             const amount: number = args.amount
             hps.log('StartManualBatteryChargingActionCardWh: triggered -> ' + amount)
             const currentState = hps.getManualChargeState()
-            if (currentState && !currentState.active) {
+            if (!currentState?.active) {
                 startCharge(amount, hps, resolve, reject)
             }
             else {

@@ -135,7 +135,7 @@ class HomePowerStationDriver extends Homey.Driver {
     if (this.settings.stationPort == null || this.settings.stationPort < 0 || this.settings.stationPort > 65535) {
       return this.homey.__('setup.validation.required', {input: this.homey.__('setup.field.station-port.title')})
     }
-    if (this.settings.timeout == null || this.settings.timeout < 5 || this.settings.stationPort > 30) {
+    if (this.settings.timeout == null || this.settings.timeout < 5 || this.settings.timeout > 30) {
       return this.homey.__('setup.validation.required', {input: this.homey.__('setup.field.timeout.title')})
     }
     return undefined
