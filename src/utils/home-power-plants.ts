@@ -1,5 +1,5 @@
 import Homey from 'homey';
-import {getPlantPowerState, buildPowerStateFromStation} from './plant-power-cache';
+import {buildPowerStateFromStation} from './plant-power-cache';
 type HomeyApi = Homey.App['homey'];
 
 export interface HomePowerPlant {
@@ -28,8 +28,7 @@ export async function readHomePowerPlantsForHomey(homey: HomeyApi): Promise<Home
     const stationData = station.getData();
     const stationId = String(stationData.id);
     const name = station.getName();
-    const cached = getPlantPowerState(stationId);
-    const powerState = cached ?? buildPowerStateFromStation(station, homey, stationId);
+    const powerState = buildPowerStateFromStation(station, homey, stationId);
     devices.push({
       name,
       id: stationId,

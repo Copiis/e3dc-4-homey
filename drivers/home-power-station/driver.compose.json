@@ -10,8 +10,8 @@
     "measure_grid_delivery",
     "measure_battery_delivery",
     "measure_battery",
-    "charge_time",
     "meter_power",
+    "charge_time",
     "diagnostic_report",
     "firmware_version"
   ],

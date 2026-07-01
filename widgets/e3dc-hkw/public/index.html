@@ -472,6 +472,12 @@
     document.getElementById('node-wallbox').style.display = showWallbox ? '' : 'none';
     document.getElementById('node-battery').style.display = showBattery ? '' : 'none';
 
+    // Also hide wallbox flow lines when wallbox node is hidden
+    const wallboxLine1 = document.getElementById('flow-house-wallbox');
+    const wallboxLine2 = document.getElementById('flow-pv-wallbox');
+    if (wallboxLine1) wallboxLine1.style.display = showWallbox ? '' : 'none';
+    if (wallboxLine2) wallboxLine2.style.display = showWallbox ? '' : 'none';
+
     const chargeSplit = splitBatteryChargeW(d);
 
     setFlowLine('flow-pv-house', pvToHouse, false, pvToHouseW);
@@ -479,8 +485,8 @@
     setFlowLine('flow-house-grid', houseToGrid, false, houseToGridW);
     setFlowLine('flow-battery-house', batteryToHouse, false, Math.max(0, -d.batteryPower));
     setFlowLine('flow-house-battery', houseToBattery, false, chargeSplit.fromGridW);
-    setFlowLine('flow-house-wallbox', houseToWallbox && !pvToWallbox, false, d.wallboxPower);
-    setFlowLine('flow-pv-wallbox', pvToWallbox, false, d.wallboxSolarShare);
+    setFlowLine('flow-house-wallbox', houseToWallbox && !pvToWallbox && showWallbox, false, d.wallboxPower);
+    setFlowLine('flow-pv-wallbox', pvToWallbox && showWallbox, false, d.wallboxSolarShare);
   }
 
   function formatW(w) {
