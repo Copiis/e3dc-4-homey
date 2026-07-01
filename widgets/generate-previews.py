@@ -55,74 +55,81 @@ def draw_shadow(base: Image.Image, box: tuple[int, int, int, int], radius: int, 
     base.alpha_composite(shadow, (x0 - blur, y0 - blur + 8))
 
 
-def draw_sun(draw: ImageDraw.ImageDraw, cx: int, cy: int, color: str, scale: float = 1.0) -> None:
-    r = int(7 * scale)
-    draw.ellipse((cx - r, cy - r, cx + r, cy + r), fill=rgba(color, 255))
-    for angle in range(0, 360, 45):
-        import math
-
-        rad = math.radians(angle)
-        x1 = cx + int(math.cos(rad) * (r + 4 * scale))
-        y1 = cy + int(math.sin(rad) * (r + 4 * scale))
-        x2 = cx + int(math.cos(rad) * (r + 9 * scale))
-        y2 = cy + int(math.sin(rad) * (r + 9 * scale))
-        draw.line((x1, y1, x2, y2), fill=rgba(color, 255), width=max(2, int(2 * scale)))
+def draw_solar_panel(draw: ImageDraw.ImageDraw, cx: int, cy: int, color: str, scale: float = 1.0) -> None:
+    w = int(14 * scale)
+    h = int(10 * scale)
+    # main panel
+    draw.rectangle((cx - w//2, cy - h//2, cx + w//2, cy + h//2), fill=rgba(color, 255), outline=(40,40,40,255))
+    # grid lines
+    for i in range(1, 3):
+        draw.line((cx - w//2, cy - h//2 + i*h//3, cx + w//2, cy - h//2 + i*h//3), fill=(40,40,40,255), width=1)
+    for i in range(1, 3):
+        draw.line((cx - w//2 + i*w//3, cy - h//2, cx - w//2 + i*w//3, cy + h//2), fill=(40,40,40,255), width=1)
+    # legs
+    draw.line((cx - w//3, cy + h//2, cx - w//3, cy + h//2 + 4*scale), fill=(40,40,40,255), width=1)
+    draw.line((cx + w//3, cy + h//2, cx + w//3, cy + h//2 + 4*scale), fill=(40,40,40,255), width=1)
 
 
 def draw_house(draw: ImageDraw.ImageDraw, cx: int, cy: int, color: str, scale: float = 1.0) -> None:
     w = int(18 * scale)
     h = int(14 * scale)
-    roof_h = int(10 * scale)
-    base = [
-        (cx - w // 2, cy + h // 2),
-        (cx + w // 2, cy + h // 2),
-        (cx + w // 2, cy - h // 4),
-        (cx - w // 2, cy - h // 4),
-    ]
+    roof_h = int(9 * scale)
+    # body
+    draw.rectangle((cx - w//2, cy - h//4, cx + w//2, cy + h//2), fill=rgba(color, 255), outline=(40,40,40,255))
+    # roof
     roof = [
-        (cx - w // 2 - 2, cy - h // 4),
-        (cx, cy - h // 4 - roof_h),
-        (cx + w // 2 + 2, cy - h // 4),
+        (cx - w//2 - 2, cy - h//4),
+        (cx, cy - h//4 - roof_h),
+        (cx + w//2 + 2, cy - h//4),
     ]
-    draw.polygon(base, fill=rgba(color, 255))
-    draw.polygon(roof, fill=rgba(color, 255))
+    draw.polygon(roof, fill=rgba(color, 255), outline=(40,40,40,255))
+    # door
+    draw.rectangle((cx - 3*scale, cy + 1, cx + 3*scale, cy + h//2), fill=(40,40,40,255))
+    # window
+    draw.rectangle((cx - w//3, cy - h//8, cx - w//6, cy + h//8), fill=(255,255,255,255), outline=(40,40,40,255))
 
 
-def draw_lightning(draw: ImageDraw.ImageDraw, cx: int, cy: int, color: str, scale: float = 1.0) -> None:
+def draw_pylon(draw: ImageDraw.ImageDraw, cx: int, cy: int, color: str, scale: float = 1.0) -> None:
     s = scale
-    pts = [
-        (cx + 2 * s, cy - 12 * s),
-        (cx - 4 * s, cy + 1 * s),
-        (cx + 1 * s, cy + 1 * s),
-        (cx - 2 * s, cy + 12 * s),
-        (cx + 5 * s, cy - 2 * s),
-        (cx, cy - 2 * s),
-    ]
-    draw.polygon(pts, fill=rgba(color, 255))
+    # vertical poles
+    draw.line((cx - 2*s, cy - 10*s, cx - 2*s, cy + 10*s), fill=(40,40,40,255), width=max(2, int(1.5*s)))
+    draw.line((cx + 2*s, cy - 10*s, cx + 2*s, cy + 10*s), fill=(40,40,40,255), width=max(2, int(1.5*s)))
+    # cross bars
+    draw.line((cx - 6*s, cy - 6*s, cx + 6*s, cy - 6*s), fill=(40,40,40,255), width=max(2, int(1*s)))
+    draw.line((cx - 5*s, cy - 2*s, cx + 5*s, cy - 2*s), fill=(40,40,40,255), width=max(2, int(1*s)))
+    draw.line((cx - 4*s, cy + 2*s, cx + 4*s, cy + 2*s), fill=(40,40,40,255), width=max(2, int(1*s)))
+    # top
+    draw.line((cx - 2*s, cy - 10*s, cx + 2*s, cy - 10*s), fill=(40,40,40,255), width=max(2, int(1.5*s)))
+    # wires
+    draw.line((cx - 8*s, cy - 8*s, cx - 3*s, cy - 8*s), fill=(80,80,80,255), width=1)
+    draw.line((cx + 3*s, cy - 8*s, cx + 8*s, cy - 8*s), fill=(80,80,80,255), width=1)
 
 
 def draw_battery(draw: ImageDraw.ImageDraw, cx: int, cy: int, color: str, scale: float = 1.0) -> None:
+    w = int(14 * scale)
+    h = int(20 * scale)
+    # body
+    rounded_rect(draw, (cx - w//2, cy - h//2, cx + w//2, cy + h//2), int(2*scale), fill=rgba(color, 30), outline=rgba(color, 255), width=max(2, int(1.5*scale)))
+    # cap (above body)
+    cap_y0 = cy - h//2 - int(3*scale)
+    cap_y1 = cy - h//2
+    rounded_rect(draw, (cx - w//3, cap_y0, cx + w//3, cap_y1), 1, fill=rgba(color, 255))
+    # lines inside
+    for i in [-2, 0, 2]:
+        draw.line((cx - 4*scale, cy + i*scale, cx + 4*scale, cy + i*scale), fill=rgba(color, 180), width=1)
+
+
+def draw_wallbox(draw: ImageDraw.ImageDraw, cx: int, cy: int, color: str, scale: float = 1.0) -> None:
     w = int(16 * scale)
-    h = int(22 * scale)
-    cap_w = int(8 * scale)
-    cap_h = int(4 * scale)
-    body = (cx - w // 2, cy - h // 2 + cap_h, cx + w // 2, cy + h // 2)
-    cap = (cx - cap_w // 2, cy - h // 2, cx + cap_w // 2, cy - h // 2 + cap_h)
-    rounded_rect(draw, body, int(4 * scale), fill=rgba(color, 40), outline=rgba(color, 255), width=max(2, int(2 * scale)))
-    rounded_rect(draw, cap, int(2 * scale), fill=rgba(color, 255))
-
-
-def draw_car(draw: ImageDraw.ImageDraw, cx: int, cy: int, color: str, scale: float = 1.0) -> None:
-    w = int(24 * scale)
-    h = int(12 * scale)
-    body = (cx - w // 2, cy - h // 2, cx + w // 2, cy + h // 2)
-    rounded_rect(draw, body, int(5 * scale), fill=rgba(color, 40), outline=rgba(color, 255), width=max(2, int(2 * scale)))
-    wheel_r = int(3 * scale)
-    for wx in (cx - w // 3, cx + w // 3):
-        draw.ellipse(
-            (wx - wheel_r, cy + h // 2 - 1, wx + wheel_r, cy + h // 2 + wheel_r * 2 - 1),
-            fill=rgba(color, 255),
-        )
+    h = int(14 * scale)
+    # charger box
+    rounded_rect(draw, (cx - w//2, cy - h//2, cx + w//2, cy + h//2), int(2*scale), fill=rgba(color, 40), outline=rgba(color, 255), width=max(2, int(1.5*scale)))
+    # cable
+    draw.arc((cx, cy - 2*scale, cx + 10*scale, cy + 6*scale), 200, 340, fill=(40,40,40,255), width=max(2, int(1.5*scale)))
+    # plug
+    draw.rectangle((cx + 8*scale, cy, cx + 12*scale, cy + 4*scale), fill=(40,40,40,255))
+    # handle on box
+    draw.rectangle((cx - w//2 + 2, cy - 2, cx - w//2 + 5, cy + 2), fill=(255,255,255,255))
 
 
 def draw_flow_line(
@@ -210,11 +217,11 @@ def generate_live_energy_view(dark: bool) -> Image.Image:
         return int(ox + x * sx), int(oy + y * sy)
 
     nodes = {
-        "pv": {"box": (96, 8, 224, 44), "icon": draw_sun, "color": COLORS["pv"]},
+        "pv": {"box": (96, 8, 224, 44), "icon": draw_solar_panel, "color": COLORS["pv"]},
         "house": {"box": (120, 108, 200, 166), "icon": draw_house, "color": COLORS["house"]},
-        "grid": {"box": (8, 114, 70, 168), "icon": draw_lightning, "color": COLORS["grid"]},
+        "grid": {"box": (8, 114, 70, 168), "icon": draw_pylon, "color": COLORS["grid"]},
         "battery": {"box": (250, 104, 312, 166), "icon": draw_battery, "color": COLORS["battery"]},
-        "wallbox": {"box": (84, 226, 236, 262), "icon": draw_car, "color": COLORS["wallbox"]},
+        "wallbox": {"box": (84, 226, 236, 262), "icon": draw_wallbox, "color": COLORS["wallbox"]},
     }
 
     lines = [
@@ -274,11 +281,11 @@ def generate_wallbox(dark: bool) -> Image.Image:
     rounded_rect(draw, card1, 24, fill=pal["card"], outline=pal["card_stroke"], width=2)
     rounded_rect(draw, card2, 24, fill=pal["card"], outline=pal["card_stroke"], width=2)
 
-    # Left card: lightning icon for "Laden"
-    draw_lightning(draw, 320, 510, COLORS["grid"], scale=2.8)
+    # Left card: charger icon for "Laden"
+    draw_wallbox(draw, 320, 510, COLORS["wallbox"], scale=2.0)
 
-    # Right card: sun icon for "Sonnenmodus"
-    draw_sun(draw, 704, 510, COLORS["pv"], scale=2.8)
+    # Right card: sun/panel icon for "Sonnenmodus"
+    draw_solar_panel(draw, 704, 510, COLORS["pv"], scale=1.8)
 
     return img
 

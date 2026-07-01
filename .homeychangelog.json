@@ -1,4 +1,8 @@
 {
+  "1.8.20": {
+    "de": "- **E3DC-HKW Widget:** Doppelte IDs für grid-value und battery-value behoben. Die Werte für Netz und Batterie in der Übersichtsliste (unter dem Flussdiagramm) werden jetzt korrekt aktualisiert (waren vorher auf „0 W“ festgefroren).",
+    "en": "- **E3DC-HKW Widget:** Fixed duplicate IDs for grid-value and battery-value. The grid and battery values in the overview list (below the flow diagram) now update correctly (were previously stuck at \"0 W\")."
+  },
   "1.8.19": {
     "de": "- **Restladezeit:** Die < 50 W Grenze entfernt. Es wird jetzt nur noch geprüft, ob die berechnete Zeit > 24 h ist → dann `> 24h`. Bei 0 W ebenfalls `> 24h`.",
     "en": "- **Remaining charge time:** Removed the < 50 W limit. Now only checks if calculated time > 24 h → shows `> 24h`. Also `> 24h` when power is 0 W."
