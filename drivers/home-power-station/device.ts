@@ -722,8 +722,8 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
           const batteryPowerW = batteryPowerFromCap > 0 ? batteryPowerFromCap : Math.abs(data.batteryDelivery);
 
           let finalValue: string
-          if (batteryPowerW < 50) {
-            finalValue = '—'
+          if (batteryPowerW <= 0) {
+            finalValue = '> 24h'
           } else {
             const minutes = targetWh / batteryPowerW * 60
             const batteryRemainingHours = Math.floor(minutes / 60)

@@ -1,4 +1,8 @@
 {
+  "1.8.19": {
+    "de": "- **Restladezeit:** Die < 50 W Grenze entfernt. Es wird jetzt nur noch geprüft, ob die berechnete Zeit > 24 h ist → dann `> 24h`. Bei 0 W ebenfalls `> 24h`.",
+    "en": "- **Remaining charge time:** Removed the < 50 W limit. Now only checks if calculated time > 24 h → shows `> 24h`. Also `> 24h` when power is 0 W."
+  },
   "1.8.18": {
     "de": "- **Widget-Previews:** Athom-konforme Symbole für E3DC-HKW und Wallbox neu generiert (kein Text, korrekte Icons für Fluss und Steuerung)\n- **Generator aktualisiert:** generate-previews.py jetzt für aktuelle Widgets (e3dc-hkw + wallbox)",
     "en": "- **Widget previews:** Regenerated Athom-compliant icons for E3DC-HKW and Wallbox (no text, proper icons for flow and controls)\n- **Generator updated:** generate-previews.py now targets current widgets (e3dc-hkw + wallbox)"
