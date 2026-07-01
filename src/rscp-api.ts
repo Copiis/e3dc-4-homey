@@ -1256,8 +1256,9 @@ export class RscpApi {
             ? this.toggleWallboxCharging(wallboxId, allowReconnect, log)
             : Promise.resolve(true)
         return resumeIfPaused
-            .then(() => this.setWallboxExtern(wallboxId, [WALLBOX_EXTERN_MIXED_MODE, current, 0, 0, 0, 0], allowReconnect, log))
-            .then(() => this.setWallboxMode(wallboxId, WALLBOX_MODE_MIXED, current, false, log))
+            .then(() => this.setWallboxCurrentLimit(wallboxId, current, allowReconnect, log))
+            // Do not force MIXED mode here. "Laden freigeben" should only unblock / set current
+            // without switching out of sun mode. Mode is controlled by setWallboxSunMode.
     }
 
     setWallboxSunMode(wallboxId: number, enabled: boolean, maxCurrentA: number = DEFAULT_WALLBOX_CURRENT_A, allowReconnect: boolean = true, log: Logger): Promise<boolean> {

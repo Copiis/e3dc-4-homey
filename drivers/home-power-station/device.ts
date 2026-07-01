@@ -117,6 +117,7 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
   private powerModeLoopId: NodeJS.Timeout | null = null
   private api: RscpApi | undefined = undefined
   private syncErrorCount: number = 0
+  private lastUsableCapacity: number | null = null
   private updateBatteryData = true
   private readonly diagnostic = new DeviceDiagnostic()
   private lastSyncAt?: Date
@@ -167,6 +168,14 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
   }
 
   private doInit() {
+    // Initialize last capacity for charge time fallback (used if battery data read fails)
+    const settings: any = this.getSettings()
+    if (settings.rscpAsoc && settings.rscpAsoc > 0) {
+      this.lastUsableCapacity = settings.rscpAsoc
+    } else if (settings.capacity && settings.capacity > 0) {
+      this.lastUsableCapacity = settings.capacity
+    }
+
     this.migrateLegacyCapabilities().then()
     this.loadDiagnosticAnalysisLog()
 
@@ -514,11 +523,20 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
       this.getApi()
           .readBatteryData(true, this)
           .then(value => {
-            resolve(resolveUsableCapacityWh(value[0]))
+            const usable = resolveUsableCapacityWh(value[0])
+            this.lastUsableCapacity = usable
+            resolve(usable)
           })
           .catch(reason => {
             this.error('getBatteryCapacity: Error reading battery data: ' + formatError(reason))
-            reject(reason)
+            // Fallback to last known or settings so that charge time can still be calculated
+            if (this.lastUsableCapacity && this.lastUsableCapacity > 0) {
+              resolve(this.lastUsableCapacity)
+            } else {
+              const settings: any = this.getSettings()
+              const fromSettings = settings.rscpAsoc || settings.capacity || 0
+              resolve(fromSettings > 0 ? fromSettings : 0)
+            }
           })
     })
   }
@@ -698,7 +716,11 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
             targetWh = Math.abs(capacityWh * (1-data.batteryChargingLevel))
           }
 
-          const batteryPowerW = Math.abs(data.batteryDelivery)
+          // Use the current capability value for battery power (what is shown in widgets/tile)
+          // to ensure consistency with the 250W discharge the user sees.
+          const batteryPowerFromCap = Math.abs( Number(this.getCapabilityValue('measure_battery_delivery')) || 0 );
+          const batteryPowerW = batteryPowerFromCap > 0 ? batteryPowerFromCap : Math.abs(data.batteryDelivery);
+
           let finalValue: string
           if (batteryPowerW < 50) {
             finalValue = '—'
