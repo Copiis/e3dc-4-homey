@@ -259,12 +259,36 @@ def generate_live_energy_view(dark: bool) -> Image.Image:
     return img
 
 
+def generate_wallbox(dark: bool) -> Image.Image:
+    img = make_canvas()
+    draw = ImageDraw.Draw(img)
+    pal = palette(dark)
+
+    # Two cards side by side representing the two controls
+    card_w, card_h = 280, 380
+    card1 = (180, 320, 180 + card_w, 320 + card_h)   # left: Laden
+    card2 = (564, 320, 564 + card_w, 320 + card_h)   # right: Sonnenmodus
+
+    draw_shadow(img, card1, 24)
+    draw_shadow(img, card2, 24)
+    rounded_rect(draw, card1, 24, fill=pal["card"], outline=pal["card_stroke"], width=2)
+    rounded_rect(draw, card2, 24, fill=pal["card"], outline=pal["card_stroke"], width=2)
+
+    # Left card: lightning icon for "Laden"
+    draw_lightning(draw, 320, 510, COLORS["grid"], scale=2.8)
+
+    # Right card: sun icon for "Sonnenmodus"
+    draw_sun(draw, 704, 510, COLORS["pv"], scale=2.8)
+
+    return img
+
+
 def main() -> None:
     outputs = {
-        ROOT / "power-overview" / "preview-light.png": generate_power_overview(False),
-        ROOT / "power-overview" / "preview-dark.png": generate_power_overview(True),
-        ROOT / "live-energy-view" / "preview-light.png": generate_live_energy_view(False),
-        ROOT / "live-energy-view" / "preview-dark.png": generate_live_energy_view(True),
+        ROOT / "e3dc-hkw" / "preview-light.png": generate_live_energy_view(False),
+        ROOT / "e3dc-hkw" / "preview-dark.png": generate_live_energy_view(True),
+        ROOT / "wallbox" / "preview-light.png": generate_wallbox(False),
+        ROOT / "wallbox" / "preview-dark.png": generate_wallbox(True),
     }
     for path, image in outputs.items():
         image.save(path, "PNG")

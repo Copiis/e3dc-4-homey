@@ -1,4 +1,8 @@
 {
+  "1.8.18": {
+    "de": "- **Widget-Previews:** Athom-konforme Symbole für E3DC-HKW und Wallbox neu generiert (kein Text, korrekte Icons für Fluss und Steuerung)\n- **Generator aktualisiert:** generate-previews.py jetzt für aktuelle Widgets (e3dc-hkw + wallbox)",
+    "en": "- **Widget previews:** Regenerated Athom-compliant icons for E3DC-HKW and Wallbox (no text, proper icons for flow and controls)\n- **Generator updated:** generate-previews.py now targets current widgets (e3dc-hkw + wallbox)"
+  },
   "1.8.17": {
     "de": "- **E3DC-HKW Widget:** Live-Energiefluss und Übersicht zu einem Widget zusammengeführt (Fluss oben, Zahlen unten)\n- **Alte Widgets entfernt:** Live-Energiefluss und Übersicht sind jetzt im neuen E3DC-HKW-Widget enthalten\n- **Widget-Verbesserungen:** Batterie-Lade-/Entlade-Richtung korrigiert, Flussrichtungen (inkl. Netz) gefixt, direkte PV→Batterie-Linie entfernt, Netz-Label auf „Netz“ vereinfacht (Richtung über Pfeile)\n- **Ladezeit:** Nutzt jetzt den angezeigten Batteriewert + bessere Fallbacks für nutzbare Kapazität\n- **Wallbox:** Laden freigeben schaltet Sonnenmodus nicht mehr ab",
     "en": "- **E3DC-HKW Widget:** Merged live energy flow and overview into one widget (flow on top, numbers below)\n- **Old widgets removed:** Live energy flow and overview are now part of the new E3DC-HKW widget\n- **Widget fixes:** Battery charge/discharge direction corrected, flow directions (incl. grid) fixed, removed direct PV→battery line, simplified grid label to just \"Netz\" (direction via arrows)\n- **Charge time:** Now uses the displayed battery power value + better fallbacks for usable capacity\n- **Wallbox:** Enabling charging no longer disables sun mode"
