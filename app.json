@@ -3100,6 +3100,10 @@
           "title": {
             "de": "Wallbox anzeigen",
             "en": "Show wallbox"
+          },
+          "hint": {
+            "de": "Nur wirksam, wenn eine Wallbox mit diesem HKW verknüpft ist.",
+            "en": "Only effective if a Wallbox is linked to this HKW."
           }
         },
         {

@@ -469,9 +469,6 @@
     const showWallbox = settings.showWallbox !== false && d.hasWallbox;
     const showBattery = settings.showBattery !== false;
 
-    document.getElementById('node-wallbox').style.display = showWallbox ? '' : 'none';
-    document.getElementById('node-battery').style.display = showBattery ? '' : 'none';
-
     // Hide wallbox node and lines if no wallbox or setting off
     const wallboxNode = document.getElementById('node-wallbox');
     const wallboxLine1 = document.getElementById('flow-house-wallbox');
@@ -479,6 +476,16 @@
     if (wallboxNode) wallboxNode.style.display = showWallbox ? '' : 'none';
     if (wallboxLine1) wallboxLine1.style.display = showWallbox ? '' : 'none';
     if (wallboxLine2) wallboxLine2.style.display = showWallbox ? '' : 'none';
+
+    // Dynamically crop SVG when no wallbox (reduces visual height)
+    const svgEl = document.getElementById('flow-svg');
+    if (svgEl) {
+      if (showWallbox) {
+        svgEl.setAttribute('viewBox', '0 0 320 278');
+      } else {
+        svgEl.setAttribute('viewBox', '0 0 320 175');
+      }
+    }
 
     const chargeSplit = splitBatteryChargeW(d);
 
@@ -629,7 +636,12 @@
       updateFlow(plant, settings, Homey);
       updateOverview(plant, settings);
       showFlow();
-      setHeight(Homey, asInit, WIDGET_HEIGHT);
+
+      // Dynamic height: reduce when no Wallbox section
+      const hasWb = !!plant.powerState.hasWallbox;
+      const showWb = settings.showWallbox !== false && hasWb;
+      const dynamicHeight = showWb ? WIDGET_HEIGHT : 470;
+      setHeight(Homey, asInit, dynamicHeight);
     } catch (e) {
       showMessage(e.toString());
       setHeight(Homey, asInit, 100);
