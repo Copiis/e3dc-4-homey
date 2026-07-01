@@ -511,7 +511,11 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
         wallboxSolarShare += Number(device.getCapabilityValue('measure_wallbox_solarshare')) || 0;
       }
     });
-    setPlantPowerState(stationId, buildPowerStateFromLiveData(result, wallboxPower, wallboxSolarShare));
+    const hasWallbox = wallboxDevices.some(device => {
+      const config = device.getStoreValue('settings') as { stationId?: string } | undefined;
+      return String(config?.stationId) === stationId;
+    });
+    setPlantPowerState(stationId, buildPowerStateFromLiveData(result, wallboxPower, wallboxSolarShare, hasWallbox));
   }
 
   getId(): string {

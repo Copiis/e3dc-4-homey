@@ -16,6 +16,7 @@ export interface PowerStatus {
   batteryLevel: number;
   wallboxPower: number;
   wallboxSolarShare: number;
+  hasWallbox: boolean;
   externalPowerConnected: boolean;
   externalPower: number;
 }

@@ -15,25 +15,28 @@ export function getPlantPowerState(stationId: string): PowerStatus | undefined {
   return cache.get(stationId);
 }
 
-function aggregateWallboxPowerForStation(homey: HomeyApi, stationId: string): { powerW: number; solarShareW: number } {
+function aggregateWallboxPowerForStation(homey: HomeyApi, stationId: string): { powerW: number; solarShareW: number; hasWallbox: boolean } {
   let powerW = 0;
   let solarShareW = 0;
+  let hasWallbox = false;
   const wallboxDevices = homey.drivers.getDriver('wallbox').getDevices();
   wallboxDevices.forEach((device: Homey.Device) => {
     const config = device.getStoreValue('settings') as { stationId?: string } | undefined;
     if (String(config?.stationId) !== stationId) {
       return;
     }
+    hasWallbox = true;
     powerW += readCapabilityNumber(device, 'measure_power');
     solarShareW += readCapabilityNumber(device, 'measure_wallbox_solarshare');
   });
-  return { powerW, solarShareW };
+  return { powerW, solarShareW, hasWallbox };
 }
 
 export function buildPowerStateFromLiveData(
   result: LiveData,
   wallboxPower: number,
   wallboxSolarShare: number,
+  hasWallbox: boolean = true,
 ): PowerStatus {
   return {
     consumption: result.houseConsumption,
@@ -43,6 +46,7 @@ export function buildPowerStateFromLiveData(
     batteryLevel: result.batteryChargingLevel * 100,
     wallboxPower,
     wallboxSolarShare,
+    hasWallbox,
     externalPowerConnected: result.externalPowerConnected,
     externalPower: result.externalPowerDelivery,
   };
@@ -58,6 +62,7 @@ export function buildPowerStateFromStation(station: Homey.Device, homey: HomeyAp
     batteryLevel: readCapabilityNumber(station, 'measure_battery'),
     wallboxPower: wallbox.powerW,
     wallboxSolarShare: wallbox.solarShareW,
+    hasWallbox: wallbox.hasWallbox,
     externalPowerConnected: station.hasCapability('external_power_delivery_connected')
       ? !!station.getCapabilityValue('external_power_delivery_connected')
       : false,

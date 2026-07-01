@@ -466,15 +466,17 @@
     const gridToHouse = gridToHouseW > (settings.flowThreshold || 30);
     const batteryToHouse = Math.max(0, -d.batteryPower) > (settings.flowThreshold || 30);
 
-    const showWallbox = settings.showWallbox !== false;
+    const showWallbox = settings.showWallbox !== false && d.hasWallbox;
     const showBattery = settings.showBattery !== false;
 
     document.getElementById('node-wallbox').style.display = showWallbox ? '' : 'none';
     document.getElementById('node-battery').style.display = showBattery ? '' : 'none';
 
-    // Also hide wallbox flow lines when wallbox node is hidden
+    // Hide wallbox node and lines if no wallbox or setting off
+    const wallboxNode = document.getElementById('node-wallbox');
     const wallboxLine1 = document.getElementById('flow-house-wallbox');
     const wallboxLine2 = document.getElementById('flow-pv-wallbox');
+    if (wallboxNode) wallboxNode.style.display = showWallbox ? '' : 'none';
     if (wallboxLine1) wallboxLine1.style.display = showWallbox ? '' : 'none';
     if (wallboxLine2) wallboxLine2.style.display = showWallbox ? '' : 'none';
 
@@ -581,9 +583,14 @@
     hideOrShow('grid', settings.gridVisible);
     hideOrShow('battery', settings.batteryVisible);
     hideOrShow('battery-level', settings.batteryLevelVisible);
-    hideOrShow('wb-consumption', settings.wallboxConsumptionVisible);
-    hideOrShow('solar-share', settings.solarShareVisible);
     hideOrShow('external-source', settings.externalSourceVisible);
+
+    const d = data || {};
+    const hasWallbox = !!d.hasWallbox;
+
+    // Only show wallbox rows if station actually has a wallbox linked
+    hideOrShow('wb-consumption', settings.wallboxConsumptionVisible && hasWallbox);
+    hideOrShow('solar-share', settings.solarShareVisible && hasWallbox);
 
     let visibleRows = 0;
     if (settings.consumptionVisible) visibleRows++;
@@ -591,12 +598,11 @@
     if (settings.gridVisible) visibleRows++;
     if (settings.batteryVisible) visibleRows++;
     if (settings.batteryLevelVisible) visibleRows++;
-    if (settings.wallboxConsumptionVisible) visibleRows++;
-    if (settings.solarShareVisible) visibleRows++;
+    if (settings.wallboxConsumptionVisible && hasWallbox) visibleRows++;
+    if (settings.solarShareVisible && hasWallbox) visibleRows++;
     if (settings.externalSourceVisible) visibleRows++;
 
     const threshold = settings.emptyThreshold || 10;
-    const d = data || {};
 
     if (!settings.showEmpty) {
       if (settings.consumptionVisible && Math.abs(d.consumption || 0) < threshold) hideOrShow('consumption', false);
@@ -604,8 +610,8 @@
       if (settings.gridVisible && Math.abs(d.gridPower || 0) < threshold) hideOrShow('grid', false);
       if (settings.batteryVisible && Math.abs(d.batteryPower || 0) < threshold) hideOrShow('battery', false);
       if (settings.batteryLevelVisible && (d.batteryLevel || 0) < 1) hideOrShow('battery-level', false);
-      if (settings.wallboxConsumptionVisible && Math.abs(d.wallboxPower || 0) < threshold) hideOrShow('wb-consumption', false);
-      if (settings.solarShareVisible && Math.abs(d.wallboxSolarShare || 0) < threshold) hideOrShow('solar-share', false);
+      if (settings.wallboxConsumptionVisible && hasWallbox && Math.abs(d.wallboxPower || 0) < threshold) hideOrShow('wb-consumption', false);
+      if (settings.solarShareVisible && hasWallbox && Math.abs(d.wallboxSolarShare || 0) < threshold) hideOrShow('solar-share', false);
       if (settings.externalSourceVisible && Math.abs(d.externalPower || 0) < threshold) hideOrShow('external-source', false);
     }
   }
