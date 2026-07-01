@@ -1,4 +1,8 @@
 {
+  "1.8.21": {
+    "de": "- **E3DC-HKW Widget:** Bessere Unterstützung für Nutzer ohne Wallbox (hasWallbox-Erkennung, Linien und Sektion werden sauber ausgeblendet, dynamische Höhe)\n- **Widget-Symbole:** Angepasste Icons für Haus, Strommast, Batterie, Wallbox und Solarpaneele\n- **Widget:** Verbessertes Ausblenden und Layout-Anpassung",
+    "en": "- **E3DC-HKW Widget:** Better support for users without Wallbox (hasWallbox detection, lines and section are cleanly hidden, dynamic height)\n- **Widget icons:** Updated icons for house, power pylon, battery, wallbox and solar panels\n- **Widget:** Improved hiding behavior and layout adaptation"
+  },
   "1.8.20": {
     "de": "- **E3DC-HKW Widget:** Doppelte IDs für grid-value und battery-value behoben. Die Werte für Netz und Batterie in der Übersichtsliste (unter dem Flussdiagramm) werden jetzt korrekt aktualisiert (waren vorher auf „0 W“ festgefroren).",
     "en": "- **E3DC-HKW Widget:** Fixed duplicate IDs for grid-value and battery-value. The grid and battery values in the overview list (below the flow diagram) now update correctly (were previously stuck at \"0 W\")."
