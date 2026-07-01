@@ -9,8 +9,6 @@ import {RscpApi} from '../../src/rscp-api';
 import {formatError} from '../../src/utils/error-utils';
 import {RunListener} from '../../src/cards/run-listener';
 import {SetWallboxCurrentActionCard} from '../../src/cards/action/set-wallbox-current.action.card';
-import {WallboxStartChargingActionCard} from '../../src/cards/action/wallbox-start-charging.action.card';
-import {WallboxStopChargingActionCard} from '../../src/cards/action/wallbox-stop-charging.action.card';
 import {WallboxSetSunModeActionCard} from '../../src/cards/action/wallbox-set-sun-mode.action.card';
 import {WallboxAllowChargingActionCard} from '../../src/cards/action/wallbox-allow-charging.action.card';
 import {WallboxBlockChargingActionCard} from '../../src/cards/action/wallbox-block-charging.action.card';
@@ -67,6 +65,7 @@ class WallboxDevice extends Homey.Device implements Wallbox {
       this.error('Wallbox onInit failed: ' + formatError(e));
     }
     this.setupFlowCards();
+    this.registerCapabilityListeners();
   }
 
   private bindDevice(listener: RunListener): (args: Record<string, unknown>, state: unknown) => Promise<unknown> {
@@ -94,8 +93,6 @@ class WallboxDevice extends Homey.Device implements Wallbox {
       { id: 'wallbox_sun_mode_on', listener: new WallboxSunModeOnActionCard() },
       { id: 'wallbox_sun_mode_off', listener: new WallboxSunModeOffActionCard() },
       { id: 'set_wallbox_current', listener: new SetWallboxCurrentActionCard() },
-      { id: 'wallbox_start_charging', listener: new WallboxStartChargingActionCard() },
-      { id: 'wallbox_stop_charging', listener: new WallboxStopChargingActionCard() },
       { id: 'wallbox_set_sun_mode', listener: new WallboxSetSunModeActionCard() },
       { id: 'wallbox_battery_to_car', listener: new WallboxBatteryToCarActionCard() },
       { id: 'wallbox_battery_before_car', listener: new WallboxBatteryBeforeCarActionCard() },
@@ -111,6 +108,34 @@ class WallboxDevice extends Homey.Device implements Wallbox {
     });
   }
 
+  private registerCapabilityListeners(): void {
+    this.registerCapabilityListener('wallbox_charging', this.onWallboxChargingSet.bind(this));
+    this.registerCapabilityListener('wallbox_sun_mode', this.onWallboxSunModeSet.bind(this));
+  }
+
+  private async onWallboxChargingSet(value: boolean): Promise<void> {
+    // Button press toggles the state (for button uiComponent)
+    const current = this.getCapabilityValue('wallbox_charging') === true;
+    const newValue = !current;
+    const result = await this.applyChargingAllowed(newValue);
+    if (!result.ok) {
+      this.error('Wallbox charging set via tile failed');
+      throw new Error('Charging command failed or not verified');
+    }
+    this.log(`Wallbox charging toggled via button to ${newValue}`);
+  }
+
+  private async onWallboxSunModeSet(value: boolean): Promise<void> {
+    const current = this.getCapabilityValue('wallbox_sun_mode') === true;
+    const newValue = !current;
+    const result = await this.applySunMode(newValue);
+    if (!result.ok) {
+      this.error('Wallbox sun mode set via tile failed');
+      throw new Error('Sun mode command failed or not verified');
+    }
+    this.log(`Wallbox sun mode toggled via button to ${newValue}`);
+  }
+
   private async migrateCapabilities(): Promise<void> {
     await ensureCapabilities(this, [...WALLBOX_CAPABILITY_ORDER]);
     await reorderCapabilitiesIfNeeded(this, WALLBOX_CAPABILITY_ORDER);
@@ -120,6 +145,10 @@ class WallboxDevice extends Homey.Device implements Wallbox {
       'evcharger_charging_state',
       'measure_wallbox_consumption',
       'measure_vehicle_soc',
+      'wallbox_start_charging',
+      'wallbox_stop_charging',
+      'wallbox_sun_mode_on',
+      'wallbox_sun_mode_off',
     ];
     for (const capability of legacyCapabilities) {
       if (!this.hasCapability(capability)) {

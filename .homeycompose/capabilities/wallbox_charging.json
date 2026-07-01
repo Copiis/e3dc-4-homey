@@ -1,16 +1,16 @@
 {
   "type": "boolean",
   "title": {
-    "en": "Charging allowed",
-    "de": "Laden freigegeben"
+    "en": "Charging",
+    "de": "Laden"
   },
   "titleTrue": {
-    "en": "Charging on",
-    "de": "Laden an"
+    "en": "On",
+    "de": "An"
   },
   "titleFalse": {
-    "en": "Charging off",
-    "de": "Laden aus"
+    "en": "Off",
+    "de": "Aus"
   },
   "insightsTitleTrue": {
     "en": "Charging allowed",
@@ -21,8 +21,8 @@
     "de": "Laden gesperrt"
   },
   "getable": true,
-  "setable": false,
-  "uiComponent": "sensor",
-  "icon": "/assets/images/ev-station.svg",
+  "setable": true,
+  "uiComponent": "button",
+
   "insights": true
 }

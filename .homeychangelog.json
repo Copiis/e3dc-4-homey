@@ -1,4 +1,8 @@
 {
+  "1.8.16": {
+    "de": "- **Dashboard-Widget:** Neues Wallbox-Widget mit zwei klickbaren Status-Kreisen für Laden und Sonnenmodus (zeigt aktuellen Zustand farblich, direkter Toggle per Klick)\n- **Flow-Karten:** Duplikate entfernt – nur noch „Laden freigeben/sperren“ (und Bedingungen) behalten; „starten/stoppen“ als Redundanz entfernt\n- **Wallbox-Steuerung:** Die beiden Buttons (Laden / Sonnenmodus) sind jetzt klickbar und schalten den Status direkt um",
+    "en": "- **Dashboard Widget:** New Wallbox widget with two clickable status circles for Charging and Sun mode (shows current state with highlight, direct toggle on click)\n- **Flow cards:** Duplicates removed – only \"Allow/Block charging\" (and conditions) kept; \"Start/Stop\" removed as redundant\n- **Wallbox control:** The two buttons (Charging / Sun mode) are now clickable and toggle the state directly"
+  },
   "1.8.15": {
     "de": "- **Code-Review Fixes:** Weniger Log-Spam bei Syncs; Wallbox-Kommandos serialisiert gegen Race-Conditions; längere Verify-Timeouts; keine unnötigen Wallbox-Abfragen; bessere Nach-Prüfung bei Power-Limits; diverse kleinere Verbesserungen (Error-Counting, Promise-Pattern)",
     "en": "- **Code review fixes:** Reduced log spam on syncs; wallbox commands serialized against races; longer verify timeouts; skip unnecessary wallbox queries; added post-read checks for power limits; various smaller improvements (error counting, Promise pattern)"

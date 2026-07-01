@@ -1124,10 +1124,18 @@
           "preventTag": true
         },
         "wallbox_charging": {
+          "title": {
+            "en": "Charging",
+            "de": "Laden"
+          },
           "preventInsights": true,
           "preventTag": true
         },
         "wallbox_sun_mode": {
+          "title": {
+            "en": "Sun mode",
+            "de": "Sonnenmodus"
+          },
           "preventInsights": true,
           "preventTag": true
         },
@@ -2814,63 +2822,6 @@
         ]
       },
       {
-        "id": "wallbox_start_charging",
-        "title": {
-          "de": "Wallbox Laden starten",
-          "en": "Start wallbox charging"
-        },
-        "titleFormatted": {
-          "de": "Laden starten (max. [[current]] A)",
-          "en": "Start charging (max. [[current]] A)"
-        },
-        "hint": {
-          "de": "Setzt die Wallbox in den Mischmodus und erlaubt das Laden (max. Stromstärke in Ampere). Standard 16 A. Das Fahrzeug muss angesteckt sein.",
-          "en": "Enables wallbox charging in mixed mode with the given max current (Amps). Default 16 A. The vehicle must be plugged in."
-        },
-        "args": [
-          {
-            "type": "device",
-            "name": "device",
-            "filter": "driver_id=wallbox"
-          },
-          {
-            "type": "number",
-            "name": "current",
-            "title": {
-              "de": "Max. Strom (A)",
-              "en": "Max current (A)"
-            },
-            "required": false,
-            "min": 6,
-            "max": 32,
-            "step": 1,
-            "value": 16
-          }
-        ]
-      },
-      {
-        "id": "wallbox_stop_charging",
-        "title": {
-          "de": "Wallbox Laden stoppen",
-          "en": "Stop wallbox charging"
-        },
-        "titleFormatted": {
-          "de": "Laden stoppen",
-          "en": "Stop charging"
-        },
-        "hint": {
-          "de": "Stoppt bzw. pausiert das Laden an der Wallbox (RSCP EXTERN_DATA Abort). Zum Fortsetzen die Karte „Laden starten“ verwenden.",
-          "en": "Stops or pauses charging at the wallbox (RSCP EXTERN_DATA abort). Use \"Start charging\" to resume."
-        },
-        "args": [
-          {
-            "type": "device",
-            "name": "device",
-            "filter": "driver_id=wallbox"
-          }
-        ]
-      },
-      {
         "id": "wallbox_set_sun_mode",
         "title": {
           "de": "Wallbox Sonnenmodus ein/aus",
@@ -3320,6 +3271,43 @@
         }
       },
       "id": "power-overview"
+    },
+    "wallbox": {
+      "name": {
+        "en": "Wallbox",
+        "de": "Wallbox"
+      },
+      "transparent": false,
+      "height": 200,
+      "settings": [
+        {
+          "id": "plantId",
+          "type": "autocomplete",
+          "title": {
+            "de": "Hauskraftwerk",
+            "en": "Home power plant"
+          }
+        }
+      ],
+      "api": {
+        "readHomePowerPlants": {
+          "method": "GET",
+          "path": "/"
+        },
+        "getWallboxStatus": {
+          "method": "GET",
+          "path": "/wallbox"
+        },
+        "toggle": {
+          "method": "POST",
+          "path": "/toggle"
+        },
+        "log": {
+          "method": "POST",
+          "path": "/log"
+        }
+      },
+      "id": "wallbox"
     }
   },
   "capabilities": {
@@ -3997,16 +3985,16 @@
     "wallbox_charging": {
       "type": "boolean",
       "title": {
-        "en": "Charging allowed",
-        "de": "Laden freigegeben"
+        "en": "Charging",
+        "de": "Laden"
       },
       "titleTrue": {
-        "en": "Charging on",
-        "de": "Laden an"
+        "en": "On",
+        "de": "An"
       },
       "titleFalse": {
-        "en": "Charging off",
-        "de": "Laden aus"
+        "en": "Off",
+        "de": "Aus"
       },
       "insightsTitleTrue": {
         "en": "Charging allowed",
@@ -4017,9 +4005,8 @@
         "de": "Laden gesperrt"
       },
       "getable": true,
-      "setable": false,
-      "uiComponent": "sensor",
-      "icon": "/assets/images/ev-station.svg",
+      "setable": true,
+      "uiComponent": "button",
       "insights": true
     },
     "wallbox_plug_locked": {
@@ -4110,6 +4097,28 @@
       "icon": "/assets/images/ev-station.svg",
       "insights": false
     },
+    "wallbox_start_charging": {
+      "type": "boolean",
+      "title": {
+        "en": "Start charging",
+        "de": "Laden starten"
+      },
+      "getable": false,
+      "setable": true,
+      "uiComponent": "button",
+      "icon": "/assets/images/ev-station.svg"
+    },
+    "wallbox_stop_charging": {
+      "type": "boolean",
+      "title": {
+        "en": "Stop charging",
+        "de": "Laden stoppen"
+      },
+      "getable": false,
+      "setable": true,
+      "uiComponent": "button",
+      "icon": "/assets/images/ev-station.svg"
+    },
     "wallbox_sun_mode": {
       "type": "boolean",
       "title": {
@@ -4117,12 +4126,12 @@
         "de": "Sonnenmodus"
       },
       "titleTrue": {
-        "en": "Sun mode on",
-        "de": "Sonnenmodus an"
+        "en": "On",
+        "de": "An"
       },
       "titleFalse": {
-        "en": "Sun mode off",
-        "de": "Sonnenmodus aus"
+        "en": "Off",
+        "de": "Aus"
       },
       "insightsTitleTrue": {
         "en": "Sun mode on",
@@ -4133,10 +4142,31 @@
         "de": "Sonnenmodus ausgeschaltet"
       },
       "getable": true,
-      "setable": false,
-      "uiComponent": "sensor",
-      "icon": "/assets/images/ev-station-solar.svg",
+      "setable": true,
+      "uiComponent": "button",
       "insights": true
+    },
+    "wallbox_sun_mode_off": {
+      "type": "boolean",
+      "title": {
+        "en": "Sun mode off",
+        "de": "Sonnenmodus aus"
+      },
+      "getable": false,
+      "setable": true,
+      "uiComponent": "button",
+      "icon": "/assets/images/ev-station-solar.svg"
+    },
+    "wallbox_sun_mode_on": {
+      "type": "boolean",
+      "title": {
+        "en": "Sun mode on",
+        "de": "Sonnenmodus an"
+      },
+      "getable": false,
+      "setable": true,
+      "uiComponent": "button",
+      "icon": "/assets/images/ev-station-solar.svg"
     }
   }
 }

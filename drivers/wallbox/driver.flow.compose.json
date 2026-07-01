@@ -91,51 +91,6 @@
       }
     },
     {
-      "id": "wallbox_start_charging",
-      "title": {
-        "de": "Wallbox Laden starten",
-        "en": "Start wallbox charging"
-      },
-      "titleFormatted": {
-        "de": "Laden starten (max. [[current]] A)",
-        "en": "Start charging (max. [[current]] A)"
-      },
-      "hint": {
-        "de": "Setzt die Wallbox in den Mischmodus und erlaubt das Laden (max. Stromstärke in Ampere). Standard 16 A. Das Fahrzeug muss angesteckt sein.",
-        "en": "Enables wallbox charging in mixed mode with the given max current (Amps). Default 16 A. The vehicle must be plugged in."
-      },
-      "args": [
-        {
-          "type": "number",
-          "name": "current",
-          "title": {
-            "de": "Max. Strom (A)",
-            "en": "Max current (A)"
-          },
-          "required": false,
-          "min": 6,
-          "max": 32,
-          "step": 1,
-          "value": 16
-        }
-      ]
-    },
-    {
-      "id": "wallbox_stop_charging",
-      "title": {
-        "de": "Wallbox Laden stoppen",
-        "en": "Stop wallbox charging"
-      },
-      "titleFormatted": {
-        "de": "Laden stoppen",
-        "en": "Stop charging"
-      },
-      "hint": {
-        "de": "Stoppt bzw. pausiert das Laden an der Wallbox (RSCP EXTERN_DATA Abort). Zum Fortsetzen die Karte „Laden starten“ verwenden.",
-        "en": "Stops or pauses charging at the wallbox (RSCP EXTERN_DATA abort). Use \"Start charging\" to resume."
-      }
-    },
-    {
       "id": "wallbox_set_sun_mode",
       "title": {
         "de": "Wallbox Sonnenmodus ein/aus",

@@ -1,0 +1,291 @@
+<html>
+<head>
+  <style>
+    body {
+      margin: 0;
+      padding: 8px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      color: #fff;
+      background: transparent;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .widget-container {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      gap: 8px;
+    }
+
+    .header {
+      font-size: 12px;
+      color: #aaa;
+      text-align: center;
+      margin-bottom: 4px;
+    }
+
+    .controls {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      flex: 1;
+      align-items: center;
+    }
+
+    .control {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 80px;
+    }
+
+    .circle {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: #222;
+      border: 3px solid #444;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      transition: all 0.2s ease;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+
+    .circle.active {
+      background: #1a2a1a;
+      border-color: #4ade80;
+      box-shadow: 0 0 12px rgba(74, 222, 128, 0.5);
+    }
+
+    .circle .icon {
+      filter: grayscale(0.3);
+    }
+
+    .circle.active .icon {
+      filter: none;
+    }
+
+    .circle {
+      cursor: pointer;
+    }
+
+    .circle:hover {
+      transform: scale(1.05);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    }
+
+    .label {
+      margin-top: 6px;
+      font-size: 11px;
+      color: #ccc;
+      text-align: center;
+      line-height: 1.2;
+    }
+
+    .status {
+      font-size: 10px;
+      color: #888;
+      margin-top: 2px;
+    }
+
+    .circle.active + .label {
+      color: #4ade80;
+    }
+
+    .info {
+      font-size: 10px;
+      color: #666;
+      text-align: center;
+      margin-top: auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="widget-container">
+    <div id="header" class="header homey-text-bold"></div>
+
+    <div class="controls">
+      <!-- Laden -->
+      <div class="control">
+        <div id="laden-circle" class="circle">
+          <span class="icon">⚡</span>
+        </div>
+        <div class="label">Laden</div>
+        <div id="laden-status" class="status"></div>
+      </div>
+
+      <!-- Sonnenmodus -->
+      <div class="control">
+        <div id="sonne-circle" class="circle">
+          <span class="icon">☀</span>
+        </div>
+        <div class="label">Sonnenmodus</div>
+        <div id="sonne-status" class="status"></div>
+      </div>
+    </div>
+
+    <div id="info" class="info"></div>
+  </div>
+
+  <script type="text/javascript">
+    const SYNC_INTERVAL = 8000;
+    const WIDGET_HEIGHT = 200;
+
+    let currentStationId = null;
+
+    function onHomeyReady(Homey) {
+      // Signal ready immediately so it doesn't load forever
+      Homey.ready({ height: WIDGET_HEIGHT });
+
+      resolvePlantId(Homey).then(plantId => {
+        if (!plantId) {
+          document.getElementById('header').textContent = 'Kein HKW ausgewählt';
+          document.getElementById('info').textContent = 'Widget-Einstellungen öffnen und Hauskraftwerk auswählen.';
+          return;
+        }
+        currentStationId = plantId;
+        attachClickListeners(Homey);
+        sync(Homey, plantId);
+        setInterval(() => sync(Homey, plantId), SYNC_INTERVAL);
+      });
+    }
+
+    function attachClickListeners(Homey) {
+      const ladenCircle = document.getElementById('laden-circle');
+      const sonneCircle = document.getElementById('sonne-circle');
+
+      if (ladenCircle) {
+        ladenCircle.onclick = async () => {
+          if (!currentStationId) return;
+          const originalActive = ladenCircle.classList.contains('active');
+          // optimistic toggle
+          ladenCircle.classList.toggle('active');
+          const ladenStatus = document.getElementById('laden-status');
+          const originalStatus = ladenStatus ? ladenStatus.textContent : '';
+          if (ladenStatus) ladenStatus.textContent = 'Wird gesendet...';
+          try {
+            await Homey.api('POST', '/toggle', { stationId: currentStationId, type: 'charging' });
+            // re-sync to get verified state
+            await sync(Homey, currentStationId);
+            if (ladenStatus) ladenStatus.textContent = 'Gesendet';
+            setTimeout(() => {
+              if (ladenStatus) ladenStatus.textContent = originalStatus || (ladenCircle.classList.contains('active') ? 'An' : 'Aus');
+            }, 1500);
+          } catch (e) {
+            console.error('Toggle Fehler:', e);
+            // revert on error
+            ladenCircle.classList.toggle('active', originalActive);
+            if (ladenStatus) ladenStatus.textContent = 'Fehler';
+            setTimeout(() => {
+              if (ladenStatus) ladenStatus.textContent = originalStatus;
+            }, 2000);
+          }
+        };
+      }
+
+      if (sonneCircle) {
+        sonneCircle.onclick = async () => {
+          if (!currentStationId) return;
+          const originalActive = sonneCircle.classList.contains('active');
+          sonneCircle.classList.toggle('active');
+          const sonneStatus = document.getElementById('sonne-status');
+          const originalStatus = sonneStatus ? sonneStatus.textContent : '';
+          if (sonneStatus) sonneStatus.textContent = 'Wird gesendet...';
+          try {
+            await Homey.api('POST', '/toggle', { stationId: currentStationId, type: 'sunMode' });
+            await sync(Homey, currentStationId);
+            if (sonneStatus) sonneStatus.textContent = 'Gesendet';
+            setTimeout(() => {
+              if (sonneStatus) sonneStatus.textContent = originalStatus || (sonneCircle.classList.contains('active') ? 'An' : 'Aus');
+            }, 1500);
+          } catch (e) {
+            console.error('Toggle Fehler:', e);
+            sonneCircle.classList.toggle('active', originalActive);
+            if (sonneStatus) sonneStatus.textContent = 'Fehler';
+            setTimeout(() => {
+              if (sonneStatus) sonneStatus.textContent = originalStatus;
+            }, 2000);
+          }
+        };
+      }
+    }
+
+    async function resolvePlantId(Homey) {
+      const settings = Homey.getSettings();
+      let plantId = settings.plantId;
+      if (plantId && typeof plantId === 'object' && plantId.id != null) {
+        plantId = plantId.id;
+      }
+      if (plantId) return plantId;
+
+      // Fallback: fetch plants and pick first if only one (so no need to select manually)
+      try {
+        const plants = await Homey.api('GET', '/');
+        if (plants.length === 1) {
+          return plants[0].id;
+        }
+        if (plants.length > 1) {
+          document.getElementById('info').textContent = 'Bitte HKW in Widget-Einstellungen auswählen.';
+        }
+      } catch (e) {
+        console.error(e);
+      }
+      return null;
+    }
+
+    async function sync(Homey, plantId) {
+      try {
+        const wallboxes = await Homey.api('GET', `/wallbox?stationId=${encodeURIComponent(plantId)}`);
+
+        if (!wallboxes || wallboxes.length === 0) {
+          document.getElementById('header').textContent = 'Keine Wallbox gefunden';
+          document.getElementById('info').textContent = 'Für das gewählte HKW ist keine Wallbox konfiguriert.';
+          return;
+        }
+
+        // Take the first wallbox
+        const wb = wallboxes[0];
+
+        // Header
+        document.getElementById('header').textContent = wb.name || 'Wallbox';
+
+        // Laden
+        const ladenCircle = document.getElementById('laden-circle');
+        const ladenStatus = document.getElementById('laden-status');
+        if (wb.charging) {
+          ladenCircle.classList.add('active');
+          ladenStatus.textContent = 'An';
+        } else {
+          ladenCircle.classList.remove('active');
+          ladenStatus.textContent = 'Aus';
+        }
+
+        // Sonnenmodus
+        const sonneCircle = document.getElementById('sonne-circle');
+        const sonneStatus = document.getElementById('sonne-status');
+        if (wb.sunMode) {
+          sonneCircle.classList.add('active');
+          sonneStatus.textContent = 'An';
+        } else {
+          sonneCircle.classList.remove('active');
+          sonneStatus.textContent = 'Aus';
+        }
+
+        // Optional info
+        const info = document.getElementById('info');
+        if (wb.power !== undefined) {
+          info.textContent = `${Math.round(wb.power)} W`;
+        }
+      } catch (err) {
+        console.error(err);
+        document.getElementById('header').textContent = 'Fehler beim Laden';
+        document.getElementById('info').textContent = 'API-Fehler. Widget-Einstellungen prüfen.';
+      }
+    }
+  </script>
+</body>
+</html>

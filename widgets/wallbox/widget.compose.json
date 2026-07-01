@@ -1,0 +1,36 @@
+{
+  "name": {
+    "en": "Wallbox",
+    "de": "Wallbox"
+  },
+  "transparent": false,
+  "height": 200,
+  "settings": [
+    {
+      "id": "plantId",
+      "type": "autocomplete",
+      "title": {
+        "de": "Hauskraftwerk",
+        "en": "Home power plant"
+      }
+    }
+  ],
+  "api": {
+    "readHomePowerPlants": {
+      "method": "GET",
+      "path": "/"
+    },
+    "getWallboxStatus": {
+      "method": "GET",
+      "path": "/wallbox"
+    },
+    "toggle": {
+      "method": "POST",
+      "path": "/toggle"
+    },
+    "log": {
+      "method": "POST",
+      "path": "/log"
+    }
+  }
+}

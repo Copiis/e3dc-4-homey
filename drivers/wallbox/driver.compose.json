@@ -40,10 +40,18 @@
       "uiComponent": null
     },
     "wallbox_charging": {
+      "title": {
+        "en": "Charging",
+        "de": "Laden"
+      },
       "preventInsights": true,
       "preventTag": true
     },
     "wallbox_sun_mode": {
+      "title": {
+        "en": "Sun mode",
+        "de": "Sonnenmodus"
+      },
       "preventInsights": true,
       "preventTag": true
     },
