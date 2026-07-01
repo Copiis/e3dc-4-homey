@@ -51,10 +51,14 @@ export function localDateString(timezone: string, now: Date = new Date()): strin
 
 export function addDaysToLocalDateString(dateStr: string, days: number): string {
   const [year, month, day] = dateStr.split('-').map(Number);
-  const date = new Date(year, month - 1, day + days);
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
+  // Use UTC-based arithmetic for the calendar day label.
+  // This avoids the runtime's local timezone affecting the computed YYYY-MM-DD
+  // (e.g. when crossing month/year boundaries or in non-UTC environments).
+  const date = new Date(Date.UTC(year, month - 1, day));
+  date.setUTCDate(date.getUTCDate() + days);
+  const y = date.getUTCFullYear();
+  const m = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(date.getUTCDate()).padStart(2, '0');
   return `${y}-${m}-${d}`;
 }
 

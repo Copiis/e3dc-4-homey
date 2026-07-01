@@ -24,6 +24,7 @@ import {
   loadGridCumulativeArchive,
   localDateString,
   needsArchiveCatchUp,
+  addDaysToLocalDateString,
 } from '../../src/utils/grid-cumulative-archive';
 
 const TODAY_SYNC_INTERVAL_MS = 1000 * 60 * 5;
@@ -102,12 +103,8 @@ class GridMeterDevice extends Homey.Device implements GridMeter {
     if (lastSyncedDate && lastSyncedDate < todayStr) {
       return lastSyncedDate;
     }
-    const [year, month, day] = todayStr.split('-').map(Number);
-    const date = new Date(year, month - 1, day - 1);
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, '0');
-    const d = String(date.getDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
+    // Delegate to the timezone-safe helper (fixed to use UTC day arithmetic).
+    return addDaysToLocalDateString(todayStr, -1);
   }
 
   private shouldArchiveDate(archive: GridCumulativeArchive, archivedDate: string): boolean {

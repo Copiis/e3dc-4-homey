@@ -1,4 +1,8 @@
 {
+  "1.8.14": {
+    "de": "- **Netz-Gesamtzähler:** Zeitzonenkorrektur für Mitternachts-Rollover und Archiv (verhindert falsche kumulierte Import/Export-Werte bei manchen Zeitzonen)",
+    "en": "- **Grid cumulative counters:** Fixed timezone handling for midnight rollover and archive (prevents incorrect total import/export values for some timezones)"
+  },
   "1.8.13": {
     "de": "- **Wallbox-Flows:** Laden freigeben/stoppen und Sonnenmodus mit korrekter RSCP-Steuerung (Pause-Toggle wie python-e3dc, ioBroker-Sequenz, REQ_SET_MODE)\n- **Wallbox:** Flow-Karten auf Geräteebene; Erfolg erst nach RSCP-Rücklesen (kein falscher Flow-Grün mehr)\n- **Diagnosebericht:** `algHex` wird dekodiert (Sonnenmodus, gesperrt, aktiv, Strom)",
     "en": "- **Wallbox flows:** allow/stop charging and sun mode with correct RSCP control (pause toggle per python-e3dc, ioBroker sequence, REQ_SET_MODE)\n- **Wallbox:** device-level flow cards; success only after RSCP read-back (no more false green flows)\n- **Diagnostic report:** `algHex` decoded (sun mode, blocked, active, current)"
