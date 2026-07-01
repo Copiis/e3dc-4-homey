@@ -44,6 +44,10 @@ export class SetMaxChargingPowerActionCard implements RunListener {
                                 .then(result => {
                                     if (result.maxCurrentChargingPower == ResultCode.SUCCESS) {
                                         hps.log('Max allowed charging power configured')
+                                        // best-effort post-read verify (consistent with wallbox readback)
+                                        hps.getApi().readChargingConfiguration(true, hps.asSimple()).then(verify => {
+                                            hps.log('Post-write verify charging limit: ' + verify.currentLimitations.maxCurrentChargingPower)
+                                        }).catch(() => {})
                                         const token = {
                                             'max charging limit': requestedWattLimit
                                         }

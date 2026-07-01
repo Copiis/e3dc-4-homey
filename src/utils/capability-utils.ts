@@ -29,7 +29,7 @@ function executeUpdateCapabilityValue<T>(id: string, newValue: T, device: Device
             newValue: newValue
         }
     } else {
-        device.log(device.getName() + ': skipping value for ' + id + ' -> no change')
+        // no change - intentionally silent to avoid log spam on every 20s sync
         return undefined
     }
 }

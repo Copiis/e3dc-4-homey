@@ -44,6 +44,10 @@ export class SetMaxDischargingPowerActionCard implements RunListener {
                                 .then(result => {
                                     if (result.maxCurrentDischargingPower == ResultCode.SUCCESS) {
                                         hps.log('Max allowed discharging power configured')
+                                        // best-effort post-read verify (consistent with wallbox readback)
+                                        hps.getApi().readChargingConfiguration(true, hps.asSimple()).then(verify => {
+                                            hps.log('Post-write verify discharging limit: ' + verify.currentLimitations.maxCurrentDischargingPower)
+                                        }).catch(() => {})
                                         const token = {
                                             'max discharging limit': requestedWattLimit
                                         }

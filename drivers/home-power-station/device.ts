@@ -567,8 +567,16 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
     return new Promise((resolve, reject) => {
       this.log('Starting sync ...')
       const station = this.getApi()
+
+      // Only query wallbox states if there are linked wallbox devices for this station (optimization)
+      const wallboxDriver = this.homey.drivers.getDriver('wallbox')
+      const hasWallboxes = wallboxDriver.getDevices().some((d: any) => {
+        const cfg = d.getStoreValue('settings')
+        return cfg && String(cfg.stationId) === this.getId()
+      })
+
       station
-          .readLiveData(true, this)
+          .readLiveData(true, this, hasWallboxes)
           .then(result => {
             try {
               updateCapabilityValue('measure_power', result.pvDelivery, this)
@@ -607,6 +615,7 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
               this.error('Error processing live data: ' + formatError(e))
               this.recordSyncFailure('Verarbeitung Live-Daten / processing live data: ' + formatError(e))
               this.publishDiagnosticReport().catch(() => undefined)
+              this.syncErrorCount++
               resolve(undefined)
             }
           })

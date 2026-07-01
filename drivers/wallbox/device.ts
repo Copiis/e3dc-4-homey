@@ -46,6 +46,18 @@ class WallboxDevice extends Homey.Device implements Wallbox {
   private capabilitiesReady = false;
   private wasReadyToCharge = false;
 
+  // Simple serializer to prevent overlapping RSCP commands from concurrent flows (bugfix for races)
+  private _commandChain: Promise<any> = Promise.resolve();
+
+  private async serialize<T>(fn: () => Promise<T>): Promise<T> {
+    const result = this._commandChain.then(fn).catch(err => {
+      this.error('Wallbox command chain error: ' + formatError(err));
+      throw err;
+    });
+    this._commandChain = result.catch(() => undefined);
+    return result;
+  }
+
   async onInit() {
     this.log('WallboxDevice has been initialized');
     try {
@@ -229,7 +241,7 @@ class WallboxDevice extends Homey.Device implements Wallbox {
     this.syncEmsSettings(settings);
   }
 
-  private static readonly LIVE_STATE_VERIFY_DELAYS_MS = [500, 1000, 2000];
+  private static readonly LIVE_STATE_VERIFY_DELAYS_MS = [1000, 2500, 5000];
 
   private async waitForLiveStateMatch(
     matches: (state: WallboxLiveState) => boolean,
@@ -261,6 +273,10 @@ class WallboxDevice extends Homey.Device implements Wallbox {
   }
 
   async applyChargingAllowed(enabled: boolean, maxCurrentA?: number): Promise<WallboxCommandResult> {
+    return this.serialize(() => this._applyChargingAllowed(enabled, maxCurrentA));
+  }
+
+  private async _applyChargingAllowed(enabled: boolean, maxCurrentA?: number): Promise<WallboxCommandResult> {
     const live = await this.fetchLiveState();
 
     if (enabled && isWallboxMixedChargingAllowed(live)) {
@@ -302,6 +318,10 @@ class WallboxDevice extends Homey.Device implements Wallbox {
   }
 
   async applySunMode(enabled: boolean, maxCurrentA?: number): Promise<WallboxCommandResult> {
+    return this.serialize(() => this._applySunMode(enabled, maxCurrentA));
+  }
+
+  private async _applySunMode(enabled: boolean, maxCurrentA?: number): Promise<WallboxCommandResult> {
     const live = await this.fetchLiveState();
 
     if (enabled && live.sunModeActive) {

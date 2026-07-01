@@ -720,7 +720,7 @@ export class RscpApi {
         }
     }
 
-    readLiveData(allowReconnect: boolean = true, log: Logger): Promise<LiveData> {
+    readLiveData(allowReconnect: boolean = true, log: Logger, readWallboxes: boolean = true): Promise<LiveData> {
         return new Promise<LiveData>((resolve, reject) => {
             const date = new Date()
             date.setHours(0, 0, 0, 0)
@@ -728,6 +728,18 @@ export class RscpApi {
             this.getOpenConnection(log)
                 .then(con => {
                     log.log('readLiveData: Connection received')
+                    if (!readWallboxes) {
+                        this.callLiveData(con, [], allowReconnect, log)
+                            .then(data => resolve(data))
+                            .catch(e => this.handleReadSyncDataError(
+                                allowReconnect,
+                                e,
+                                resolve,
+                                reject,
+                                log
+                            ))
+                        return
+                    }
                     const wallboxService = new DefaultWallboxService(con)
                     log.log('readLiveData: Reading connected wallboxes')
                     wallboxService.readConnectedWallboxes()

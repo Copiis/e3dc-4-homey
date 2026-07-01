@@ -1,4 +1,8 @@
 {
+  "1.8.15": {
+    "de": "- **Code-Review Fixes:** Weniger Log-Spam bei Syncs; Wallbox-Kommandos serialisiert gegen Race-Conditions; längere Verify-Timeouts; keine unnötigen Wallbox-Abfragen; bessere Nach-Prüfung bei Power-Limits; diverse kleinere Verbesserungen (Error-Counting, Promise-Pattern)",
+    "en": "- **Code review fixes:** Reduced log spam on syncs; wallbox commands serialized against races; longer verify timeouts; skip unnecessary wallbox queries; added post-read checks for power limits; various smaller improvements (error counting, Promise pattern)"
+  },
   "1.8.14": {
     "de": "- **Netz-Gesamtzähler:** Zeitzonenkorrektur für Mitternachts-Rollover und Archiv (verhindert falsche kumulierte Import/Export-Werte bei manchen Zeitzonen)",
     "en": "- **Grid cumulative counters:** Fixed timezone handling for midnight rollover and archive (prevents incorrect total import/export values for some timezones)"
