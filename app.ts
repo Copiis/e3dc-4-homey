@@ -19,6 +19,8 @@ class MyApp extends Homey.App {
     });
     this.registerPlantAutocompleteWidget('e3dc-hkw');
     this.registerPlantAutocompleteWidget('wallbox');
+    this.registerPlantAutocompleteWidget('hkw-ladeplaner');
+    this.registerPlantAutocompleteWidget('wallbox-ladeplaner');
     this.registerPlantAutocompleteWidget('power-overview');
     this.registerPlantAutocompleteWidget('live-energy-view');
 

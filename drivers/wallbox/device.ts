@@ -66,6 +66,69 @@ class WallboxDevice extends Homey.Device implements Wallbox {
     }
     this.setupFlowCards();
     this.registerCapabilityListeners();
+    this.startWallboxScheduleChecker();
+  }
+
+  private wallboxScheduleCheckId: NodeJS.Timeout | null = null;
+  private triggeredWallboxSchedules: Set<string> = new Set();
+
+  private startWallboxScheduleChecker() {
+    if (this.wallboxScheduleCheckId) clearInterval(this.wallboxScheduleCheckId);
+    this.wallboxScheduleCheckId = this.homey.setInterval(() => this.checkWallboxSchedules(), 60 * 1000);
+    setTimeout(() => this.checkWallboxSchedules(), 8000);
+  }
+
+  private async checkWallboxSchedules() {
+    const now = Date.now();
+    const json = this.getSetting('schedules') || '[]';
+    let schedules: any[] = [];
+    try { schedules = JSON.parse(json); } catch (e) { schedules = []; }
+
+    for (const s of schedules) {
+      if (!s || !s.start || !s.action) continue;
+      const id = s.id || (s.start + '_' + s.action);
+      const startTs = new Date(s.start).getTime();
+      if (isNaN(startTs)) continue;
+
+      let endTs: number | null = null;
+      if (s.untilFull) endTs = null;
+      else if (s.end) endTs = new Date(s.end).getTime();
+
+      const active = now >= startTs && (endTs === null || now < endTs);
+
+      if (active && !this.triggeredWallboxSchedules.has(id)) {
+        this.log(`Wallbox schedule triggered: ${s.action}`);
+        try {
+          if (s.action === 'allow') await this.applyChargingAllowed(true, s.current);
+          if (s.action === 'block') await this.applyChargingAllowed(false);
+          if (s.action === 'sun_on') await this.applySunMode(true);
+          if (s.action === 'sun_off') await this.applySunMode(false);
+
+          if (s.batteryFirst !== undefined || s.mix !== undefined || s.dischargeSoc !== undefined) {
+            this.log(`Wallbox schedule additional: batteryFirst=${s.batteryFirst}, mix=${s.mix}, dischargeUntil=${s.dischargeSoc}`);
+            // In real impl, temporarily apply via settings or RSCP if needed
+          }
+
+          this.triggeredWallboxSchedules.add(id);
+        } catch (e) {
+          this.error('Wallbox schedule apply error: ' + formatError(e));
+        }
+      }
+
+      if (endTs && now > endTs && this.triggeredWallboxSchedules.has(id)) {
+        this.triggeredWallboxSchedules.delete(id);
+      }
+
+      // Stop on vehicle SOC for untilFull
+      if (s.untilFull && this.triggeredWallboxSchedules.has(id)) {
+        const vSoc = this.getCapabilityValue('measure_vehicle_soc');
+        if (typeof vSoc === 'number' && vSoc >= (s.untilVehicleSoc || 95)) {
+          this.log('Wallbox until full (vehicle SOC) reached');
+          if (s.action === 'allow') await this.applyChargingAllowed(false);
+          this.triggeredWallboxSchedules.delete(id);
+        }
+      }
+    }
   }
 
   private bindDevice(listener: RunListener): (args: Record<string, unknown>, state: unknown) => Promise<unknown> {
@@ -477,6 +540,7 @@ class WallboxDevice extends Homey.Device implements Wallbox {
 
   async onDeleted() {
     this.log('WallboxDevice has been deleted');
+    if (this.wallboxScheduleCheckId) clearInterval(this.wallboxScheduleCheckId);
   }
 
   asSimple(): SimpleClass {

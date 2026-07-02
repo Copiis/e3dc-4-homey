@@ -247,27 +247,50 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
     const now = Date.now()
     for (const s of this.emsSchedules) {
       if (!s || !s.start || !s.mode) continue
-      const id = s.id || (s.start + '_' + s.mode)
+
+      const id = s.id || (s.start + '_' + (s.mode || ''))
       const startTs = new Date(s.start).getTime()
       if (isNaN(startTs)) continue
-      const durationMs = (s.durationMin || 0) * 60 * 1000
-      const endTs = startTs + durationMs
 
-      if (now >= startTs && now < endTs && !this.triggeredEmsSchedules.has(id)) {
-        this.log('EMS schedule triggered: ' + s.mode + ' ' + (s.powerW || 0) + 'W for ' + (s.durationMin || 0) + 'min')
+      // Determine effective end time
+      let endTs: number | null = null
+      if (s.untilFull) {
+        endTs = null // open ended, handled by monitoring
+      } else if (s.end) {
+        endTs = new Date(s.end).getTime()
+      } else if (s.durationMin) {
+        endTs = startTs + s.durationMin * 60 * 1000
+      }
+
+      const isInWindow = now >= startTs && (endTs === null || now < endTs)
+
+      if (isInWindow && !this.triggeredEmsSchedules.has(id)) {
+        this.log(`EMS schedule triggered: ${s.mode} ${s.powerW || 0}W (untilSoc=${s.untilSoc || 'no'})`)
+
         const modeNum = this.mapEmsModeToNumber(s.mode)
         const powerW = typeof s.powerW === 'number' ? s.powerW : 0
-        const expiresAt = Date.now() + durationMs
 
-        this.setPowerModeState({ mode: modeNum, powerW, expiresAt })
-        this.getApi().setPowerMode(modeNum, powerW, true, this)
-          .catch(e => this.error('Scheduled setPowerMode failed: ' + formatError(e)))
+        if (s.untilSoc) {
+          // until specific SOC for house battery
+          this.setPowerModeState({ mode: modeNum, powerW, expiresAt: Date.now() + 48 * 60 * 60 * 1000, untilSoc: s.untilSoc })
+          this.getApi().setPowerMode(modeNum, powerW, true, this)
+            .catch(e => this.error('Scheduled untilSoc powerMode failed: ' + formatError(e)))
+        } else if (s.untilFull || !endTs) {
+          this.setPowerModeState({ mode: modeNum, powerW, expiresAt: Date.now() + 24 * 60 * 60 * 1000 })
+          this.getApi().setPowerMode(modeNum, powerW, true, this)
+            .catch(e => this.error('Scheduled open powerMode failed: ' + formatError(e)))
+        } else {
+          const expiresAt = endTs || (Date.now() + 60 * 60 * 1000)
+          this.setPowerModeState({ mode: modeNum, powerW, expiresAt })
+          this.getApi().setPowerMode(modeNum, powerW, true, this)
+            .catch(e => this.error('Scheduled setPowerMode failed: ' + formatError(e)))
+        }
 
         this.triggeredEmsSchedules.add(id)
       }
 
-      // Clean old triggered
-      if (now > endTs && this.triggeredEmsSchedules.has(id)) {
+      // Cleanup finished fixed-end schedules
+      if (endTs && now > endTs && this.triggeredEmsSchedules.has(id)) {
         this.triggeredEmsSchedules.delete(id)
       }
     }
@@ -304,7 +327,20 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
     if (!state) {
       return
     }
-    if (Date.now() >= state.expiresAt) {
+
+    // Check untilSoc condition for house battery
+    if (state.untilSoc) {
+      const currentSoc = this.getCurrentSOC() * 100
+      if (currentSoc >= state.untilSoc) {
+        this.log(`Power mode untilSoc ${state.untilSoc}% reached (${currentSoc}%), reverting to auto`)
+        this.powerModeState = null
+        this.getApi().setPowerMode(POWER_MODE_AUTO, 0, true, this)
+          .catch(e => this.error('Power mode untilSoc revert failed: ' + formatError(e)))
+        return
+      }
+    }
+
+    if (state.expiresAt && Date.now() >= state.expiresAt) {
       this.log('Power mode expired, reverting to auto')
       this.powerModeState = null
       this.getApi()

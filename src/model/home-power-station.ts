@@ -7,6 +7,7 @@ export interface PowerModeState {
     mode: number
     powerW: number
     expiresAt: number  // Unix timestamp in ms
+    untilSoc?: number  // optional: stop when house battery SOC reaches this %
 }
 
 export interface HomePowerStation extends InternalDevice{
