@@ -1,5 +1,5 @@
 {
-  "1.8.21": {
+  "1.8.22": {
     "de": "- **E3DC-HKW Widget:** Bessere Unterstützung für Nutzer ohne Wallbox (hasWallbox-Erkennung, Linien und Sektion werden sauber ausgeblendet, dynamische Höhe)\n- **Widget-Symbole:** Angepasste Icons für Haus, Strommast, Batterie, Wallbox und Solarpaneele\n- **Widget:** Verbessertes Ausblenden und Layout-Anpassung\n- **PV-Prognose:** Angepasste Prognose wird nicht mehr künstlich zu hoch getrieben. Statt vergangener Leistung auf die Zukunft hochzuskalieren, wird nun die tatsächliche Produktion + die ursprüngliche Rest-Prognose verwendet.",
     "en": "- **E3DC-HKW Widget:** Better support for users without Wallbox (hasWallbox detection, lines and section are cleanly hidden, dynamic height)\n- **Widget icons:** Updated icons for house, power pylon, battery, wallbox and solar panels\n- **Widget:** Improved hiding behavior and layout adaptation\n- **PV forecast:** Adjusted forecast no longer artificially inflated. Instead of scaling past performance onto the future, it now uses actual production + the original remaining forecast."
   },
