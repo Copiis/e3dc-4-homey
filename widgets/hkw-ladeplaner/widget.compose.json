@@ -1,0 +1,36 @@
+{
+  "name": {
+    "en": "HKW Ladeplaner",
+    "de": "HKW Ladeplaner"
+  },
+  "transparent": false,
+  "height": 380,
+  "settings": [
+    {
+      "id": "plantId",
+      "type": "autocomplete",
+      "title": {
+        "de": "Hauskraftwerk",
+        "en": "Home power plant"
+      }
+    }
+  ],
+  "api": {
+    "readHomePowerPlants": {
+      "method": "GET",
+      "path": "/"
+    },
+    "getHkwSchedules": {
+      "method": "GET",
+      "path": "/hkw-schedules"
+    },
+    "saveHkwSchedules": {
+      "method": "POST",
+      "path": "/hkw-schedules"
+    },
+    "log": {
+      "method": "POST",
+      "path": "/log"
+    }
+  }
+}

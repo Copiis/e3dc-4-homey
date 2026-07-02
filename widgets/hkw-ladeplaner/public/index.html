@@ -1,0 +1,275 @@
+<html>
+<head>
+  <style>
+    body { margin: 0; padding: 8px; font-family: system-ui, sans-serif; color: #fff; background: transparent; font-size: 13px; }
+    .header { font-size: 14px; font-weight: 600; margin-bottom: 8px; text-align: center; }
+    .section { background: #222; border-radius: 8px; padding: 8px; margin-bottom: 8px; }
+    .label { font-size: 11px; color: #aaa; margin-bottom: 4px; }
+    input, select { background: #111; border: 1px solid #444; color: #fff; padding: 4px; border-radius: 4px; width: 100%; box-sizing: border-box; }
+    .row { display: flex; gap: 8px; margin-bottom: 6px; }
+    .row > div { flex: 1; }
+    .dates-row { align-items: flex-start; flex-wrap: nowrap; }
+    .date-col { display: flex; flex-direction: column; }
+    .date-col .label { margin-bottom: 2px; }
+    button { background: #2a5; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; }
+    .plan { background: #333; padding: 6px; border-radius: 4px; margin-bottom: 4px; font-size: 12px; }
+    .plan-header { display: flex; justify-content: space-between; }
+    .small { font-size: 10px; color: #888; }
+    .until { color: #4ade80; }
+    input:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+<body>
+<div class="header">HKW Ladeplaner</div>
+
+<div class="section">
+  <div class="label">Neuer Plan</div>
+  <div class="row dates-row" style="flex-wrap: nowrap;">
+    <div class="date-col">
+      <div class="label">Start</div>
+      <input type="datetime-local" id="start">
+    </div>
+    <div class="date-col">
+      <div class="label" id="end-label">Ende</div>
+      <input type="datetime-local" id="end">
+    </div>
+  </div>
+  <div style="margin-top:4px; display:flex; align-items:center; gap:4px; white-space: nowrap;">
+    <input type="checkbox" id="until-soc">
+    <span style="white-space: nowrap;">Bis SOC</span>
+    <input type="number" id="soc" value="95" min="50" max="100" style="width:60px"> %
+  </div>
+
+  <div class="row">
+    <div>
+      <div class="label">Modus</div>
+      <select id="mode">
+        <option value="charge">Laden</option>
+        <option value="discharge">Entladen</option>
+        <option value="idle">Sperren</option>
+      </select>
+    </div>
+    <div>
+      <div class="label">Leistung (W)</div>
+      <input type="number" id="power" value="3000" step="100">
+    </div>
+  </div>
+
+  <button onclick="addPlan()" style="width:100%; margin-top:4px">Plan hinzufügen</button>
+</div>
+
+<div class="section">
+  <div class="label">Aktive Pläne <span id="plant-debug" class="small" style="color:#888"></span></div>
+  <div id="plans"></div>
+</div>
+
+<script>
+let Homey = null;
+let plantId = null;
+
+async function onHomeyReady(h) {
+  Homey = h;
+  Homey.ready({ height: 380 });
+
+  const settings = Homey.getSettings();
+  let storedId = settings.plantId && settings.plantId.id ? settings.plantId.id : settings.plantId;
+
+  let plants = [];
+  try {
+    plants = await Homey.api('GET', '/');
+  } catch(e) {
+    console.error('Failed to load plants', e);
+  }
+
+  // Validate stored plantId against current devices
+  let matched = plants.find(p => p.id === storedId);
+
+  if (!matched) {
+    if (plants.length === 1) {
+      matched = plants[0];
+      plantId = matched.id;
+      // persist the (new) default selection
+      Homey.setSettings({ plantId: matched });
+    } else if (plants.length > 1) {
+      document.body.innerHTML = '<div style="color:#f88; text-align:center; padding:20px">Bitte HKW im Widget auswählen</div>';
+      return;
+    } else {
+      document.body.innerHTML = '<div style="color:#f88; text-align:center; padding:20px">Kein HKW gefunden</div>';
+      return;
+    }
+  } else {
+    plantId = matched.id;
+  }
+
+  if (!plantId) {
+    document.body.innerHTML = '<div style="color:#f88; text-align:center; padding:20px">Bitte HKW im Widget auswählen</div>';
+    return;
+  }
+
+  const debugEl = document.getElementById('plant-debug');
+  if (debugEl) {
+    const displayName = matched ? matched.name : plantId;
+    debugEl.textContent = `HKW: ${displayName} (${plantId})`;
+  }
+
+  // Debug-Hinweis für Logs
+  console.log('%c[HKW-Ladeplaner] Widget gestartet. Für App-Logs: Terminal → cd in den App-Ordner → homey app log', 'color: #888');
+
+  // Disable end input when "Bis SOC" is selected
+  const untilSocCb = document.getElementById('until-soc');
+  const endInput = document.getElementById('end');
+  const endLabel = document.getElementById('end-label');
+
+  function updateEndDisabled() {
+    const checked = untilSocCb.checked;
+    endInput.disabled = checked;
+    if (checked) {
+      endInput.value = '';
+    }
+  }
+
+  untilSocCb.addEventListener('change', updateEndDisabled);
+  updateEndDisabled(); // initial state
+
+  // Auto-fill end time 30 min after start if not set or invalid
+  const startEl = document.getElementById('start');
+  const endEl = document.getElementById('end');
+  function autoFillEnd() {
+    if (untilSocCb.checked) return;
+    if (!startEl.value) return;
+    const s = new Date(startEl.value);
+    if (!endEl.value || new Date(endEl.value) <= s) {
+      const e = new Date(s);
+      e.setMinutes(e.getMinutes() + 30);
+      const pad = (n) => n.toString().padStart(2, '0');
+      endEl.value = `${e.getFullYear()}-${pad(e.getMonth()+1)}-${pad(e.getDate())}T${pad(e.getHours())}:${pad(e.getMinutes())}`;
+    }
+  }
+  startEl.addEventListener('change', autoFillEnd);
+  startEl.addEventListener('input', autoFillEnd);
+
+  loadPlans();
+  setInterval(loadPlans, 10000);  // faster refresh for schedule list
+}
+
+async function loadPlans() {
+  try {
+    const res = await Homey.api('GET', `/hkw-schedules?plantId=${plantId}`);
+    let plans = res.schedules || [];
+    await Homey.api('POST', '/log', { widget: 'hkw-ladeplaner', message: `loadPlans: plantId=${plantId}, received ${plans.length} raw plans` });
+    const now = Date.now();
+    const before = plans.length;
+    plans = plans.filter(p => {
+      if (p.untilSoc || p.untilFull) return true;
+      if (p.end) {
+        const endTs = new Date(p.end).getTime();
+        return isNaN(endTs) || now < endTs;   // remove immediately on expiry
+      }
+      return true;
+    });
+    await Homey.api('POST', '/log', { widget: 'hkw-ladeplaner', message: `loadPlans: after filter ${plans.length} active (was ${before})` });
+    const container = document.getElementById('plans');
+    container.innerHTML = '';
+
+    if (plans.length === 0) {
+      container.innerHTML = '<div class="small">Keine Pläne</div>';
+      return;
+    }
+
+    const modeLabels = {
+      'charge': 'Laden',
+      'discharge': 'Entladen',
+      'idle': 'Sperren'
+    };
+
+    plans.forEach((p, i) => {
+      const div = document.createElement('div');
+      div.className = 'plan';
+      let endInfo = p.untilSoc ? `bis ${p.untilSoc}%` : (p.end ? new Date(p.end).toLocaleString() : 'offen');
+      const displayMode = modeLabels[p.mode] || p.mode;
+      div.innerHTML = `
+        <div class="plan-header">
+          <strong>${new Date(p.start).toLocaleString()}</strong>
+          <button onclick="removePlan(${i})" style="background:#c33; padding:1px 6px; font-size:10px">✕</button>
+        </div>
+        <div class="small">${displayMode} @ ${p.powerW || 0}W → ${endInfo}</div>
+      `;
+      container.appendChild(div);
+    });
+  } catch(e) { console.error(e); }
+}
+
+async function addPlan() {
+  const start = document.getElementById('start').value;
+  const end = document.getElementById('end').value;
+  const untilSoc = document.getElementById('until-soc').checked ? parseInt(document.getElementById('soc').value) : null;
+  const mode = document.getElementById('mode').value;
+  const power = parseInt(document.getElementById('power').value) || 0;
+
+  if (!start) { alert('Startzeit benötigt'); return; }
+
+  if (!untilSoc) {
+    if (!end) {
+      alert('Bitte ein Ende angeben oder "Bis SOC" aktivieren');
+      return;
+    }
+    const sD = new Date(start);
+    const eD = new Date(end);
+    if (eD <= sD) {
+      alert('Das Ende muss nach dem Start liegen');
+      return;
+    }
+  }
+
+  const plan = {
+    id: 'hkw-' + Date.now(),
+    start: start,
+    end: untilSoc ? null : end || null,
+    startTs: new Date(start).getTime(),
+    endTs: (untilSoc || !end) ? null : new Date(end).getTime(),
+    untilSoc: untilSoc,
+    mode,
+    powerW: power,
+    target: 'hps'
+  };
+
+  try {
+    await Homey.api('POST', '/log', { widget: 'hkw-ladeplaner', message: `addPlan: plantId=${plantId}, saving plan ${JSON.stringify({start: plan.start, end: plan.end, mode, powerW: plan.powerW, untilSoc: plan.untilSoc})}` });
+    const res = await Homey.api('GET', `/hkw-schedules?plantId=${plantId}`);
+    let list = res.schedules || [];
+    list.push(plan);
+    await Homey.api('POST', '/hkw-schedules', { plantId, schedules: list });
+    await Homey.api('POST', '/log', { widget: 'hkw-ladeplaner', message: `addPlan: saved successfully, now calling loadPlans()` });
+    loadPlans();
+  } catch(e) { 
+    await Homey.api('POST', '/log', { widget: 'hkw-ladeplaner', message: `addPlan ERROR: ${e.message || e}` });
+    alert('Fehler beim Speichern'); 
+  }
+}
+
+async function removePlan(index) {
+  const resBefore = await Homey.api('GET', `/hkw-schedules?plantId=${plantId}`);
+  const displayedPlans = resBefore.schedules || [];
+  const planToDelete = displayedPlans[index];
+  if (!planToDelete) {
+    loadPlans();
+    return;
+  }
+  await Homey.api('POST', '/log', { widget: 'hkw-ladeplaner', message: `removePlan: deleting ${planToDelete.id || index}` });
+  // Delete by id if present, else fall back to index on the current list
+  let list = displayedPlans;
+  if (planToDelete.id) {
+    list = list.filter(p => (p.id || '') !== planToDelete.id);
+  } else {
+    list = list.slice();
+    list.splice(index, 1);
+  }
+  await Homey.api('POST', '/hkw-schedules', { plantId, schedules: list });
+  loadPlans();
+}
+</script>
+</body>
+</html>

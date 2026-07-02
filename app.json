@@ -550,28 +550,20 @@
                 "en": "Select all, copy, paste into the forum thread. Top section = current status; analysis log below keeps error events (not cleared by new syncs). Flow card “Create diagnostic report” also works.",
                 "de": "Alles markieren, kopieren, im Forum-Thread einfügen. Oben = aktueller Stand; Analyse-Protokoll unten behält Fehler-Ereignisse (wird nicht von neuen Syncs gelöscht). Flow-Karte „Diagnosebericht erstellen“ geht auch."
               }
-            }
-          ]
-        },
-        {
-          "type": "group",
-          "label": {
-            "en": "Manual EMS schedules (experimental)",
-            "de": "Manuelle EMS-Zeitpläne (experimentell)"
-          },
-          "children": [
+            },
             {
               "id": "emsSchedules",
               "type": "textarea",
               "label": {
-                "en": "Schedules as JSON array",
-                "de": "Zeitpläne als JSON-Array"
+                "en": "EMS / Ladepläne (JSON, für Widget + Scheduler)",
+                "de": "EMS / Ladepläne (JSON, für Widget + Scheduler)"
               },
               "value": "[]",
               "hint": {
-                "en": "Enter a JSON array of schedules for manual EMS power mode planning. Each entry: start (ISO datetime), mode (auto|idle|charge|discharge|grid_charge), powerW, durationMin. Example:\n[\n  { \"start\": \"2026-07-05T14:00:00\", \"mode\": \"grid_charge\", \"powerW\": 3000, \"durationMin\": 60 },\n  { \"start\": \"2026-07-06T02:00:00\", \"mode\": \"discharge\", \"powerW\": 2500, \"durationMin\": 90 }\n]\nThe device will automatically activate the mode at the start time for the given duration (like the flow cards). Old/past entries are ignored. Edit carefully!",
-                "de": "JSON-Array mit Zeitplänen für manuelles Planen von EMS-Modi. Pro Eintrag: start (ISO-Datum/Zeit), mode (auto|idle|charge|discharge|grid_charge), powerW, durationMin. Beispiel:\n[\n  { \"start\": \"2026-07-05T14:00:00\", \"mode\": \"grid_charge\", \"powerW\": 3000, \"durationMin\": 60 },\n  { \"start\": \"2026-07-06T02:00:00\", \"mode\": \"discharge\", \"powerW\": 2500, \"durationMin\": 90 }\n]\nDas Gerät aktiviert den Modus automatisch zur Startzeit für die Dauer (ähnlich den Flow-Karten). Vergangene Einträge werden ignoriert. Vorsichtig editieren!"
-              }
+                "en": "Internal storage for HKW Ladeplaner schedules. Normally managed only via the dashboard widget. Do not edit manually unless you know what you are doing.",
+                "de": "Interner Speicher für HKW-Ladeplaner-Zeitpläne. Wird normalerweise nur über das Dashboard-Widget verwaltet. Nur manuell ändern, wenn du weißt, was du tust."
+              },
+              "uiComponent": null
             }
           ]
         }
@@ -3223,7 +3215,7 @@
         "de": "Wallbox Ladeplaner"
       },
       "transparent": false,
-      "height": 420,
+      "height": 400,
       "settings": [
         {
           "id": "plantId",

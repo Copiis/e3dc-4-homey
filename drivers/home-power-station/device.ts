@@ -134,6 +134,8 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
   private emsSchedules: any[] = []
   private emsScheduleCheckId: NodeJS.Timeout | null = null
   private triggeredEmsSchedules: Set<string> = new Set()
+  private scheduledPlanTimers: Map<string, NodeJS.Timeout> = new Map()
+  private scheduledExpireTimers: Map<string, NodeJS.Timeout> = new Map()
   async onInit() {
     this.log('HomePowerStationDevice has been initialized');
 
@@ -226,64 +228,270 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
     try {
       this.emsSchedules = JSON.parse(json)
       if (!Array.isArray(this.emsSchedules)) this.emsSchedules = []
-      this.log('Loaded ' + this.emsSchedules.length + ' EMS schedules')
+      this.log(`[Ladeplan] device=${this.getData().id} raw json length: ${json.length}, parsed ${this.emsSchedules.length} plans`)
+      this.diagnostic.recordAnalysis('info', `[Ladeplan] Loaded ${this.emsSchedules.length} plans from settings after setting change (device=${this.getData().id})`)
+
+      // Clean up any already expired fixed plans on load (immediate on expiry)
+      const now = Date.now()
+      const before = this.emsSchedules.length
+      this.emsSchedules = this.emsSchedules.filter(s => {
+        if (s.untilSoc || s.untilFull) return true
+        const eTs = (typeof s.endTs === 'number') ? s.endTs : (s.end ? this.parseDateTime(s.end) : null)
+        if (eTs != null) {
+          if (!isNaN(eTs) && now >= eTs) {
+            return false
+          }
+          return true
+        }
+        return true
+      })
+      if (this.emsSchedules.length < before) {
+        this.log('Cleaned expired EMS schedules on load')
+        this.setSettings({ emsSchedules: JSON.stringify(this.emsSchedules) })
+          .catch(e => this.error('Failed to persist cleaned schedules on load: ' + formatError(e)))
+      }
+
+      // If a currently active power mode was triggered by a schedule that was just manually deleted,
+      // cancel the override immediately (revert to auto).
+      if (this.powerModeState && this.powerModeState.scheduleId) {
+        const activeId = this.powerModeState.scheduleId;
+        const stillPresent = this.emsSchedules.some(p => {
+          const pId = p.id || (p.start + '_' + (p.mode || ''));
+          return pId === activeId;
+        });
+        if (!stillPresent) {
+          this.log(`[Ladeplan] Manually deleted running schedule ${activeId} — reverting power mode to AUTO`);
+          this.diagnostic.recordAnalysis('info', `[Ladeplan] Manually deleted active schedule ${activeId}, reverting to AUTO`);
+          this.clearExpireTimer(activeId);
+          this.powerModeState = null;
+          this.getApi().setPowerMode(POWER_MODE_AUTO, 0, true, this)
+            .catch(e => this.error('Failed to revert power mode after manual plan delete: ' + formatError(e)));
+          this.triggeredEmsSchedules.delete(activeId);
+        }
+      }
+
+      // Prune triggered set for any plans that were manually removed
+      const currentIds = new Set(this.emsSchedules.map(s => s.id || (s.start + '_' + (s.mode || ''))));
+      this.triggeredEmsSchedules.forEach(id => {
+        if (!currentIds.has(id)) this.triggeredEmsSchedules.delete(id);
+      });
+
+      // prune expire timers for removed plans
+      for (const id of Array.from(this.scheduledExpireTimers.keys())) {
+        const stillPresent = this.emsSchedules.some(s => (s.id || (s.start + '_' + (s.mode || ''))) === id);
+        if (!stillPresent) {
+          this.clearExpireTimer(id);
+        }
+      }
+
+      // Schedule exact timers for future plans for precise activation
+      this.clearScheduledPlanTimers()
+      this.clearScheduledExpireTimers()
+      const nowTs = Date.now()
+      for (const s of this.emsSchedules) {
+        if (!s.start || !s.mode) continue
+        const startTs = (typeof s.startTs === 'number') ? s.startTs : this.parseDateTime(s.start)
+        if (isNaN(startTs) || startTs <= nowTs) continue
+        const id = s.id || (s.start + '_' + (s.mode || ''))
+        const delay = startTs - nowTs
+        this.log(`[Ladeplan] scheduling timer for plan ${id} in ${delay}ms (start=${s.start} startTs=${startTs} now=${nowTs})`)
+        this.diagnostic.recordAnalysis('info', `[Ladeplan] scheduling timer for ${id} delay=${delay}ms start=${s.start}`)
+        const timer = setTimeout(() => {
+          this.activateScheduledPlanIfNeeded(s, id)
+          this.scheduledPlanTimers.delete(id)
+        }, delay)
+        this.scheduledPlanTimers.set(id, timer)
+      }
     } catch (e) {
       this.error('Failed to parse emsSchedules: ' + formatError(e))
       this.emsSchedules = []
     }
   }
 
+  private clearScheduledPlanTimers() {
+    this.scheduledPlanTimers.forEach(t => clearTimeout(t))
+    this.scheduledPlanTimers.clear()
+  }
+
+  private clearScheduledExpireTimers() {
+    this.scheduledExpireTimers.forEach(t => clearTimeout(t))
+    this.scheduledExpireTimers.clear()
+  }
+
+  private scheduleExpireTimer(scheduleId: string, expiresAt: number) {
+    this.clearExpireTimer(scheduleId)
+    const delay = Math.max(0, expiresAt - Date.now())
+    if (delay === 0) {
+      this.revertPowerMode(scheduleId)
+      return
+    }
+    const timer = setTimeout(() => {
+      this.revertPowerMode(scheduleId)
+      this.scheduledExpireTimers.delete(scheduleId)
+    }, delay)
+    this.scheduledExpireTimers.set(scheduleId, timer)
+  }
+
+  private clearExpireTimer(scheduleId: string) {
+    const t = this.scheduledExpireTimers.get(scheduleId)
+    if (t) {
+      clearTimeout(t)
+      this.scheduledExpireTimers.delete(scheduleId)
+    }
+  }
+
+  private revertPowerMode(scheduleId?: string) {
+    this.log(`[Ladeplan] Power mode EXPIRED, reverting to AUTO (scheduleId=${scheduleId || 'none'})`)
+    this.diagnostic.recordAnalysis('info', `[Ladeplan] Power mode expired for ${scheduleId || 'unknown'}`)
+    if (scheduleId) {
+      this.clearExpireTimer(scheduleId)
+      this.removeCompletedEmsSchedule(scheduleId)
+    }
+    this.powerModeState = null
+    this.getApi()
+        .setPowerMode(POWER_MODE_AUTO, 0, true, this)
+        .catch(e => this.error('[Ladeplan] auto revert failed: ' + formatError(e)))
+  }
+
+  private parseDateTime(str: string): number {
+    if (!str || typeof str !== 'string') return NaN
+    const d = new Date(str)
+    return isNaN(d.getTime()) ? NaN : d.getTime()
+  }
+
   private startEmsScheduleChecker() {
     if (this.emsScheduleCheckId) {
       clearInterval(this.emsScheduleCheckId)
     }
-    // Check every minute
-    this.emsScheduleCheckId = this.homey.setInterval(() => this.checkEmsSchedules(), 60 * 1000)
+    this.clearScheduledPlanTimers()
+    // Check every 10 seconds for better reliability with short plans
+    this.emsScheduleCheckId = this.homey.setInterval(() => this.checkEmsSchedules(), 10 * 1000)
     // Initial check
     setTimeout(() => this.checkEmsSchedules(), 5000)
   }
 
   private checkEmsSchedules() {
+    // Always refresh from the live setting. Programmatic setSettings() from the
+    // Ladeplaner widgets does not reliably trigger onSettings() for settings
+    // that are not declared in driver.settings.compose.json.
+    try {
+      const json = this.getSetting('emsSchedules') || '[]';
+      const fresh = JSON.parse(json);
+      if (Array.isArray(fresh)) {
+        if (fresh.length !== this.emsSchedules.length) {
+          this.log(`[Ladeplan] refreshed from setting: ${fresh.length} plans (was ${this.emsSchedules.length})`);
+        }
+        this.emsSchedules = fresh;
+      }
+    } catch (_) {
+      // keep previous in-memory value on parse error
+    }
+
     const now = Date.now()
+    const nowLocal = new Date().toLocaleString()
+    this.log(`[Ladeplan] checkEmsSchedules @ ${now} (${nowLocal}) | plans in memory: ${this.emsSchedules.length}`)
+    this.diagnostic.recordAnalysis('info', `[Ladeplan] check at ${nowLocal}, ${this.emsSchedules.length} plans`)
+
+    // Auto-remove completed fixed-time plans immediately on expiry
+    const beforeLen = this.emsSchedules.length
+    this.emsSchedules = this.emsSchedules.filter(s => {
+      if (s.untilSoc || s.untilFull) return true
+      const endTs = (typeof s.endTs === 'number') ? s.endTs : (s.end ? this.parseDateTime(s.end) : NaN)
+      if (!isNaN(endTs) && now >= endTs) {
+        // delete on expiry (no long grace — user wants auto-clean on Ablauf)
+        return false
+      }
+      return true
+    })
+    if (this.emsSchedules.length < beforeLen) {
+      this.log('[Ladeplan] Removed expired plans from storage')
+      this.diagnostic.recordAnalysis('info', '[Ladeplan] Removed expired plans from storage')
+      this.publishDiagnosticReport().catch(() => undefined)
+      const remainingIds = new Set(this.emsSchedules.map(s => s.id || (s.start + '_' + (s.mode || ''))))
+      this.triggeredEmsSchedules.forEach(id => {
+        if (!remainingIds.has(id)) this.triggeredEmsSchedules.delete(id)
+      })
+      this.setSettings({ emsSchedules: JSON.stringify(this.emsSchedules) })
+        .catch(e => this.error('[Ladeplan] persist cleaned schedules failed: ' + formatError(e)))
+    }
+
+    // Also cancel if a running schedule was manually removed (e.g. via widget while check runs)
+    if (this.powerModeState && this.powerModeState.scheduleId) {
+      const activeId = this.powerModeState.scheduleId;
+      const stillPresent = this.emsSchedules.some(s => (s.id || (s.start + '_' + (s.mode || ''))) === activeId);
+      if (!stillPresent) {
+        this.log(`[Ladeplan] Manually deleted running schedule ${activeId} during check — reverting to AUTO`);
+        this.diagnostic.recordAnalysis('info', `[Ladeplan] Manually deleted active schedule ${activeId}, reverting to AUTO`);
+        this.clearExpireTimer(activeId);
+        this.powerModeState = null;
+        this.getApi().setPowerMode(POWER_MODE_AUTO, 0, true, this)
+          .catch(e => this.error('Failed to revert power mode after manual delete (check): ' + formatError(e)));
+        this.triggeredEmsSchedules.delete(activeId);
+      }
+    }
+
     for (const s of this.emsSchedules) {
       if (!s || !s.start || !s.mode) continue
 
       const id = s.id || (s.start + '_' + (s.mode || ''))
-      const startTs = new Date(s.start).getTime()
+      let startTs = (typeof s.startTs === 'number') ? s.startTs : this.parseDateTime(s.start)
       if (isNaN(startTs)) continue
 
       // Determine effective end time
       let endTs: number | null = null
       if (s.untilFull) {
         endTs = null // open ended, handled by monitoring
+      } else if (typeof s.endTs === 'number') {
+        endTs = s.endTs
       } else if (s.end) {
-        endTs = new Date(s.end).getTime()
+        endTs = this.parseDateTime(s.end)
       } else if (s.durationMin) {
         endTs = startTs + s.durationMin * 60 * 1000
       }
 
       const isInWindow = now >= startTs && (endTs === null || now < endTs)
 
+      this.log(`[Ladeplan] plan=${id} mode=${s.mode} power=${s.powerW} start=${s.start} end=${s.end} startTs=${startTs} endTs=${endTs} now=${now} isInWindow=${isInWindow} triggered=${this.triggeredEmsSchedules.has(id)}`)
+      this.diagnostic.recordAnalysis('info', `[Ladeplan] plan ${id} start=${s.start} end=${s.end} isInWindow=${isInWindow} now=${now} startTs=${startTs} endTs=${endTs}`)
+
       if (isInWindow && !this.triggeredEmsSchedules.has(id)) {
-        this.log(`EMS schedule triggered: ${s.mode} ${s.powerW || 0}W (untilSoc=${s.untilSoc || 'no'})`)
+        this.log(`[Ladeplan] TRIGGERING id=${id} mode=${s.mode} powerW=${s.powerW}`)
+        this.diagnostic.recordAnalysis('info', `[Ladeplan] TRIGGERING ${id} ${s.mode} ${s.powerW}W`)
+        this.publishDiagnosticReport().catch(() => undefined)
 
         const modeNum = this.mapEmsModeToNumber(s.mode)
         const powerW = typeof s.powerW === 'number' ? s.powerW : 0
+        const scheduleId = id
 
         if (s.untilSoc) {
           // until specific SOC for house battery
-          this.setPowerModeState({ mode: modeNum, powerW, expiresAt: Date.now() + 48 * 60 * 60 * 1000, untilSoc: s.untilSoc })
+          this.setPowerModeState({ mode: modeNum, powerW, expiresAt: Date.now() + 48 * 60 * 60 * 1000, untilSoc: s.untilSoc, scheduleId })
           this.getApi().setPowerMode(modeNum, powerW, true, this)
             .catch(e => this.error('Scheduled untilSoc powerMode failed: ' + formatError(e)))
         } else if (s.untilFull || !endTs) {
-          this.setPowerModeState({ mode: modeNum, powerW, expiresAt: Date.now() + 24 * 60 * 60 * 1000 })
+          this.setPowerModeState({ mode: modeNum, powerW, expiresAt: Date.now() + 24 * 60 * 60 * 1000, scheduleId })
           this.getApi().setPowerMode(modeNum, powerW, true, this)
             .catch(e => this.error('Scheduled open powerMode failed: ' + formatError(e)))
         } else {
           const expiresAt = endTs || (Date.now() + 60 * 60 * 1000)
-          this.setPowerModeState({ mode: modeNum, powerW, expiresAt })
-          this.getApi().setPowerMode(modeNum, powerW, true, this)
-            .catch(e => this.error('Scheduled setPowerMode failed: ' + formatError(e)))
+          this.setPowerModeState({ mode: modeNum, powerW, expiresAt, scheduleId })
+          this.log(`[Ladeplan] sending setPowerMode mode=${modeNum} power=${powerW} expiresAt=${expiresAt}`)
+        this.diagnostic.recordAnalysis('info', `[Ladeplan] sending setPowerMode ${modeNum} ${powerW}W for ${id}`)
+        this.getApi().setPowerMode(modeNum, powerW, true, this)
+            .then(result => {
+              this.log(`[Ladeplan] setPowerMode result for ${id}: ${result}`)
+              this.diagnostic.recordAnalysis('info', `[Ladeplan] setPowerMode result for ${id}: ${result}`)
+              this.publishDiagnosticReport().catch(() => undefined)
+              if (result === false) {
+                // retry once after short delay if rejected
+                setTimeout(() => {
+                  this.getApi().setPowerMode(modeNum, powerW, true, this)
+                    .then(r => this.log(`[Ladeplan] setPowerMode retry result for ${id}: ${r}`))
+                    .catch(() => {})
+                }, 2000)
+              }
+            })
+            .catch(e => this.error('[Ladeplan] setPowerMode failed: ' + formatError(e)))
         }
 
         this.triggeredEmsSchedules.add(id)
@@ -306,6 +514,64 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
     return POWER_MODE_AUTO
   }
 
+  private removeCompletedEmsSchedule(scheduleId: string) {
+    const before = this.emsSchedules.length
+    this.emsSchedules = this.emsSchedules.filter(s => {
+      const sId = s.id || (s.start + '_' + (s.mode || ''))
+      return sId !== scheduleId
+    })
+    if (this.emsSchedules.length < before) {
+      this.log(`Removing completed EMS schedule ${scheduleId}`)
+      this.diagnostic.recordAnalysis('info', `[Ladeplan] Removing completed schedule ${scheduleId}`)
+      this.setSettings({ emsSchedules: JSON.stringify(this.emsSchedules) })
+        .catch(e => this.error('Failed to persist removed EMS schedule: ' + formatError(e)))
+      this.publishDiagnosticReport().catch(() => undefined)
+    }
+  }
+
+  private activateScheduledPlanIfNeeded(s: any, id: string) {
+    // re-validate the plan is still present and not triggered
+    const stillPresent = this.emsSchedules.some(p => (p.id || (p.start + '_' + (p.mode || ''))) === id)
+    if (!stillPresent || this.triggeredEmsSchedules.has(id)) return
+
+    const now = Date.now()
+    let startTs = (typeof s.startTs === 'number') ? s.startTs : this.parseDateTime(s.start)
+    let endTs: number | null = null
+    if (typeof s.endTs === 'number') endTs = s.endTs
+    else if (s.end) endTs = this.parseDateTime(s.end)
+    else if (s.durationMin) endTs = startTs + s.durationMin * 60 * 1000
+
+    const isInWindow = now >= startTs && (endTs === null || now < endTs)
+    if (!isInWindow) {
+      this.log(`[Ladeplan] timer fired for ${id} but isInWindow=false (now=${now} startTs=${startTs} endTs=${endTs})`)
+      this.diagnostic.recordAnalysis('info', `[Ladeplan] timer fired but isInWindow=false for ${id}`)
+      return
+    }
+
+    this.log(`EMS schedule triggered (timer): ${s.mode} ${s.powerW || 0}W`)
+
+    const modeNum = this.mapEmsModeToNumber(s.mode)
+    const powerW = typeof s.powerW === 'number' ? s.powerW : 0
+    const scheduleId = id
+
+    if (s.untilSoc) {
+      this.setPowerModeState({ mode: modeNum, powerW, expiresAt: now + 48 * 60 * 60 * 1000, untilSoc: s.untilSoc, scheduleId })
+      this.getApi().setPowerMode(modeNum, powerW, true, this)
+        .catch(e => this.error('Scheduled untilSoc powerMode failed: ' + formatError(e)))
+    } else if (s.untilFull || !endTs) {
+      this.setPowerModeState({ mode: modeNum, powerW, expiresAt: now + 24 * 60 * 60 * 1000, scheduleId })
+      this.getApi().setPowerMode(modeNum, powerW, true, this)
+        .catch(e => this.error('Scheduled open powerMode failed: ' + formatError(e)))
+    } else {
+      const expiresAt = endTs || (now + 60 * 60 * 1000)
+      this.setPowerModeState({ mode: modeNum, powerW, expiresAt, scheduleId })
+      this.getApi().setPowerMode(modeNum, powerW, true, this)
+        .catch(e => this.error('Scheduled setPowerMode failed: ' + formatError(e)))
+    }
+
+    this.triggeredEmsSchedules.add(id)
+  }
+
   setPowerModeState(state: PowerModeState | null): void {
     this.powerModeState = state
     if (this.powerModeLoopId) {
@@ -314,6 +580,9 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
     }
     if (state !== null) {
       this.schedulePowerModeRefresh()
+      if (state.expiresAt && state.scheduleId) {
+        this.scheduleExpireTimer(state.scheduleId, state.expiresAt)
+      }
     }
   }
 
@@ -332,25 +601,32 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
     if (state.untilSoc) {
       const currentSoc = this.getCurrentSOC() * 100
       if (currentSoc >= state.untilSoc) {
-        this.log(`Power mode untilSoc ${state.untilSoc}% reached (${currentSoc}%), reverting to auto`)
+        this.log(`[Ladeplan] untilSoc ${state.untilSoc}% reached (current ${currentSoc}%), reverting to AUTO (scheduleId=${state.scheduleId || 'none'})`)
+        if (state.scheduleId) {
+          this.removeCompletedEmsSchedule(state.scheduleId)
+        }
+        this.clearExpireTimer(state.scheduleId || '')
         this.powerModeState = null
         this.getApi().setPowerMode(POWER_MODE_AUTO, 0, true, this)
-          .catch(e => this.error('Power mode untilSoc revert failed: ' + formatError(e)))
+          .catch(e => this.error('[Ladeplan] untilSoc revert failed: ' + formatError(e)))
         return
       }
     }
 
     if (state.expiresAt && Date.now() >= state.expiresAt) {
-      this.log('Power mode expired, reverting to auto')
-      this.powerModeState = null
-      this.getApi()
-          .setPowerMode(POWER_MODE_AUTO, 0, true, this)
-          .catch(e => this.error('Power mode auto revert failed: ' + formatError(e)))
+      this.revertPowerMode(state.scheduleId)
       return
     }
+    this.log(`[Ladeplan] refreshPowerMode: sending mode=${state.mode} power=${state.powerW} (scheduleId=${state.scheduleId || 'none'})`)
     this.getApi()
         .setPowerMode(state.mode, state.powerW, true, this)
-        .catch(e => this.error('Power mode refresh failed: ' + formatError(e)))
+        .then(result => {
+          if (result === false) {
+            this.log(`[Ladeplan] refreshPowerMode result for ${state.scheduleId || 'unknown'}: false`)
+            this.diagnostic.recordAnalysis('info', `[Ladeplan] refresh setPowerMode result: false (schedule ${state.scheduleId || 'unknown'})`)
+          }
+        })
+        .catch(e => this.error('[Ladeplan] Power mode refresh failed: ' + formatError(e)))
     this.schedulePowerModeRefresh()
   }
 
@@ -1208,8 +1484,11 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
     this.api = undefined
 
     if (changedKeys.includes('emsSchedules')) {
+      this.log('[Ladeplan] emsSchedules setting changed, reloading')
+      this.diagnostic.recordAnalysis('info', '[Ladeplan] emsSchedules setting changed, reloading')
       this.loadEmsSchedules()
       this.triggeredEmsSchedules.clear()
+      this.checkEmsSchedules()  // evaluate immediately for new/future plans
     }
   }
 
@@ -1228,6 +1507,7 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
     if (this.emsScheduleCheckId) {
       clearInterval(this.emsScheduleCheckId)
     }
+    this.clearScheduledPlanTimers()
     if (this.api) {
       this.api.closeOwnConnection(this).catch(reason => {
         this.log('closeOwnConnection on delete failed: ' + formatError(reason))

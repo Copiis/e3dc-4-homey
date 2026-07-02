@@ -70,12 +70,13 @@ class WallboxDevice extends Homey.Device implements Wallbox {
   }
 
   private wallboxScheduleCheckId: NodeJS.Timeout | null = null;
-  private triggeredWallboxSchedules: Set<string> = new Set();
+  private triggeredWallboxSchedules: Map<string, string> = new Map(); // id -> action
+  private untilFullLowPowerSince: Map<string, number> = new Map(); // id -> timestamp when power dropped low
 
   private startWallboxScheduleChecker() {
     if (this.wallboxScheduleCheckId) clearInterval(this.wallboxScheduleCheckId);
-    this.wallboxScheduleCheckId = this.homey.setInterval(() => this.checkWallboxSchedules(), 60 * 1000);
-    setTimeout(() => this.checkWallboxSchedules(), 8000);
+    this.wallboxScheduleCheckId = this.homey.setInterval(() => this.checkWallboxSchedules(), 10 * 1000);
+    setTimeout(() => this.checkWallboxSchedules(), 3000);
   }
 
   private async checkWallboxSchedules() {
@@ -83,11 +84,30 @@ class WallboxDevice extends Homey.Device implements Wallbox {
     const json = this.getSetting('schedules') || '[]';
     let schedules: any[] = [];
     try { schedules = JSON.parse(json); } catch (e) { schedules = []; }
+    this.log(`checkWallboxSchedules: ${schedules.length} schedules, triggered=${this.triggeredWallboxSchedules.size}`);
+
+    // Cancel actions for any running schedules that were manually deleted
+    const currentIds = new Set(schedules.map(s => s.id || (s.start + '_' + s.action)));
+    for (const [id, action] of this.triggeredWallboxSchedules.entries()) {
+      if (!currentIds.has(id)) {
+        this.log(`Wallbox schedule ${id} manually deleted, reverting action ${action}`);
+        try {
+          if (action === 'allow') await this.applyChargingAllowed(false);
+          else if (action === 'block') await this.applyChargingAllowed(true);
+          else if (action === 'sun_on') await this.applySunMode(false);
+          else if (action === 'sun_off') await this.applySunMode(true);
+        } catch (e) {
+          this.error('Error reverting manually deleted wallbox schedule: ' + formatError(e));
+        }
+        this.triggeredWallboxSchedules.delete(id);
+        this.untilFullLowPowerSince.delete(id);
+      }
+    }
 
     for (const s of schedules) {
       if (!s || !s.start || !s.action) continue;
       const id = s.id || (s.start + '_' + s.action);
-      const startTs = new Date(s.start).getTime();
+      let startTs = (typeof s.startTs === 'number') ? s.startTs : new Date(s.start).getTime();
       if (isNaN(startTs)) continue;
 
       let endTs: number | null = null;
@@ -96,39 +116,104 @@ class WallboxDevice extends Homey.Device implements Wallbox {
 
       const active = now >= startTs && (endTs === null || now < endTs);
 
+      this.log(`[WallboxLadeplan] plan=${id} action=${s.action} start=${s.start} startTs=${startTs} active=${active} triggered=${this.triggeredWallboxSchedules.has(id)} untilFull=${s.untilFull}`);
+
       if (active && !this.triggeredWallboxSchedules.has(id)) {
         this.log(`Wallbox schedule triggered: ${s.action}`);
         try {
-          if (s.action === 'allow') await this.applyChargingAllowed(true, s.current);
+          if (s.action === 'allow') {
+            this.log(`[Ladeplan] Überschreibe alle vorherigen Einstellungen: Sonnenmodus aus + Laden mit ${s.current || 16}A (force)`);
+            // Für Ladeplan "Laden": ALLE Checks/Guards überbrücken und erzwingen
+            await this.applySunMode(false, undefined, true);   // force
+            await this.applyChargingAllowed(true, s.current, true); // force
+            if (s.current) {
+              await this.setCurrentLimit(s.current);
+            }
+          }
           if (s.action === 'block') await this.applyChargingAllowed(false);
           if (s.action === 'sun_on') await this.applySunMode(true);
           if (s.action === 'sun_off') await this.applySunMode(false);
 
-          if (s.batteryFirst !== undefined || s.mix !== undefined || s.dischargeSoc !== undefined) {
-            this.log(`Wallbox schedule additional: batteryFirst=${s.batteryFirst}, mix=${s.mix}, dischargeUntil=${s.dischargeSoc}`);
-            // In real impl, temporarily apply via settings or RSCP if needed
-          }
-
-          this.triggeredWallboxSchedules.add(id);
+          this.triggeredWallboxSchedules.set(id, s.action);
         } catch (e) {
           this.error('Wallbox schedule apply error: ' + formatError(e));
         }
       }
 
       if (endTs && now > endTs && this.triggeredWallboxSchedules.has(id)) {
+        const action = this.triggeredWallboxSchedules.get(id);
+        this.log(`Wallbox schedule ended, reverting action ${action}`);
+        try {
+          if (action === 'allow') {
+            await this.applyChargingAllowed(false);
+          } else if (action === 'block') {
+            await this.applyChargingAllowed(true);
+          } else if (action === 'sun_on') {
+            await this.applySunMode(false);
+          } else if (action === 'sun_off') {
+            await this.applySunMode(true);
+          }
+        } catch (e) {
+          this.error('Wallbox schedule end revert error: ' + formatError(e));
+        }
         this.triggeredWallboxSchedules.delete(id);
       }
 
-      // Stop on vehicle SOC for untilFull
+      // Stop on vehicle SOC for untilFull, or fallback if wallbox stops accepting power (car is full)
       if (s.untilFull && this.triggeredWallboxSchedules.has(id)) {
         const vSoc = this.getCapabilityValue('measure_vehicle_soc');
+        const powerW = this.getCapabilityValue('measure_wallbox_consumption') || 0;
+        const powerThreshold = 100; // W
+        const lowPowerTimeoutMs = 5 * 60 * 1000; // 5 minutes no significant power
+
+        let stopReason = null;
         if (typeof vSoc === 'number' && vSoc >= (s.untilVehicleSoc || 95)) {
-          this.log('Wallbox until full (vehicle SOC) reached');
+          stopReason = 'vehicle SOC';
+        } else if (Math.abs(powerW) < powerThreshold) {
+          const lowSince = this.untilFullLowPowerSince.get(id) || now;
+          this.untilFullLowPowerSince.set(id, lowSince);
+          if (now - lowSince > lowPowerTimeoutMs) {
+            stopReason = `no power draw for ${Math.round((now - lowSince) / 60000)} min (car likely full)`;
+          }
+        } else {
+          this.untilFullLowPowerSince.delete(id); // reset timer if power returns
+        }
+
+        if (stopReason) {
+          this.log(`Wallbox until full (${stopReason})`);
           if (s.action === 'allow') await this.applyChargingAllowed(false);
           this.triggeredWallboxSchedules.delete(id);
+          this.untilFullLowPowerSince.delete(id);
+
+          // remove the completed untilFull plan
+          const planId = s.id || (s.start + '_' + s.action);
+          schedules = schedules.filter(p => (p.id || (p.start + '_' + p.action)) !== planId);
         }
       }
     }
+
+    // Auto-remove expired fixed-time plans and persist (untilFull removed above when fulfilled)
+    const beforeLen = schedules.length;
+    const cleaned = schedules.filter(s => {
+      if (!s || !s.start) return false;
+      if (s.untilFull) return true; // keep until SOC condition met
+      if (s.end) {
+        const eTs = new Date(s.end).getTime();
+        if (!isNaN(eTs) && now >= eTs) return false;
+      }
+      return true;
+    });
+    if (cleaned.length < beforeLen) {
+      this.log(`Wallbox: auto-removed ${beforeLen - cleaned.length} expired plans`);
+      await this.setSettings({ schedules: JSON.stringify(cleaned) });
+      const currentIds = new Set(cleaned.map(s => s.id || (s.start + '_' + s.action)));
+      for (const [id] of this.triggeredWallboxSchedules.entries()) {
+        if (!currentIds.has(id)) this.triggeredWallboxSchedules.delete(id);
+      }
+    }
+
+    // Update tile visibility for Ladepläne if importance changed
+    await this.applyLadeplanTileVisibility().catch(() => {});
   }
 
   private bindDevice(listener: RunListener): (args: Record<string, unknown>, state: unknown) => Promise<unknown> {
@@ -202,7 +287,7 @@ class WallboxDevice extends Homey.Device implements Wallbox {
   private async migrateCapabilities(): Promise<void> {
     await ensureCapabilities(this, [...WALLBOX_CAPABILITY_ORDER]);
     await reorderCapabilitiesIfNeeded(this, WALLBOX_CAPABILITY_ORDER);
-    await hideCapabilitiesFromTile(this, WALLBOX_TILE_HIDDEN_CAPABILITIES);
+    await this.applyLadeplanTileVisibility();
     const legacyCapabilities = [
       'evcharger_charging',
       'evcharger_charging_state',
@@ -224,6 +309,16 @@ class WallboxDevice extends Homey.Device implements Wallbox {
         this.error(`Failed to remove legacy capability ${capability}: ${formatError(e)}`);
       }
     }
+  }
+
+  private async applyLadeplanTileVisibility(): Promise<void> {
+    // Remove Ladepläne/EMS from main tile if not important (no active plan)
+    const hasActivePlan = this.triggeredWallboxSchedules.size > 0;
+    const ladeplanRelated = ['measure_wallbox_discharge_soc', 'wallbox_battery_discharge_sun', 'wallbox_battery_discharge_mix'];
+    const toHide = hasActivePlan
+      ? WALLBOX_TILE_HIDDEN_CAPABILITIES.filter(c => !ladeplanRelated.includes(c))
+      : [...WALLBOX_TILE_HIDDEN_CAPABILITIES, ...ladeplanRelated];
+    await hideCapabilitiesFromTile(this, toHide);
   }
 
   async onAdded() {
@@ -364,25 +459,27 @@ class WallboxDevice extends Homey.Device implements Wallbox {
       + `sunMode=${state.sunModeActive}, chargingActive=${state.chargingActive}, algHex=${hex}`;
   }
 
-  async applyChargingAllowed(enabled: boolean, maxCurrentA?: number): Promise<WallboxCommandResult> {
-    return this.serialize(() => this._applyChargingAllowed(enabled, maxCurrentA));
+  async applyChargingAllowed(enabled: boolean, maxCurrentA?: number, force = false): Promise<WallboxCommandResult> {
+    return this.serialize(() => this._applyChargingAllowed(enabled, maxCurrentA, force));
   }
 
-  private async _applyChargingAllowed(enabled: boolean, maxCurrentA?: number): Promise<WallboxCommandResult> {
+  private async _applyChargingAllowed(enabled: boolean, maxCurrentA?: number, force = false): Promise<WallboxCommandResult> {
     const live = await this.fetchLiveState();
 
-    if (enabled && isWallboxMixedChargingAllowed(live)) {
-      this.log(`applyChargingAllowed(${enabled}): skip, RSCP already allowed (${this.formatWallboxAlgLog(live)})`);
-      this.refreshCapabilities(live);
-      return { ok: true, skipped: true };
-    }
-    if (!enabled && wallboxChargingBlockSucceeded(live)) {
-      this.log(`applyChargingAllowed(${enabled}): skip, RSCP already blocked (${this.formatWallboxAlgLog(live)})`);
-      this.refreshCapabilities(live);
-      return { ok: true, skipped: true };
+    if (!force) {
+      if (enabled && isWallboxMixedChargingAllowed(live)) {
+        this.log(`applyChargingAllowed(${enabled}): skip, RSCP already allowed (${this.formatWallboxAlgLog(live)})`);
+        this.refreshCapabilities(live);
+        return { ok: true, skipped: true };
+      }
+      if (!enabled && wallboxChargingBlockSucceeded(live)) {
+        this.log(`applyChargingAllowed(${enabled}): skip, RSCP already blocked (${this.formatWallboxAlgLog(live)})`);
+        this.refreshCapabilities(live);
+        return { ok: true, skipped: true };
+      }
     }
 
-    this.log(`applyChargingAllowed(${enabled}): sending RSCP (${this.formatWallboxAlgLog(live)})`);
+    this.log(`applyChargingAllowed(${enabled}): sending RSCP (force=${force}) (${this.formatWallboxAlgLog(live)})`);
     const ok = enabled
       ? await this.startCharging(maxCurrentA, live.chargingCanceled)
       : await this.stopCharging(live.chargingCanceled);
@@ -409,25 +506,27 @@ class WallboxDevice extends Homey.Device implements Wallbox {
     return { ok: true, skipped: false };
   }
 
-  async applySunMode(enabled: boolean, maxCurrentA?: number): Promise<WallboxCommandResult> {
-    return this.serialize(() => this._applySunMode(enabled, maxCurrentA));
+  async applySunMode(enabled: boolean, maxCurrentA?: number, force = false): Promise<WallboxCommandResult> {
+    return this.serialize(() => this._applySunMode(enabled, maxCurrentA, force));
   }
 
-  private async _applySunMode(enabled: boolean, maxCurrentA?: number): Promise<WallboxCommandResult> {
+  private async _applySunMode(enabled: boolean, maxCurrentA?: number, force = false): Promise<WallboxCommandResult> {
     const live = await this.fetchLiveState();
 
-    if (enabled && live.sunModeActive) {
-      this.log(`applySunMode(${enabled}): skip, RSCP sun mode already active (${this.formatWallboxAlgLog(live)})`);
-      this.refreshCapabilities(live);
-      return { ok: true, skipped: true };
-    }
-    if (!enabled && !live.sunModeActive) {
-      this.log(`applySunMode(${enabled}): skip, RSCP sun mode already inactive (${this.formatWallboxAlgLog(live)})`);
-      this.refreshCapabilities(live);
-      return { ok: true, skipped: true };
+    if (!force) {
+      if (enabled && live.sunModeActive) {
+        this.log(`applySunMode(${enabled}): skip, RSCP sun mode already active (${this.formatWallboxAlgLog(live)})`);
+        this.refreshCapabilities(live);
+        return { ok: true, skipped: true };
+      }
+      if (!enabled && !live.sunModeActive) {
+        this.log(`applySunMode(${enabled}): skip, RSCP sun mode already inactive (${this.formatWallboxAlgLog(live)})`);
+        this.refreshCapabilities(live);
+        return { ok: true, skipped: true };
+      }
     }
 
-    this.log(`applySunMode(${enabled}): sending RSCP (${this.formatWallboxAlgLog(live)})`);
+    this.log(`applySunMode(${enabled}): sending RSCP (force=${force}) (${this.formatWallboxAlgLog(live)})`);
     const ok = await this.setSunMode(enabled, maxCurrentA);
     if (!ok) {
       return { ok: false, skipped: false };
@@ -532,6 +631,10 @@ class WallboxDevice extends Homey.Device implements Wallbox {
     changedKeys: string[];
   }): Promise<string | void> {
     this.log('WallboxDevice settings were changed');
+    if (changedKeys.includes('schedules')) {
+      // re-check immediately so manual deletes of running plans are processed quickly
+      setTimeout(() => this.checkWallboxSchedules(), 100);
+    }
   }
 
   async onRenamed(name: string) {

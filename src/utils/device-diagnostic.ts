@@ -216,7 +216,6 @@ function truncateReportPreservingAnalysis(
         '',
         `Forum: ${FORUM_URL}`,
         'Keine Passwörter / no passwords in this report.',
-        '… (Analyse-Protokoll gekürzt — älteste Einträge entfernt / analysis log trimmed)',
     ].join('\n');
     const analysisHeader = '=== Analyse-Protokoll / Analysis log ===\n(Nur analyse-relevante Ereignisse, chronologisch — bleiben erhalten / analysis events, kept)';
     let budget = maxChars - header.length - footer.length - analysisHeader.length - 4;
@@ -230,9 +229,6 @@ function truncateReportPreservingAnalysis(
             break;
         }
         analysisLines.unshift(line);
-    }
-    if (analysisLines.length < analysisEntries.length) {
-        analysisLines.unshift('  … (ältere Einträge wegen Längenlimit entfernt / older entries removed due to length limit)');
     }
     return [header, '', analysisHeader, ...analysisLines, footer].join('\n');
 }

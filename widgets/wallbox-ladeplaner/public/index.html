@@ -1,0 +1,251 @@
+<html>
+<head>
+  <style>
+    body { margin: 0; padding: 6px; font-family: system-ui; color: #fff; background: transparent; font-size: 12px; }
+    .header { font-size: 13px; font-weight: 600; text-align: center; margin-bottom: 6px; }
+    .section { background: #222; border-radius: 6px; padding: 6px; margin-bottom: 6px; }
+    .label { font-size: 10px; color: #aaa; margin: 2px 0; }
+    input, select { background: #111; border: 1px solid #444; color: #fff; padding: 3px; border-radius: 3px; width: 100%; font-size: 11px; }
+    .row { display: flex; gap: 6px; margin-bottom: 4px; }
+    .row > div { flex: 1; }
+    .dates-row { align-items: flex-start; }
+    .date-col { display: flex; flex-direction: column; }
+    .date-col .label { margin-bottom: 2px; }
+    button { background: #2a5; border: none; color: #fff; padding: 4px 8px; border-radius: 3px; font-size: 11px; cursor: pointer; width: 100%; }
+    .plan { background: #333; padding: 4px; border-radius: 3px; margin-bottom: 3px; font-size: 11px; }
+    .plan-header { display: flex; justify-content: space-between; }
+    .small { font-size: 9px; color: #888; }
+    .checkbox { display: flex; align-items: center; gap: 4px; font-size: 10px; white-space: nowrap; }
+    input:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+<body>
+<div class="header">Wallbox Ladeplaner</div>
+
+<div class="section">
+  <div class="label">Neuer Wallbox-Plan</div>
+  
+  <div class="row dates-row" style="flex-wrap: nowrap;">
+    <div class="date-col">
+      <div class="label">Start</div>
+      <input type="datetime-local" id="start">
+    </div>
+    <div class="date-col">
+      <div class="label" id="end-label">Ende</div>
+      <input type="datetime-local" id="end">
+    </div>
+  </div>
+  <div class="checkbox" style="margin-top:2px; margin-bottom:4px; white-space: nowrap;">
+    <input type="checkbox" id="until-full"> <span style="white-space: nowrap;">Bis voll (Fahrzeug SOC)</span>
+  </div>
+
+  <div class="row">
+    <div>
+      <div class="label">Wallbox</div>
+      <select id="wallbox"></select>
+    </div>
+  </div>
+
+  <div class="row">
+    <div>
+      <div class="label">Stromstärke (A)</div>
+      <input type="number" id="current" value="16" min="6" max="32">
+    </div>
+  </div>
+
+  <div class="row">
+    <div>
+      <div class="label">Entlade Hausakku bis %</div>
+      <input type="number" id="discharge-soc" value="90" min="5" max="100">
+    </div>
+  </div>
+
+  <button onclick="addPlan()" style="margin-top:4px">Plan hinzufügen</button>
+</div>
+
+<div class="section">
+  <div class="label">Aktive Pläne</div>
+  <div id="plans"></div>
+</div>
+
+<script>
+let Homey = null;
+let plantId = null;
+let wallboxes = [];
+
+function onHomeyReady(h) {
+  Homey = h;
+  Homey.ready({ height: 400 });
+
+  const s = Homey.getSettings();
+  plantId = s.plantId && s.plantId.id ? s.plantId.id : s.plantId;
+
+  if (!plantId) {
+    document.body.innerHTML = '<div style="color:red;padding:10px">HKW auswählen</div>';
+    return;
+  }
+
+  // Disable end input when "Bis voll" checkbox is selected (like in HKW widget)
+  const untilFullCb = document.getElementById('until-full');
+  const endInputWb = document.getElementById('end');
+  const endLabelWb = document.getElementById('end-label');
+
+  function updateWallboxEndDisabled() {
+    const checked = untilFullCb.checked;
+    if (endInputWb) endInputWb.disabled = checked;
+    if (endLabelWb) endLabelWb.style.opacity = checked ? '0.5' : '1';
+    if (checked && endInputWb) {
+      endInputWb.value = '';
+    }
+  }
+
+  if (untilFullCb) {
+    untilFullCb.addEventListener('change', updateWallboxEndDisabled);
+    // initial state
+    updateWallboxEndDisabled();
+  }
+
+  loadWallboxes().then(loadPlans);
+  setInterval(loadPlans, 10000);  // faster refresh
+}
+
+async function loadWallboxes() {
+  const res = await Homey.api('GET', `/wallboxes?plantId=${plantId}`);
+  wallboxes = res;
+  const sel = document.getElementById('wallbox');
+  sel.innerHTML = '';
+  wallboxes.forEach(w => {
+    const o = document.createElement('option');
+    o.value = w.id;
+    o.textContent = w.name;
+    sel.appendChild(o);
+  });
+
+  // Reload plans when user switches wallbox
+  sel.addEventListener('change', loadPlans);
+}
+
+async function loadPlans() {
+  if (wallboxes.length === 0) await loadWallboxes();
+  const sel = document.getElementById('wallbox');
+  const wbId = sel.value || (wallboxes[0] && wallboxes[0].id);
+  if (!wbId) return;
+
+  const res = await Homey.api('GET', `/wallbox-schedules?wallboxId=${wbId}`);
+  let plans = res.schedules || [];
+  await Homey.api('POST', '/log', { widget: 'wallbox-ladeplaner', message: `Lade ${plans.length} Wallbox-Pläne` });
+
+  // hide expired fixed plans in display (until* kept until fulfilled on device)
+  const now = Date.now();
+  plans = plans.filter(p => {
+    if (p.untilFull) return true;
+    if (p.end) {
+      const eTs = new Date(p.end).getTime();
+      return isNaN(eTs) || now < eTs;
+    }
+    return true;
+  });
+  const c = document.getElementById('plans');
+  c.innerHTML = plans.length ? '' : '<div class="small">Keine Pläne</div>';
+
+  plans.forEach((p, i) => {
+    const d = document.createElement('div');
+    d.className = 'plan';
+    const end = p.untilFull ? 'bis voll' : (p.end ? new Date(p.end).toLocaleString() : '');
+    const displayAction = p.action === 'allow' ? 'Laden' : p.action;
+    d.innerHTML = `
+      <div class="plan-header">
+        <strong>${new Date(p.start).toLocaleString()}</strong>
+        <button onclick="del(${i})" style="background:#c33; padding:1px 6px; font-size:10px; width: auto;">✕</button>
+      </div>
+      <div class="small">${displayAction} ${p.current ? p.current+'A' : ''} ${p.dischargeSoc ? 'Entlade bis '+p.dischargeSoc+'%' : ''} → ${end}</div>
+    `;
+    c.appendChild(d);
+  });
+}
+
+async function addPlan() {
+  const start = document.getElementById('start').value;
+  const end = document.getElementById('end').value;
+  const until = document.getElementById('until-full').checked;
+  const wbSel = document.getElementById('wallbox');
+  const wallboxId = wbSel.value;
+  const current = parseInt(document.getElementById('current').value);
+  const discharge = parseInt(document.getElementById('discharge-soc').value);
+
+  if (!start || !wallboxId) return alert('Start und Wallbox nötig');
+
+  if (!until) {
+    if (!end) {
+      alert('Bitte ein Ende angeben oder "Bis voll" aktivieren');
+      return;
+    }
+    const sD = new Date(start);
+    const eD = new Date(end);
+    if (eD <= sD) {
+      alert('Das Ende muss nach dem Start liegen');
+      return;
+    }
+  }
+
+  // Compute absolute timestamp from local datetime so checker uses correct wall time
+  const startDate = new Date(start);
+  const startTs = startDate.getTime();
+
+  // Ladepläne sind zum Laden → action immer 'allow'
+  const action = 'allow';
+
+  const plan = {
+    id: 'wb-' + Date.now(),
+    start,
+    startTs,
+    end: until ? null : end,
+    untilFull: until,
+    untilVehicleSoc: until ? 95 : undefined,
+    action,
+    current: current || undefined,
+    dischargeSoc: discharge || undefined
+  };
+
+  const msg = until
+    ? `Wallbox-Plan hinzugefügt: Laden ab ${start} (bis voll)`
+    : `Wallbox-Plan hinzugefügt: Laden ${start} → ${end}`;
+  await Homey.api('POST', '/log', { widget: 'wallbox-ladeplaner', message: msg });
+
+  const res = await Homey.api('GET', `/wallbox-schedules?wallboxId=${wallboxId}`);
+  const list = res.schedules || [];
+  list.push(plan);
+
+  await Homey.api('POST', '/wallbox-schedules', { wallboxId, schedules: list });
+  loadPlans();
+}
+
+async function del(index) {
+  const wbSel = document.getElementById('wallbox');
+  const wallboxId = wbSel.value;
+  if (!wallboxId) return;
+
+  const res = await Homey.api('GET', `/wallbox-schedules?wallboxId=${wallboxId}`);
+  const plans = res.schedules || [];
+  const planToDelete = plans[index];
+  if (!planToDelete) {
+    loadPlans();
+    return;
+  }
+  await Homey.api('POST', '/log', { widget: 'wallbox-ladeplaner', message: `Wallbox-Plan manuell gelöscht id=${planToDelete.id || index}` });
+  let list = plans;
+  if (planToDelete.id) {
+    list = list.filter(p => (p.id || '') !== planToDelete.id);
+  } else {
+    list = list.slice();
+    list.splice(index, 1);
+  }
+  await Homey.api('POST', '/wallbox-schedules', { wallboxId, schedules: list });
+  loadPlans();
+}
+</script>
+</body>
+</html>

@@ -8,6 +8,7 @@ export interface PowerModeState {
     powerW: number
     expiresAt: number  // Unix timestamp in ms
     untilSoc?: number  // optional: stop when house battery SOC reaches this %
+    scheduleId?: string // optional: id of the emsSchedule that started this mode (for auto-cleanup)
 }
 
 export interface HomePowerStation extends InternalDevice{

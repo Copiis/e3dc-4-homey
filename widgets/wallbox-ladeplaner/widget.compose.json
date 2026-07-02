@@ -1,0 +1,40 @@
+{
+  "name": {
+    "en": "Wallbox Ladeplaner",
+    "de": "Wallbox Ladeplaner"
+  },
+  "transparent": false,
+  "height": 400,
+  "settings": [
+    {
+      "id": "plantId",
+      "type": "autocomplete",
+      "title": {
+        "de": "Hauskraftwerk",
+        "en": "Home power plant"
+      }
+    }
+  ],
+  "api": {
+    "readHomePowerPlants": {
+      "method": "GET",
+      "path": "/"
+    },
+    "getWallboxes": {
+      "method": "GET",
+      "path": "/wallboxes"
+    },
+    "getWallboxSchedules": {
+      "method": "GET",
+      "path": "/wallbox-schedules"
+    },
+    "saveWallboxSchedules": {
+      "method": "POST",
+      "path": "/wallbox-schedules"
+    },
+    "log": {
+      "method": "POST",
+      "path": "/log"
+    }
+  }
+}
