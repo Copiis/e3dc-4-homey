@@ -17,6 +17,8 @@ export interface PowerStatus {
   wallboxPower: number;
   wallboxSolarShare: number;
   hasWallbox: boolean;
+  hasBattery: boolean;
+  chargeTime: string;
   externalPowerConnected: boolean;
   externalPower: number;
 }

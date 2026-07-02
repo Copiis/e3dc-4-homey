@@ -12,6 +12,10 @@
       "title": {
         "de": "Hauskraftwerk",
         "en": "Home power plant"
+      },
+      "hint": {
+        "de": "Wähle das HKW, zu dem die Wallbox gehört. Bei nur einem HKW wird automatisch das richtige verwendet – keine Auswahl nötig.",
+        "en": "Select the HPS that the wallbox belongs to. With only one HPS it is auto-selected – no manual choice needed."
       }
     }
   ],

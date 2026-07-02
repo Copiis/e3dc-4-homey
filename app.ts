@@ -17,6 +17,8 @@ class MyApp extends Homey.App {
     process.on('uncaughtException', (err: unknown) => {
       this.error('Uncaught exception: ' + formatError(normalizeError(err)));
     });
+    this.registerPlantAutocompleteWidget('e3dc-hkw');
+    this.registerPlantAutocompleteWidget('wallbox');
     this.registerPlantAutocompleteWidget('power-overview');
     this.registerPlantAutocompleteWidget('live-energy-view');
 
@@ -44,7 +46,9 @@ class MyApp extends Homey.App {
       widget.registerSettingAutocompleteListener('plantId', async (query: string) => {
         try {
           const devices = await this.readHomePowerPlants();
-          return devices.filter((item) => item.name.toLowerCase().includes(query.toLowerCase()));
+          return devices
+            .filter((item) => item.name.toLowerCase().includes((query || '').toLowerCase()))
+            .map((item) => ({ id: item.id, name: item.name }));
         } catch (e) {
           this.error(`Widget ${widgetId} plantId autocomplete failed: ` + formatError(e));
           return [];

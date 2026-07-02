@@ -85,6 +85,10 @@ import {
   SetPowerModeGridChargeActionCard,
   SetPowerModeIdleActionCard,
   POWER_MODE_AUTO,
+  POWER_MODE_IDLE,
+  POWER_MODE_DISCHARGE,
+  POWER_MODE_CHARGE,
+  POWER_MODE_GRID_CHARGE,
 } from '../../src/cards/action/set-power-mode.action.card';
 import {PowerModeState} from '../../src/model/home-power-station';
 import {calculatePvSurplusW} from '../../src/utils/pv-surplus';
@@ -125,6 +129,11 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
   private lastSnapshot: Partial<DiagnosticSnapshot> = {}
   private readonly energyMeter = new EnergyMeterIntegrator(this)
   private lastPvSurplusW = 0
+
+  // EMS manual schedules (from settings)
+  private emsSchedules: any[] = []
+  private emsScheduleCheckId: NodeJS.Timeout | null = null
+  private triggeredEmsSchedules: Set<string> = new Set()
   async onInit() {
     this.log('HomePowerStationDevice has been initialized');
 
@@ -187,6 +196,10 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
     })
 
     publishPlantPowerStateFromStation(this)
+
+    this.loadEmsSchedules()
+    this.startEmsScheduleChecker()
+
     setTimeout(() => {
       this.autoSync()
     }, 2000)
@@ -206,6 +219,68 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
 
   getEmergencyPowerState(): EmergencyPowerState | null {
     return this.currentEmergencyPowerState;
+  }
+
+  private loadEmsSchedules() {
+    const json = this.getSetting('emsSchedules') || '[]'
+    try {
+      this.emsSchedules = JSON.parse(json)
+      if (!Array.isArray(this.emsSchedules)) this.emsSchedules = []
+      this.log('Loaded ' + this.emsSchedules.length + ' EMS schedules')
+    } catch (e) {
+      this.error('Failed to parse emsSchedules: ' + formatError(e))
+      this.emsSchedules = []
+    }
+  }
+
+  private startEmsScheduleChecker() {
+    if (this.emsScheduleCheckId) {
+      clearInterval(this.emsScheduleCheckId)
+    }
+    // Check every minute
+    this.emsScheduleCheckId = this.homey.setInterval(() => this.checkEmsSchedules(), 60 * 1000)
+    // Initial check
+    setTimeout(() => this.checkEmsSchedules(), 5000)
+  }
+
+  private checkEmsSchedules() {
+    const now = Date.now()
+    for (const s of this.emsSchedules) {
+      if (!s || !s.start || !s.mode) continue
+      const id = s.id || (s.start + '_' + s.mode)
+      const startTs = new Date(s.start).getTime()
+      if (isNaN(startTs)) continue
+      const durationMs = (s.durationMin || 0) * 60 * 1000
+      const endTs = startTs + durationMs
+
+      if (now >= startTs && now < endTs && !this.triggeredEmsSchedules.has(id)) {
+        this.log('EMS schedule triggered: ' + s.mode + ' ' + (s.powerW || 0) + 'W for ' + (s.durationMin || 0) + 'min')
+        const modeNum = this.mapEmsModeToNumber(s.mode)
+        const powerW = typeof s.powerW === 'number' ? s.powerW : 0
+        const expiresAt = Date.now() + durationMs
+
+        this.setPowerModeState({ mode: modeNum, powerW, expiresAt })
+        this.getApi().setPowerMode(modeNum, powerW, true, this)
+          .catch(e => this.error('Scheduled setPowerMode failed: ' + formatError(e)))
+
+        this.triggeredEmsSchedules.add(id)
+      }
+
+      // Clean old triggered
+      if (now > endTs && this.triggeredEmsSchedules.has(id)) {
+        this.triggeredEmsSchedules.delete(id)
+      }
+    }
+  }
+
+  private mapEmsModeToNumber(mode: string): number {
+    const m = (mode || '').toLowerCase().trim()
+    if (m === 'auto' || m === '0') return POWER_MODE_AUTO
+    if (m === 'idle' || m === 'pause' || m === '1') return POWER_MODE_IDLE
+    if (m === 'discharge' || m === 'entladen' || m === '2') return POWER_MODE_DISCHARGE
+    if (m === 'charge' || m === 'laden' || m === '3') return POWER_MODE_CHARGE
+    if (m === 'grid_charge' || m === 'netz_laden' || m === 'grid' || m === '4') return POWER_MODE_GRID_CHARGE
+    return POWER_MODE_AUTO
   }
 
   setPowerModeState(state: PowerModeState | null): void {
@@ -1095,6 +1170,11 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
       rscpPassword: newSettings.rscpKey
     }
     this.api = undefined
+
+    if (changedKeys.includes('emsSchedules')) {
+      this.loadEmsSchedules()
+      this.triggeredEmsSchedules.clear()
+    }
   }
 
   async onRenamed(name: string) {
@@ -1108,6 +1188,9 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
     }
     if (this.powerModeLoopId) {
       clearTimeout(this.powerModeLoopId)
+    }
+    if (this.emsScheduleCheckId) {
+      clearInterval(this.emsScheduleCheckId)
     }
     if (this.api) {
       this.api.closeOwnConnection(this).catch(reason => {

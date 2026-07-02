@@ -1,7 +1,7 @@
 {
   "_comment": "This file is generated. Please edit .homeycompose/app.json instead.",
   "id": "de.jnkconsulting.e3dc.v2",
-  "version": "1.8.22",
+  "version": "1.8.23",
   "compatibility": ">=12.4.5",
   "sdk": 3,
   "brandColor": "#7AB31B",
@@ -549,6 +549,28 @@
               "hint": {
                 "en": "Select all, copy, paste into the forum thread. Top section = current status; analysis log below keeps error events (not cleared by new syncs). Flow card “Create diagnostic report” also works.",
                 "de": "Alles markieren, kopieren, im Forum-Thread einfügen. Oben = aktueller Stand; Analyse-Protokoll unten behält Fehler-Ereignisse (wird nicht von neuen Syncs gelöscht). Flow-Karte „Diagnosebericht erstellen“ geht auch."
+              }
+            }
+          ]
+        },
+        {
+          "type": "group",
+          "label": {
+            "en": "Manual EMS schedules (experimental)",
+            "de": "Manuelle EMS-Zeitpläne (experimentell)"
+          },
+          "children": [
+            {
+              "id": "emsSchedules",
+              "type": "textarea",
+              "label": {
+                "en": "Schedules as JSON array",
+                "de": "Zeitpläne als JSON-Array"
+              },
+              "value": "[]",
+              "hint": {
+                "en": "Enter a JSON array of schedules for manual EMS power mode planning. Each entry: start (ISO datetime), mode (auto|idle|charge|discharge|grid_charge), powerW, durationMin. Example:\n[\n  { \"start\": \"2026-07-05T14:00:00\", \"mode\": \"grid_charge\", \"powerW\": 3000, \"durationMin\": 60 },\n  { \"start\": \"2026-07-06T02:00:00\", \"mode\": \"discharge\", \"powerW\": 2500, \"durationMin\": 90 }\n]\nThe device will automatically activate the mode at the start time for the given duration (like the flow cards). Old/past entries are ignored. Edit carefully!",
+                "de": "JSON-Array mit Zeitplänen für manuelles Planen von EMS-Modi. Pro Eintrag: start (ISO-Datum/Zeit), mode (auto|idle|charge|discharge|grid_charge), powerW, durationMin. Beispiel:\n[\n  { \"start\": \"2026-07-05T14:00:00\", \"mode\": \"grid_charge\", \"powerW\": 3000, \"durationMin\": 60 },\n  { \"start\": \"2026-07-06T02:00:00\", \"mode\": \"discharge\", \"powerW\": 2500, \"durationMin\": 90 }\n]\nDas Gerät aktiviert den Modus automatisch zur Startzeit für die Dauer (ähnlich den Flow-Karten). Vergangene Einträge werden ignoriert. Vorsichtig editieren!"
               }
             }
           ]
@@ -3083,7 +3105,7 @@
         "de": "E3DC-HKW"
       },
       "transparent": false,
-      "height": 550,
+      "height": 300,
       "settings": [
         {
           "id": "plantId",
@@ -3094,145 +3116,14 @@
           }
         },
         {
-          "id": "showWallbox",
-          "type": "checkbox",
-          "value": true,
-          "title": {
-            "de": "Wallbox anzeigen",
-            "en": "Show wallbox"
-          },
-          "hint": {
-            "de": "Nur wirksam, wenn eine Wallbox mit diesem HKW verknüpft ist.",
-            "en": "Only effective if a Wallbox is linked to this HKW."
-          }
-        },
-        {
-          "id": "showBattery",
-          "type": "checkbox",
-          "value": true,
-          "title": {
-            "de": "Batterie anzeigen",
-            "en": "Show battery"
-          }
-        },
-        {
           "id": "flowThreshold",
           "type": "number",
           "value": 30,
           "min": 0,
           "max": 500,
           "title": {
-            "de": "Min. Leistung für Pfeile (W)",
-            "en": "Min. power for arrows (W)"
-          }
-        },
-        {
-          "id": "deviceNameVisible",
-          "type": "checkbox",
-          "value": true,
-          "title": {
-            "de": "Device Name sichtbar",
-            "en": "Device name visible"
-          }
-        },
-        {
-          "id": "consumptionVisible",
-          "type": "checkbox",
-          "value": true,
-          "title": {
-            "de": "Verbrauch sichtbar",
-            "en": "Consumption visible"
-          }
-        },
-        {
-          "id": "pvDeliveryVisible",
-          "type": "checkbox",
-          "value": true,
-          "title": {
-            "de": "PV-Leistung sichtbar",
-            "en": "PV power visible"
-          }
-        },
-        {
-          "id": "gridVisible",
-          "type": "checkbox",
-          "value": true,
-          "title": {
-            "de": "Netzleistung sichtbar",
-            "en": "Grid power visible"
-          }
-        },
-        {
-          "id": "batteryVisible",
-          "type": "checkbox",
-          "value": true,
-          "title": {
-            "de": "Batterie sichtbar",
-            "en": "Battery power visible"
-          }
-        },
-        {
-          "id": "batteryLevelVisible",
-          "type": "checkbox",
-          "value": true,
-          "title": {
-            "de": "Ladestand sichtbar",
-            "en": "Battery level visible"
-          }
-        },
-        {
-          "id": "wallboxConsumptionVisible",
-          "type": "checkbox",
-          "value": true,
-          "title": {
-            "de": "Wallbox Verbrauch sichtbar",
-            "en": "Wallbox consumption visible"
-          }
-        },
-        {
-          "id": "solarShareVisible",
-          "type": "checkbox",
-          "value": true,
-          "title": {
-            "de": "Solaranteil (Wallbox) sichtbar",
-            "en": "Solar share (wallbox) visible"
-          }
-        },
-        {
-          "id": "externalSourceVisible",
-          "type": "checkbox",
-          "value": true,
-          "title": {
-            "de": "ext. Quelle sichtbar",
-            "en": "ext. source visible"
-          }
-        },
-        {
-          "id": "showEmpty",
-          "type": "checkbox",
-          "value": true,
-          "title": {
-            "de": "Elemente ohne Leistung anzeigen?",
-            "en": "Display elements without power?"
-          },
-          "hint": {
-            "de": "Wenn angewählt, werden auch Elemente angezeigt, die aktuell keinen Leistungswert haben (Zum Beispiel eine gerade nicht genutzte Wallbox).",
-            "en": "If selected, elements that currently have no power value are also displayed (for example, a wallbox that is not currently in use)."
-          }
-        },
-        {
-          "id": "emptyThreshold",
-          "type": "number",
-          "value": 10,
-          "min": 0,
-          "max": 1000,
-          "title": {
-            "de": "Min. Leistung",
-            "en": "Min. Power"
-          },
-          "hint": {
-            "de": "Wenn 'Elemente ohne Leistung anzeigen' abgewählt ist, kann hier die Grenze eingestellt werden, ab wann ein Element als 'ohne Leistung' Erkannt wird. Einige Hauskraftwerke zeigen eine geringe, dauerhafte Entladung der Batterie an. Um so etwas auszublenden, kann man diese Grenze einfach über den Wert einstellen.",
-            "en": "If 'Display elements without power' is deselected, the limit can be set here for when an element is recognized as 'without power'. Some home power stations display a low, permanent discharge of the battery. To hide something like this, you can simply set this limit via the value."
+            "de": "Min. Leistung für Flow (W)",
+            "en": "Min. power for flow (W)"
           }
         }
       ],
@@ -3262,6 +3153,10 @@
           "title": {
             "de": "Hauskraftwerk",
             "en": "Home power plant"
+          },
+          "hint": {
+            "de": "Wähle das HKW, zu dem die Wallbox gehört. Bei nur einem HKW wird automatisch das richtige verwendet – keine Auswahl nötig.",
+            "en": "Select the HPS that the wallbox belongs to. With only one HPS it is auto-selected – no manual choice needed."
           }
         }
       ],

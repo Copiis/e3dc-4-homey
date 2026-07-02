@@ -22,7 +22,7 @@
 
     .plant-title {
       margin-bottom: var(--homey-su-1);
-      font-size: 13px;
+      font-size: 14px;
       text-align: center;
       max-width: 100%;
       overflow: hidden;
@@ -55,18 +55,18 @@
 
     .node-label {
       fill: #c8c8c8;
-      font-size: 8px;
+      font-size: 9px;
     }
 
     .node-value {
       fill: #ffffff;
-      font-size: 10px;
+      font-size: 11px;
       font-weight: 600;
     }
 
     .node-soc {
       fill: #a8a8a8;
-      font-size: 8px;
+      font-size: 9px;
     }
 
     .flow-line {
@@ -93,49 +93,6 @@
 
     .hidden {
       display: none !important;
-    }
-
-    /* Overview grid styles */
-    #overview-container {
-      height: auto;
-      display: grid;
-      grid-template-columns: auto auto;
-      gap: var(--homey-su-3);
-      margin-top: var(--homey-su-4);
-      padding: 0 var(--homey-su-2);
-    }
-
-    #overview-container .grid-item {
-      display: flex;
-      justify-content: center;
-    }
-
-    #overview-container .grid-item span {
-      display: flex;
-      align-items: center;
-    }
-
-    #overview-container .grid-title {
-      display: flex;
-      justify-content: start;
-      align-items: start;
-      grid-column: 1 / -1;
-      border-bottom: var(--homey-line);
-    }
-
-    #overview-container .grid-title span {
-      display: flex;
-      align-items: start;
-      justify-self: start;
-      margin-bottom: var(--homey-su-2);
-    }
-
-    #overview-container .left {
-      justify-self: start;
-    }
-
-    #overview-container .right {
-      justify-self: end;
     }
   </style>
 </head>
@@ -174,15 +131,14 @@
         <line x1="2" y1="12" x2="2" y2="15" stroke="#333" stroke-width="0.8"/>
         <line x1="16" y1="12" x2="16" y2="15" stroke="#333" stroke-width="0.8"/>
       </g>
-      <text x="118" y="15" class="node-label" text-anchor="end" data-i18n="widget.live.pv">PV</text>
-      <text id="pv-value" x="118" y="28" class="node-value" text-anchor="end">0 W</text>
+      <text id="pv-value" x="118" y="22" class="node-value" text-anchor="end">0 W</text>
     </g>
 
-    <!-- Mitte: Haus — Icon links, Werte rechts -->
+    <!-- Mitte: Haus — zentriert im Kasten (Icon + Verbrauch) -->
     <g id="node-house" transform="translate(120, 108)">
-      <rect width="80" height="58" rx="6" class="node-box house"/>
-      <!-- House icon -->
-      <g transform="translate(8, 12)">
+      <rect width="80" height="62" rx="6" class="node-box house"/>
+      <!-- House icon (zentriert) -->
+      <g transform="translate(26, 10)">
         <!-- roof -->
         <polygon points="0,0 14,-10 28,0" fill="#7AB31B" stroke="#333" stroke-width="0.8"/>
         <!-- body -->
@@ -192,8 +148,8 @@
         <!-- window -->
         <rect x="5" y="4" width="4" height="4" fill="#fff" stroke="#333" stroke-width="0.5"/>
       </g>
-      <text x="70" y="24" class="node-label" text-anchor="end" data-i18n="widget.consumption">Verbrauch</text>
-      <text id="house-value" x="70" y="38" class="node-value" text-anchor="end">0 W</text>
+      <!-- Verbrauch zentriert unter dem Haus-Icon -->
+      <text id="house-value" x="40" y="52" class="node-value" text-anchor="middle">0 W</text>
     </g>
 
     <!-- Links: Netz — Icon oben, Werte unten in der Box -->
@@ -215,29 +171,29 @@
         <line x1="0" y1="3" x2="3" y2="3" stroke="#555" stroke-width="0.6"/>
         <line x1="11" y1="3" x2="14" y2="3" stroke="#555" stroke-width="0.6"/>
       </g>
-      <text id="grid-label" x="31" y="36" class="node-label" text-anchor="middle">Netz</text>
-      <text id="grid-value" x="31" y="48" class="node-value" text-anchor="middle">0 W</text>
+      <text id="grid-value" x="31" y="42" class="node-value" text-anchor="middle">0 W</text>
     </g>
 
-    <!-- Rechts: Batterie — Icon oben, Werte unten -->
-    <g id="node-battery" transform="translate(250, 104)">
-      <rect width="62" height="62" rx="6" class="node-box battery"/>
-      <!-- Battery icon -->
-      <g transform="translate(17, 10)">
-        <!-- battery body -->
-        <rect x="0" y="4" width="20" height="28" rx="2" fill="none" stroke="#333" stroke-width="1.5"/>
+    <!-- Rechts: Batterie — flaches, zentriertes Symbol, Werte darunter mit Abstand -->
+    <g id="node-battery" transform="translate(250, 100)">
+      <rect width="62" height="70" rx="6" class="node-box battery"/>
+      <!-- Battery icon (flach + zentriert) -->
+      <g transform="translate(17, 5)">
+        <!-- battery body (flacher) -->
+        <rect x="0" y="2" width="28" height="14" rx="2" fill="none" stroke="#333" stroke-width="1.5"/>
         <!-- battery cap -->
-        <rect x="6" y="0" width="8" height="4" fill="#7AB31B"/>
-        <!-- terminals -->
-        <line x1="4" y1="8" x2="16" y2="8" stroke="#333" stroke-width="1"/>
-        <line x1="4" y1="16" x2="16" y2="16" stroke="#333" stroke-width="1"/>
-        <line x1="4" y1="24" x2="16" y2="24" stroke="#333" stroke-width="1"/>
+        <rect x="10" y="0" width="8" height="3" fill="#7AB31B"/>
+        <!-- terminals (horizontal) -->
+        <line x1="5" y1="6" x2="23" y2="6" stroke="#333" stroke-width="1"/>
+        <line x1="5" y1="9" x2="23" y2="9" stroke="#333" stroke-width="1"/>
+        <line x1="5" y1="12" x2="23" y2="12" stroke="#333" stroke-width="1"/>
         <!-- fill indicator -->
-        <rect x="2" y="6" width="16" height="24" fill="#7AB31B" opacity="0.3"/>
+        <rect x="2" y="4" width="24" height="10" fill="#7AB31B" opacity="0.3"/>
       </g>
-      <text x="31" y="36" class="node-label" text-anchor="middle" data-i18n="widget.battery.general">Batterie</text>
-      <text id="battery-value" x="31" y="48" class="node-value" text-anchor="middle">0 W</text>
-      <text id="battery-soc" x="31" y="58" class="node-soc" text-anchor="middle">0%</text>
+      <!-- Werte mit mehr Abstand, keine Überlappung -->
+      <text id="battery-value" x="31" y="32" class="node-value" text-anchor="middle">0 W</text>
+      <text id="battery-soc" x="31" y="46" class="node-soc" text-anchor="middle">0%</text>
+      <text id="battery-charge-time" x="31" y="58" class="node-soc" text-anchor="middle">—</text>
     </g>
 
     <!-- Unten: Wallbox — Icon links, Werte rechts -->
@@ -254,76 +210,14 @@
         <!-- handle -->
         <rect x="2" y="3" width="3" height="4" fill="#fff"/>
       </g>
-      <text x="142" y="15" class="node-label" text-anchor="end" data-i18n="widget.wallbox.consumption">Wallbox</text>
-      <text id="wallbox-value" x="142" y="28" class="node-value" text-anchor="end">0 W</text>
+      <text id="wallbox-value" x="142" y="22" class="node-value" text-anchor="end">0 W</text>
     </g>
   </svg>
 </div>
 
-<!-- Overview below the live energy -->
-<div id="overview-container" class="homey-widget hidden">
-  <div class="grid-title hidden">
-    <span id="grid-title-value" class="homey-text-bold">E3DC</span>
-  </div>
-  <div class="grid-item left consumption hidden">
-    <span class="homey-text-regular" data-i18n="widget.consumption">Hausverbrauch</span>
-  </div>
-  <div class="grid-item right consumption hidden">
-    <span id="consumption-value" class="homey-text-medium">0 W</span>
-  </div>
-
-  <div class="grid-item left pv-power hidden">
-    <span class="homey-text-regular" data-i18n="widget.pv-delivery">PV Leistung</span>
-  </div>
-  <div class="grid-item right pv-power hidden">
-    <span id="pv-power-value" class="homey-text-medium">0 W</span>
-  </div>
-
-  <div class="grid-item left grid hidden">
-    <span id="grid-title" class="homey-text-regular">Netz</span>
-  </div>
-  <div class="grid-item right grid hidden">
-    <span id="overview-grid-value" class="homey-text-medium">0 W</span>
-  </div>
-
-  <div class="grid-item left battery hidden">
-    <span class="homey-text-regular" data-i18n="widget.battery.general">Batterie</span>
-  </div>
-  <div class="grid-item right battery hidden">
-    <span id="overview-battery-value" class="homey-text-medium">0 W</span>
-  </div>
-  <div class="grid-item left battery-level hidden">
-    <span class="homey-text-regular">Ladestand</span>
-  </div>
-  <div class="grid-item right battery-level hidden">
-    <span id="battery-level-value" class="homey-text-medium">0%</span>
-  </div>
-
-  <div class="grid-item left wb-consumption hidden">
-    <span class="homey-text-regular" data-i18n="widget.wallbox.consumption">Wallbox</span>
-  </div>
-  <div class="grid-item right wb-consumption hidden">
-    <span id="wb-consumption-value" class="homey-text-medium">0 W</span>
-  </div>
-
-  <div class="grid-item left solar-share hidden">
-    <span class="homey-text-regular">Solaranteil</span>
-  </div>
-  <div class="grid-item right solar-share hidden">
-    <span id="solar-share-value" class="homey-text-medium">0%</span>
-  </div>
-
-  <div class="grid-item left external-source hidden">
-    <span class="homey-text-regular">Ext. Quelle</span>
-  </div>
-  <div class="grid-item right external-source hidden">
-    <span id="external-source-value" class="homey-text-medium">0 W</span>
-  </div>
-</div>
-
 <script type="text/javascript">
   const SYNC_INTERVAL = 10000;
-  const WIDGET_HEIGHT = 550;
+  const WIDGET_HEIGHT = 300;
   const FLOW_DOT_COUNT = 2;
   const SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -445,6 +339,7 @@
     setWidgetText('grid-value', formatW(Math.abs(d.gridPower)));
     setWidgetText('battery-value', formatW(Math.abs(d.batteryPower)));
     setWidgetText('battery-soc', Math.round(d.batteryLevel) + '%');
+    setWidgetText('battery-charge-time', d.chargeTime || '—');
     setWidgetText('wallbox-value', formatW(d.wallboxPower));
 
     // Keep label simple as "Netz" — direction is now clear from the flow arrows
@@ -466,16 +361,28 @@
     const gridToHouse = gridToHouseW > (settings.flowThreshold || 30);
     const batteryToHouse = Math.max(0, -d.batteryPower) > (settings.flowThreshold || 30);
 
-    const showWallbox = settings.showWallbox !== false && d.hasWallbox;
-    const showBattery = settings.showBattery !== false;
+    const hasWallbox = !!d.hasWallbox;
+    const hasBattery = !!d.hasBattery;
 
-    // Hide wallbox node and lines if no wallbox or setting off
+    // Only auto-hide nodes based on presence (no more per-value toggles)
+    const showWallbox = hasWallbox;
+    const showBattery = hasBattery;
+
+    // Hide wallbox node + lines if not present
     const wallboxNode = document.getElementById('node-wallbox');
     const wallboxLine1 = document.getElementById('flow-house-wallbox');
     const wallboxLine2 = document.getElementById('flow-pv-wallbox');
     if (wallboxNode) wallboxNode.style.display = showWallbox ? '' : 'none';
     if (wallboxLine1) wallboxLine1.style.display = showWallbox ? '' : 'none';
     if (wallboxLine2) wallboxLine2.style.display = showWallbox ? '' : 'none';
+
+    // Hide battery node + lines if not present
+    const batteryNode = document.getElementById('node-battery');
+    const batteryLine1 = document.getElementById('flow-battery-house');
+    const batteryLine2 = document.getElementById('flow-house-battery');
+    if (batteryNode) batteryNode.style.display = showBattery ? '' : 'none';
+    if (batteryLine1) batteryLine1.style.display = showBattery ? '' : 'none';
+    if (batteryLine2) batteryLine2.style.display = showBattery ? '' : 'none';
 
     // Dynamically crop SVG when no wallbox (reduces visual height)
     const svgEl = document.getElementById('flow-svg');
@@ -567,60 +474,16 @@
   function showFlow() {
     document.getElementById('info-message').classList.add('hidden');
     document.getElementById('flow-container').classList.remove('hidden');
-    document.getElementById('overview-container').classList.remove('hidden');
   }
 
-  function hideOrShow(className, show) {
-    const elements = document.getElementsByClassName(className);
-    for (let i = 0; i < elements.length; i++) {
-      const element = elements[i];
-      const currentlyVisible = !element.classList.contains('hidden');
-      if (show && !currentlyVisible) {
-        element.classList.remove('hidden');
-      } else if (!show && currentlyVisible) {
-        element.classList.add('hidden');
-      }
+  function applyLiveVisibility(settings, data) {
+    // With simplified settings (only plantId + flowThreshold), always show all values
+    // (nodes are auto-hidden only via hasWallbox/hasBattery above)
+    const title = document.getElementById('plant-title');
+    if (title) {
+      title.style.display = '';
     }
-  }
-
-  function configureVisibility(settings, data) {
-    hideOrShow('grid-title', settings.deviceNameVisible);
-    hideOrShow('consumption', settings.consumptionVisible);
-    hideOrShow('pv-power', settings.pvDeliveryVisible);
-    hideOrShow('grid', settings.gridVisible);
-    hideOrShow('battery', settings.batteryVisible);
-    hideOrShow('battery-level', settings.batteryLevelVisible);
-    hideOrShow('external-source', settings.externalSourceVisible);
-
-    const d = data || {};
-    const hasWallbox = !!d.hasWallbox;
-
-    // Only show wallbox rows if station actually has a wallbox linked
-    hideOrShow('wb-consumption', settings.wallboxConsumptionVisible && hasWallbox);
-    hideOrShow('solar-share', settings.solarShareVisible && hasWallbox);
-
-    let visibleRows = 0;
-    if (settings.consumptionVisible) visibleRows++;
-    if (settings.pvDeliveryVisible) visibleRows++;
-    if (settings.gridVisible) visibleRows++;
-    if (settings.batteryVisible) visibleRows++;
-    if (settings.batteryLevelVisible) visibleRows++;
-    if (settings.wallboxConsumptionVisible && hasWallbox) visibleRows++;
-    if (settings.solarShareVisible && hasWallbox) visibleRows++;
-    if (settings.externalSourceVisible) visibleRows++;
-
-    const threshold = settings.emptyThreshold || 10;
-
-    if (!settings.showEmpty) {
-      if (settings.consumptionVisible && Math.abs(d.consumption || 0) < threshold) hideOrShow('consumption', false);
-      if (settings.pvDeliveryVisible && Math.abs(d.pvPower || 0) < threshold) hideOrShow('pv-power', false);
-      if (settings.gridVisible && Math.abs(d.gridPower || 0) < threshold) hideOrShow('grid', false);
-      if (settings.batteryVisible && Math.abs(d.batteryPower || 0) < threshold) hideOrShow('battery', false);
-      if (settings.batteryLevelVisible && (d.batteryLevel || 0) < 1) hideOrShow('battery-level', false);
-      if (settings.wallboxConsumptionVisible && hasWallbox && Math.abs(d.wallboxPower || 0) < threshold) hideOrShow('wb-consumption', false);
-      if (settings.solarShareVisible && hasWallbox && Math.abs(d.wallboxSolarShare || 0) < threshold) hideOrShow('solar-share', false);
-      if (settings.externalSourceVisible && Math.abs(d.externalPower || 0) < threshold) hideOrShow('external-source', false);
-    }
+    // Values are always visible
   }
 
   async function sync(asInit) {
@@ -634,53 +497,16 @@
 
       const settings = Homey.getSettings();
       updateFlow(plant, settings, Homey);
-      updateOverview(plant, settings);
+      applyLiveVisibility(settings, plant.powerState);
       showFlow();
 
-      // Dynamic height: reduce when no Wallbox section
-      const hasWb = !!plant.powerState.hasWallbox;
-      const showWb = settings.showWallbox !== false && hasWb;
-      const dynamicHeight = showWb ? WIDGET_HEIGHT : 470;
+      // Dynamic height for the flow diagram (no list below anymore)
+      const dynamicHeight = plant.powerState.hasWallbox ? WIDGET_HEIGHT : 220;
       setHeight(Homey, asInit, dynamicHeight);
     } catch (e) {
       showMessage(e.toString());
       setHeight(Homey, asInit, 100);
     }
-  }
-
-  function updateOverview(plant, settings) {
-    const d = plant.powerState || {};
-    const container = document.getElementById('overview-container');
-    if (container.classList.contains('hidden')) {
-      container.classList.remove('hidden');
-    }
-
-    const titleEl = document.getElementById('grid-title-value');
-    if (titleEl) titleEl.textContent = plant.name || 'E3DC';
-
-    setWidgetText('consumption-value', formatW(d.consumption));
-    setWidgetText('pv-power-value', formatW(d.pvPower));
-    setWidgetText('overview-grid-value', formatW(Math.abs(d.gridPower)));
-    setWidgetText('overview-battery-value', formatW(Math.abs(d.batteryPower)));
-    setWidgetText('battery-level-value', Math.round(d.batteryLevel) + '%');
-    setWidgetText('wb-consumption-value', formatW(d.wallboxPower));
-    setWidgetText('solar-share-value', Math.round(d.wallboxSolarShare) + '%');
-    setWidgetText('external-source-value', formatW(d.externalPower));
-
-    // Update battery title to show charging or discharging
-    // Positive batteryPower = charging the battery (Laden), negative = discharging (Entladen)
-    const batteryTitleEl = document.getElementById('battery-title');
-    if (batteryTitleEl) {
-      if (d.batteryPower > 0) {
-        batteryTitleEl.textContent = 'Bat. Laden';
-      } else if (d.batteryPower < 0) {
-        batteryTitleEl.textContent = 'Bat. Entladen';
-      } else {
-        batteryTitleEl.textContent = 'Batterie';
-      }
-    }
-
-    configureVisibility(settings, d);
   }
 
   function configureHeight(Homey, asInit, height) {
