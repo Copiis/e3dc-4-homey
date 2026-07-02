@@ -100,7 +100,10 @@ export function calculateMultiSegmentPvForecast(
     correctionFactor = Math.max(CORRECTION_MIN, Math.min(CORRECTION_MAX, correctionFactor));
   }
 
-  const adjustedKwh = actualKwh + remainingKwh * correctionFactor;
+  // Use actual so far + original forecasted remaining (no aggressive scaling).
+  const forecastRemaining = baselineKwh - expectedKwhSoFar;
+  const adjustedKwh = actualKwh + forecastRemaining;
+
   return {
     baselineKwh: roundKwh(baselineKwh),
     adjustedKwh: roundKwh(Math.max(actualKwh, adjustedKwh)),
