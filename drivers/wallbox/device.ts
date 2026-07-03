@@ -92,10 +92,10 @@ class WallboxDevice extends Homey.Device implements Wallbox {
       if (!currentIds.has(id)) {
         this.log(`Wallbox schedule ${id} manually deleted, reverting action ${action}`);
         try {
-          if (action === 'allow') await this.applyChargingAllowed(false);
-          else if (action === 'block') await this.applyChargingAllowed(true);
-          else if (action === 'sun_on') await this.applySunMode(false);
-          else if (action === 'sun_off') await this.applySunMode(true);
+          if (action === 'allow') await this.applyChargingAllowed(false, undefined, true);
+          else if (action === 'block') await this.applyChargingAllowed(true, undefined, true);
+          else if (action === 'sun_on') await this.applySunMode(false, undefined, true);
+          else if (action === 'sun_off') await this.applySunMode(true, undefined, true);
         } catch (e) {
           this.error('Error reverting manually deleted wallbox schedule: ' + formatError(e));
         }
@@ -111,8 +111,14 @@ class WallboxDevice extends Homey.Device implements Wallbox {
       if (isNaN(startTs)) continue;
 
       let endTs: number | null = null;
-      if (s.untilFull) endTs = null;
-      else if (s.end) endTs = new Date(s.end).getTime();
+      if (s.untilFull) {
+        endTs = null;
+      } else if (typeof s.endTs === 'number' && !isNaN(s.endTs)) {
+        endTs = s.endTs;
+      } else if (s.end) {
+        const parsed = new Date(s.end).getTime();
+        endTs = isNaN(parsed) ? null : parsed;
+      }
 
       const active = now >= startTs && (endTs === null || now < endTs);
 
@@ -145,13 +151,13 @@ class WallboxDevice extends Homey.Device implements Wallbox {
         this.log(`Wallbox schedule ended, reverting action ${action}`);
         try {
           if (action === 'allow') {
-            await this.applyChargingAllowed(false);
+            await this.applyChargingAllowed(false, undefined, true); // force stop at plan end
           } else if (action === 'block') {
-            await this.applyChargingAllowed(true);
+            await this.applyChargingAllowed(true, undefined, true);
           } else if (action === 'sun_on') {
-            await this.applySunMode(false);
+            await this.applySunMode(false, undefined, true);
           } else if (action === 'sun_off') {
-            await this.applySunMode(true);
+            await this.applySunMode(true, undefined, true);
           }
         } catch (e) {
           this.error('Wallbox schedule end revert error: ' + formatError(e));
@@ -181,7 +187,7 @@ class WallboxDevice extends Homey.Device implements Wallbox {
 
         if (stopReason) {
           this.log(`Wallbox until full (${stopReason})`);
-          if (s.action === 'allow') await this.applyChargingAllowed(false);
+          if (s.action === 'allow') await this.applyChargingAllowed(false, undefined, true);
           this.triggeredWallboxSchedules.delete(id);
           this.untilFullLowPowerSince.delete(id);
 
@@ -197,19 +203,35 @@ class WallboxDevice extends Homey.Device implements Wallbox {
     const cleaned = schedules.filter(s => {
       if (!s || !s.start) return false;
       if (s.untilFull) return true; // keep until SOC condition met
-      if (s.end) {
-        const eTs = new Date(s.end).getTime();
-        if (!isNaN(eTs) && now >= eTs) return false;
+      let eTs: number | null = null;
+      if (typeof s.endTs === 'number' && !isNaN(s.endTs)) {
+        eTs = s.endTs;
+      } else if (s.end) {
+        const parsed = new Date(s.end).getTime();
+        eTs = isNaN(parsed) ? null : parsed;
       }
+      if (eTs !== null && now >= eTs) return false;
       return true;
     });
     if (cleaned.length < beforeLen) {
       this.log(`Wallbox: auto-removed ${beforeLen - cleaned.length} expired plans`);
-      await this.setSettings({ schedules: JSON.stringify(cleaned) });
+      // Ensure we revert any still-tracked plans before dropping them from the map
       const currentIds = new Set(cleaned.map(s => s.id || (s.start + '_' + s.action)));
-      for (const [id] of this.triggeredWallboxSchedules.entries()) {
-        if (!currentIds.has(id)) this.triggeredWallboxSchedules.delete(id);
+      for (const [id, action] of this.triggeredWallboxSchedules.entries()) {
+        if (!currentIds.has(id)) {
+          this.log(`Wallbox auto-clean: reverting still-active schedule ${id} (${action})`);
+          try {
+            if (action === 'allow') await this.applyChargingAllowed(false, undefined, true);
+            else if (action === 'block') await this.applyChargingAllowed(true, undefined, true);
+            else if (action === 'sun_on') await this.applySunMode(false, undefined, true);
+            else if (action === 'sun_off') await this.applySunMode(true, undefined, true);
+          } catch (e) {
+            this.error('Wallbox auto-clean revert error: ' + formatError(e));
+          }
+          this.triggeredWallboxSchedules.delete(id);
+        }
       }
+      await this.setSettings({ schedules: JSON.stringify(cleaned) });
     }
 
     // Update tile visibility for Ladepläne if importance changed
@@ -632,8 +654,39 @@ class WallboxDevice extends Homey.Device implements Wallbox {
   }): Promise<string | void> {
     this.log('WallboxDevice settings were changed');
     if (changedKeys.includes('schedules')) {
-      // re-check immediately so manual deletes of running plans are processed quickly
-      setTimeout(() => this.checkWallboxSchedules(), 100);
+      // Immediately handle manual deletion of a running plan (exactly like HKW Ladeplaner).
+      // When the widget removes a schedule from the list, we must stop the corresponding action right away.
+      try {
+        const json = (newSettings as any).schedules || '[]';
+        const freshSchedules: any[] = JSON.parse(json) || [];
+        const newIds = new Set(freshSchedules.map((s: any) => s.id || (s.start + '_' + (s.action || ''))));
+
+        for (const [id, action] of this.triggeredWallboxSchedules.entries()) {
+          if (!newIds.has(id)) {
+            this.log(`[WallboxLadeplan] Manually deleted running schedule ${id} (action=${action}) — reverting now (like HKW)`);
+            try {
+              if (action === 'allow') {
+                await this.applyChargingAllowed(false, undefined, true);
+              } else if (action === 'block') {
+                await this.applyChargingAllowed(true, undefined, true);
+              } else if (action === 'sun_on') {
+                await this.applySunMode(false, undefined, true);
+              } else if (action === 'sun_off') {
+                await this.applySunMode(true, undefined, true);
+              }
+            } catch (e) {
+              this.error('Error reverting manually deleted wallbox schedule (onSettings): ' + formatError(e));
+            }
+            this.triggeredWallboxSchedules.delete(id);
+            this.untilFullLowPowerSince?.delete(id);
+          }
+        }
+      } catch (e) {
+        this.error('Failed to process manual schedule delete in onSettings: ' + formatError(e));
+      }
+
+      // Also run the full checker soon (for new plans etc.)
+      setTimeout(() => this.checkWallboxSchedules(), 50);
     }
   }
 

@@ -1,4 +1,8 @@
 {
+  "1.8.25": {
+    "de": "- **Wallbox Ladeplaner:** Optionale Endzeit hinzugefügt (wie beim HKW Ladeplaner) für feste Zeitfenster (z. B. dynamische Tarife)\n- „Bis voll“ bleibt als Alternative\n- Ladepläne überschreiben jetzt alle vorherigen Einstellungen (Force-Override)\n- Bessere Erkennung „voll“ über Leistung (Fallback für Tesla & Co.)\n- Ladepläne starten zuverlässiger zum geplanten Zeitpunkt und werden automatisch bereinigt\n- Verbessertes Logging und Stabilität\n- **Widget:** Ladeprobleme (unendlicher Spinner) bei Ersteinrichtung behoben\n- **Manuelles Löschen von Ladeplänen:** Löschen eines aktiven Plans beendet das Laden sofort (Force-Revert, genau wie beim HKW-Ladeplaner)",
+    "en": "- **Wallbox Ladeplaner:** Optional end time added (like the HKW Ladeplaner) for fixed time windows (e.g. dynamic tariffs)\n- \"Until full\" remains as alternative\n- Plans now override all previous settings (force-override)\n- Better \"full\" detection via power (good fallback for Tesla etc.)\n- Plans start more reliably at the scheduled time and are auto-cleaned up\n- Improved logging and stability\n- **Widget:** Loading issues (infinite spinner) on first setup fixed\n- **Manual plan deletion:** Deleting an active plan now immediately stops charging (force-revert, exactly like the HKW Ladeplaner)"
+  },
   "1.8.24": {
     "de": "- **Neue Widgets:** \"HKW Ladeplaner\" und \"Wallbox Ladeplaner\" als interaktive Widgets für manuelle Zeitpläne.\n- **HKW Ladeplaner:** Start/Ende (Datum+Uhrzeit) oder bis SOC-% für Hausakku. Modi: Laden/Entladen/Netzladen/Pause + Leistung.\n- **Wallbox Ladeplaner:** Start/Ende oder bis voll. Aktionen: Erlauben/Blocken, Sonnenmodus an/aus, Stromstärke wählbar, Batterie zuerst / Mix-Modus, Entlade Hausakku bis %.\n- **Speicherung:** Beide Ansätze unterstützt (zentral im HKW + pro Wallbox-Gerät).\n- **Backend:** Erweiterte Scheduler-Logik mit untilFull / untilSoc und Auto-Revert.",
     "en": "- **New Widgets:** \"HKW Ladeplaner\" and \"Wallbox Ladeplaner\" as interactive widgets for manual schedules.\n- **HKW Ladeplaner:** Start/end (date+time) or until SOC-% for home battery. Modes: charge/discharge/grid charge/idle + power.\n- **Wallbox Ladeplaner:** Start/end or until full. Actions: allow/block, sun mode on/off, selectable current, battery first / mix mode, discharge house battery until %.\n- **Storage:** Both approaches supported (central in HPS + per wallbox device).\n- **Backend:** Extended scheduler logic with untilFull / untilSoc and auto-revert."
@@ -296,12 +300,12 @@
     "en": "- Wallbox/battery: flow cards for battery-to-car, car-before-battery, discharge limit % and block battery in mixed mode\n- RSCP control via EMS tags (python-e3dc / rscp2mqtt)"
   },
   "1.3.0": {
-    "de": "- Vollständige Steuerung der Wallbox per Flow: Start/Stop Laden, Sonnenmodus umschalten, Stromstärke/Modus setzen\n- Verbesserte Wallbox Pairing (stabile IDs)\n- Flow Action Cards einmalig pro Driver registriert\n- Weitere Verbesserungen an Logging, Reconnect und externen Quellen",
-    "en": "- Full wallbox control via Flows: start/stop charging, toggle sun mode, set current/mode\n- Improved wallbox pairing with stable device IDs\n- Action cards now registered once per driver\n- Additional logging, reconnect and external source improvements"
+    "de": "- Wallbox Flow: Laden starten, Laden stoppen, Sonnenmodus ein/aus\n- RSCP-Steuerung über WBTag REQ_SET_EXTERN (wie ioBroker e3dc-rscp)\n- Bestehende Karte „Lade-Stromstärke setzen“ bleibt erhalten",
+    "en": "- Wallbox flow actions: start charging, stop charging, sun mode on/off\n- RSCP control via WBTag REQ_SET_EXTERN (aligned with ioBroker e3dc-rscp)\n- Existing \"Set charging current\" card retained"
   },
   "1.2.0": {
-    "de": "- Unterstützung für externe Quellen\n- Übersichtswidget\n- Timeout Einstellung\n- Diverse Bugfixes",
-    "en": "- Support for external power sources\n- Power overview widget\n- Timeout setting\n- Various bugfixes"
+    "de": "- Community Fork (Copiis) des nicht mehr gepflegten Original-Repos\n- Wallbox: Klasse auf 'evcharger' geändert, Standard-Capability 'measure_power' hinzugefügt (bessere Integration in Homey Energy)\n- Wallbox-Steuerung: Neue Flow-Action 'Set wallbox charging current' (Stromstärke + Modus via RSCP)\n- Erweiterte Wallbox-Doku und Hinweise zu Sun-Mode / Ladestrom\n- Metadaten (Author, Links, Support) auf den Fork aktualisiert\n- Vorbereitung für weitere Wallbox-Features (Energie, detaillierter Status, erweiterte Modi)",
+    "en": "- Community fork (Copiis) of the unmaintained original repo\n- Wallbox: changed class to 'evcharger', added standard 'measure_power' capability (better Homey Energy integration)\n- Wallbox control: new Flow Action 'Set wallbox charging current' (current + mode via RSCP)\n- Expanded wallbox docs and notes on Sun mode / charge current\n- Updated metadata (author, links, support) to point to the fork\n- Preparation for richer wallbox features (energy counters, detailed status, more modes)"
   },
   "0.5.0": {
     "en": "Initial release"
@@ -352,15 +356,10 @@
     "de": "- Unterstützung für externe Quellen\n- einfaches Übersichtswidget\n- Typos in der deutschen Übersetzung behoben",
     "en": "- Added support for external sources\n- simple overview widget\n- Fixed typos in the German translation"
   },
-  "1.2.0": {
-    "de": "- Community Fork (Copiis) des nicht mehr gepflegten Original-Repos\n- Wallbox: Klasse auf 'evcharger' geändert, Standard-Capability 'measure_power' hinzugefügt (bessere Integration in Homey Energy)\n- Wallbox-Steuerung: Neue Flow-Action 'Set wallbox charging current' (Stromstärke + Modus via RSCP)\n- Erweiterte Wallbox-Doku und Hinweise zu Sun-Mode / Ladestrom\n- Metadaten (Author, Links, Support) auf den Fork aktualisiert\n- Vorbereitung für weitere Wallbox-Features (Energie, detaillierter Status, erweiterte Modi)",
-    "en": "- Community fork (Copiis) of the unmaintained original repo\n- Wallbox: changed class to 'evcharger', added standard 'measure_power' capability (better Homey Energy integration)\n- Wallbox control: new Flow Action 'Set wallbox charging current' (current + mode via RSCP)\n- Expanded wallbox docs and notes on Sun mode / charge current\n- Updated metadata (author, links, support) to point to the fork\n- Preparation for richer wallbox features (energy counters, detailed status, more modes)"
-  },
   "1.2.1": {
     "en": "Wallbox integration"
   },
-  "1.3.0": {
-    "de": "- Wallbox Flow: Laden starten, Laden stoppen, Sonnenmodus ein/aus\n- RSCP-Steuerung über WBTag REQ_SET_EXTERN (wie ioBroker e3dc-rscp)\n- Bestehende Karte „Lade-Stromstärke setzen“ bleibt erhalten",
-    "en": "- Wallbox flow actions: start charging, stop charging, sun mode on/off\n- RSCP control via WBTag REQ_SET_EXTERN (aligned with ioBroker e3dc-rscp)\n- Existing \"Set charging current\" card retained"
+  "1.8.25": {
+    "en": "Wallbox Ladeplaner: Endzeit-Unterstützung hinzugefügt (wie HKW), Force-Override für Pläne, bessere Voll-Erkennung via Power. Charging startet jetzt zuverlässig."
   }
 }
