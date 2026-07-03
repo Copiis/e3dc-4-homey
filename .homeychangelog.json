@@ -1,4 +1,8 @@
 {
+  "1.8.26": {
+    "de": "- Weitere Stabilitäts- und Ladeplaner-Fixes (Widget-Loading, manuelles Löschen von Plänen mit sofortigem Revert)\n- Release mit allen Neuerungen seit v1.8.13 (siehe Forum)",
+    "en": "- Additional stability and Ladeplaner fixes (widget loading, manual plan deletion with immediate revert)\n- Release with all new features since v1.8.13 (see forum)"
+  },
   "1.8.25": {
     "de": "- **Wallbox Ladeplaner:** Optionale Endzeit hinzugefügt (wie beim HKW Ladeplaner) für feste Zeitfenster (z. B. dynamische Tarife)\n- „Bis voll“ bleibt als Alternative\n- Ladepläne überschreiben jetzt alle vorherigen Einstellungen (Force-Override)\n- Bessere Erkennung „voll“ über Leistung (Fallback für Tesla & Co.)\n- Ladepläne starten zuverlässiger zum geplanten Zeitpunkt und werden automatisch bereinigt\n- Verbessertes Logging und Stabilität\n- **Widget:** Ladeprobleme (unendlicher Spinner) bei Ersteinrichtung behoben\n- **Manuelles Löschen von Ladeplänen:** Löschen eines aktiven Plans beendet das Laden sofort (Force-Revert, genau wie beim HKW-Ladeplaner)",
     "en": "- **Wallbox Ladeplaner:** Optional end time added (like the HKW Ladeplaner) for fixed time windows (e.g. dynamic tariffs)\n- \"Until full\" remains as alternative\n- Plans now override all previous settings (force-override)\n- Better \"full\" detection via power (good fallback for Tesla etc.)\n- Plans start more reliably at the scheduled time and are auto-cleaned up\n- Improved logging and stability\n- **Widget:** Loading issues (infinite spinner) on first setup fixed\n- **Manual plan deletion:** Deleting an active plan now immediately stops charging (force-revert, exactly like the HKW Ladeplaner)"
