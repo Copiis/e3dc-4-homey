@@ -48,7 +48,8 @@ export class CapabilityManager {
     updateCapabilityValue('meter_power', generatedKwh, this.device);
 
     const gridDeliveryChange = updateCapabilityValue('measure_grid_delivery', result.gridDelivery, this.device);
-    const batteryDeliveryChange = updateCapabilityValue('measure_battery_delivery', result.batteryDelivery, this.device);
+    // Force set for battery power to ensure tiles (especially after re-adding the capability to the device tile) get the current value
+    const batteryDeliveryChange = updateCapabilityValue('measure_battery_delivery', result.batteryDelivery, this.device, { force: true });
     const houseConsumptionChange = updateCapabilityValue('measure_house_consumption', result.houseConsumption, this.device);
 
     // Triggers are now properly typed on IHpsDevice (optional)
