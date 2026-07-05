@@ -7,12 +7,16 @@ import { formatError } from '../utils/error-utils';
 import { calculatePvSurplusW } from '../utils/pv-surplus';
 
 /**
- * WallboxManager - extracted to reduce the monolith in HomePowerStationDevice.
- * Responsibilities:
- * - Detect linked wallbox devices for this station
- * - Sync live wallbox state to individual wallbox devices
- * - Fetch and sync EMS settings to wallboxes
- * - Clean legacy capabilities on the HPS device
+ * WallboxManager
+ *
+ * Extrahiert aus dem alten Monolithen im HomePowerStationDevice.
+ * Verantwortlichkeiten:
+ * - Erkennen verknüpfter Wallbox-Geräte für diese Station
+ * - Synchronisieren von Live-Daten auf die einzelnen Wallbox-Devices
+ * - Laden und Sync von Wallbox-EMS-Settings
+ * - Aufräumen von Legacy-Capabilities am HKW-Gerät
+ *
+ * Design: Single Responsibility, Dependency Injection über Callbacks/Factory.
  */
 interface WallboxDevice {
   getStoreValue(key: string): unknown;
@@ -25,7 +29,11 @@ interface WallboxDevice {
 
 export class WallboxManager {
   constructor(
-    private readonly homey: any,
+    private readonly homey: {
+      drivers: { getDriver(id: string): { getDevices(): unknown[] } };
+      hasCapability?: (cap: string) => boolean;
+      removeCapability?: (cap: string) => Promise<void>;
+    },
     private readonly stationId: string,
     private readonly logger: { log: (msg: string) => void; error: (msg: string) => void },
     private readonly apiFactory: () => RscpApi,
@@ -45,11 +53,11 @@ export class WallboxManager {
    */
   handleWallboxData(data: LiveData): void {
     // Drop legacy HPS caps (once)
-    if (this.homey.hasCapability && this.homey.hasCapability('measure_wallbox_consumption')) {
-      this.homey.removeCapability('measure_wallbox_consumption').then().catch(() => {});
+    if (this.homey.hasCapability?.('measure_wallbox_consumption')) {
+      this.homey.removeCapability?.('measure_wallbox_consumption').then().catch(() => {});
     }
-    if (this.homey.hasCapability && this.homey.hasCapability('measure_wallbox_solarshare')) {
-      this.homey.removeCapability('measure_wallbox_solarshare').then().catch(() => {});
+    if (this.homey.hasCapability?.('measure_wallbox_solarshare')) {
+      this.homey.removeCapability?.('measure_wallbox_solarshare').then().catch(() => {});
     }
 
     if (data.wallboxPowerState.length === 0) {

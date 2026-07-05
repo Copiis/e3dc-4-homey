@@ -5,7 +5,15 @@ import { updateCapabilityValue } from '../utils/capability-utils';
 import { IHpsDevice } from '../types/hps-device';
 
 /**
- * DiagnosticManager - extracted to further reduce device.ts
+ * DiagnosticManager
+ *
+ * Verantwortlich für:
+ * - Aufzeichnen von Diagnose-Events (Analysis Log)
+ * - Erstellen und Publizieren von Diagnose-Reports
+ * - Automatisches Deaktivieren der detaillierten Diagnose nach Timeout
+ * - Zählen verknüpfter Geräte und Sammeln von Sync-Statistiken
+ *
+ * Wird vom HKW-Device genutzt, um Nutzern und Support gute Diagnose-Daten zu liefern.
  */
 export class DiagnosticManager {
   private readonly diagnostic = new DeviceDiagnostic();

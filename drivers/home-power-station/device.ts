@@ -381,7 +381,7 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
       this.log('[Ladeplan] emsSchedules setting changed, reloading')
       this.diagnosticManager?.recordAnalysisEvent('info', '[Ladeplan] emsSchedules setting changed, reloading')
       this.emsScheduleManager?.loadEmsSchedules()
-      this.emsScheduleManager?.clearTriggeredSchedules()  // clean public API (no more private bracket hack)
+      this.emsScheduleManager?.clearTriggeredSchedules()
       this.emsScheduleManager?.checkEmsSchedules?.()  // evaluate immediately
     }
     if (changedKeys.includes('detailedDiagnostics')) {

@@ -38,7 +38,16 @@ import {
 } from '../../src/utils/wallbox-charging-state';
 
 /**
- * WallboxDevice - controls and monitors a wallbox connected to the E3DC system.
+ * WallboxDevice
+ *
+ * Steuert und überwacht eine einzelne Wallbox am E3DC HKW.
+ * Verantwortlichkeiten:
+ * - Live-Daten und EMS-Settings synchronisieren
+ * - Flow-Karten und Capability-Listener verwalten
+ * - Ladeplan-Schedules (Wallbox-spezifisch) handhaben
+ * - RSCP-Befehle serialisieren (gegen Race-Conditions)
+ *
+ * Im Vergleich zum alten Monolithen: Logik wo möglich in Manager/Utils ausgelagert.
  */
 class WallboxDevice extends Homey.Device implements Wallbox {
 
@@ -48,7 +57,7 @@ class WallboxDevice extends Homey.Device implements Wallbox {
   private wasReadyToCharge = false;
 
   // Simple serializer to prevent overlapping RSCP commands from concurrent flows (bugfix for races)
-  private _commandChain: Promise<any> = Promise.resolve();
+  private _commandChain: Promise<unknown> = Promise.resolve();
 
   private async serialize<T>(fn: () => Promise<T>): Promise<T> {
     const result = this._commandChain.then(fn).catch(err => {
@@ -146,9 +155,10 @@ class WallboxDevice extends Homey.Device implements Wallbox {
             // force override for Ladeplan ( Sonnenmodus aus + Laden )
             // Für Ladeplan "Laden": ALLE Checks/Guards überbrücken und erzwingen
             await this.applySunMode(false, undefined, true);   // force
-            await this.applyChargingAllowed(true, (s as any).current, true); // force (current is optional extra field)
-            if ((s as any).current) {
-              await this.setCurrentLimit((s as any).current);
+            const current = (s as { current?: number }).current;
+            await this.applyChargingAllowed(true, current, true); // force (current is optional extra field)
+            if (current) {
+              await this.setCurrentLimit(current);
             }
           }
           if (s.action === 'block') await this.applyChargingAllowed(false);
@@ -206,7 +216,8 @@ class WallboxDevice extends Homey.Device implements Wallbox {
           this.untilFullLowPowerSince.delete(id);
 
           // remove the completed untilFull plan
-          const planId = (s as { id?: string; start?: string; action?: string }).id || ((s as any).start + '_' + (s as any).action);
+          const sched = s as { id?: string; start?: string; action?: string };
+          const planId = sched.id || (sched.start + '_' + sched.action);
           schedules = schedules.filter((p: unknown) => {
             const pp = p as { id?: string; start?: string; action?: string };
             return (pp.id || (pp.start + '_' + pp.action)) !== planId;
@@ -439,7 +450,10 @@ class WallboxDevice extends Homey.Device implements Wallbox {
       return Promise.reject(new Error('Wallbox not associated with a Home Power Station'));
     }
     const hpsDevices = this.homey.drivers.getDriver('home-power-station').getDevices();
-    const station = hpsDevices.find((d: any) => d.getId && d.getId() === config.stationId) as unknown as HomePowerStation | undefined;
+    const station = hpsDevices.find((d: unknown) => {
+      const dev = d as { getId?: () => string };
+      return dev.getId && dev.getId() === config.stationId;
+    }) as HomePowerStation | undefined;
     if (!station || !station.getApi) {
       return Promise.reject(new Error('Associated Home Power Station not found or not ready'));
     }

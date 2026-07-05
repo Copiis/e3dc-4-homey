@@ -7,7 +7,11 @@ import { IHpsDevice } from '../types/hps-device';
 const POWER_MODE_AUTO = 0;
 
 /**
- * PowerModeManager - manages power mode state and scheduling.
+ * PowerModeManager
+ *
+ * Owns the current power mode state (auto/idle/charge/discharge/grid_charge)
+ * and handles refresh/expiry timers for manual or scheduled modes.
+ * Works closely with EmsScheduleManager for Ladeplan integration.
  */
 export class PowerModeManager {
   private powerModeState: PowerModeState | null = null;
@@ -70,13 +74,13 @@ export class PowerModeManager {
     this.logger.log(`[Ladeplan] refreshPowerMode: sending mode=${state.mode} power=${state.powerW} (scheduleId=${state.scheduleId || 'none'})`);
     this.apiFactory()
       .setPowerMode(state.mode, state.powerW, true, this.device)
-      .then((result: any) => {
+      .then((result: unknown) => {
         if (result === false) {
           this.logger.log(`[Ladeplan] refreshPowerMode result for ${state.scheduleId || 'unknown'}: false`);
           this.device.recordAnalysisEvent('info', `[Ladeplan] refresh setPowerMode result: false (schedule ${state.scheduleId || 'unknown'})`);
         }
       })
-      .catch((e: any) => this.logger.error('[Ladeplan] Power mode refresh failed: ' + formatError(e)));
+      .catch((e: unknown) => this.logger.error('[Ladeplan] Power mode refresh failed: ' + formatError(e)));
     this.schedulePowerModeRefresh();
   }
 
@@ -89,7 +93,7 @@ export class PowerModeManager {
     }
     this.powerModeState = null;
     this.apiFactory().setPowerMode(POWER_MODE_AUTO, 0, true, this.device)
-      .catch((e: any) => this.logger.error('[Ladeplan] auto revert failed: ' + formatError(e)));
+      .catch((e: unknown) => this.logger.error('[Ladeplan] auto revert failed: ' + formatError(e)));
   }
 
   private scheduleExpireTimer(scheduleId: string, expiresAt: number) {
