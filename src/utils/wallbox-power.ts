@@ -1,6 +1,8 @@
 /**
  * Ermittelt die effektive Ladeleistung der Wallbox in Watt.
- * Berücksichtigt Sun-Mode und Netzanteil aus EXTERN_DATA.
+ *
+ * Berücksichtigt Sun-Mode und Netzanteil aus den EXTERN_DATA Blöcken.
+ * Wird vom WallboxDevice und EnergySummary verwendet.
  */
 export function resolveWallboxPowerW(state: {
     powerW: number;

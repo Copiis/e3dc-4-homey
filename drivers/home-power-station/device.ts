@@ -105,6 +105,29 @@ const SYNC_INTERVAL = 1000 * 30; // 30 sec (was 20s; reduces CPU/RSCP/cap churn 
 const POWER_MODE_REFRESH_INTERVAL = 1000 * 30; // 30 sec (was 10s)
 const MAX_ALLOWED_ERROR_BEFORE_UNAVAILABLE = 5
 const DIAGNOSTIC_ANALYSIS_STORE_KEY = 'diagnosticAnalysisLog'
+
+/**
+ * HomePowerStationDevice – der zentrale Treiber für E3DC Hauskraftwerke.
+ *
+ * Diese Klasse ist bewusst schlank gehalten (Koordinator-Rolle).
+ * Die eigentliche Fachlogik ist in dedizierte Manager ausgelagert:
+ *   - CapabilityManager
+ *   - WallboxManager
+ *   - EmsScheduleManager
+ *   - PowerModeManager
+ *   - DiagnosticManager
+ *
+ * Design-Ziel (Athom Beauty):
+ * - Extrem gute Lesbarkeit und Wartbarkeit
+ * - Klare Verantwortlichkeiten
+ * - Hohe Testbarkeit durch Interfaces (IHpsDevice)
+ * - Einheitlicher Stil mit Wallbox, Grid-Meter und Energy-Summary
+ *
+ * Wichtige Konventionen:
+ * - Keine direkten RSCP-Calls im Device (außer über Manager/Api)
+ * - Alle Fehler gehen durch formatError()
+ * - Capabilities nur über updateCapabilityValue() aktualisieren
+ */
 class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
   private liveDataPoller: LiveDataPoller | null = null
   private wallboxManager: WallboxManager | null = null
@@ -135,6 +158,10 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
   currentManualChargeState: import('easy-rscp').ManualChargeState | null = null;
   currentEmergencyPowerState: import('easy-rscp').EmergencyPowerState | null = null;
 
+  /**
+   * Initialisiert den HKW-Treiber.
+   * Lädt Einstellungen, startet den zentralen LiveDataPoller und alle Manager.
+   */
   async onInit() {
     this.log('HomePowerStationDevice has been initialized');
     const initialStoredSettings: PowerStationConfig | undefined = this.getStoreValue('settings')

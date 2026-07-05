@@ -4,14 +4,16 @@ import {InternalDevice} from '../internal-api/internal-device';
 import {EmergencyPowerState, ManualChargeState} from 'easy-rscp';
 
 /**
- * Repräsentiert den aktuellen Power-Mode des HKW (AUTO, IDLE, CHARGE, DISCHARGE, GRID_CHARGE).
+ * Repräsentiert den aktuellen Power-Mode des HKW.
+ *
+ * Modi: AUTO (0), IDLE (1), CHARGE (2), DISCHARGE (3), GRID_CHARGE (4).
  * Wird von PowerModeManager und EmsScheduleManager verwendet.
- * 
- * @property mode - 0=AUTO, 1=IDLE, 2=CHARGE, 3=DISCHARGE, 4=GRID_CHARGE
- * @property powerW - Leistung in Watt
- * @property expiresAt - Unix Timestamp in ms, wann der Modus endet
- * @property untilSoc - Optional: Stop bei diesem SOC der Hausbatterie
- * @property scheduleId - Optional: ID des EMS-Schedules, der diesen Mode gestartet hat
+ *
+ * @property mode       - 0=AUTO, 1=IDLE, 2=CHARGE, 3=DISCHARGE, 4=GRID_CHARGE
+ * @property powerW     - Ziel-Leistung in Watt
+ * @property expiresAt  - Unix-Timestamp (ms), wann der Modus automatisch endet
+ * @property untilSoc   - Optional: Modus endet, wenn Hausbatterie diesen SOC erreicht
+ * @property scheduleId - Optional: ID des EMS/Ladeplan-Schedules, der diesen Mode ausgelöst hat
  */
 export interface PowerModeState {
     mode: number
