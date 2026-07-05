@@ -47,7 +47,8 @@ Siehe `PROJEKT-REGELN.md` → Abschnitt "Aktueller Fokus: Athom Beauty".
 ### Fortschritt (Punkte 1-4 Batch)
 - Punkt 1: any 41 → 0 (ALL any eliminated. All flow cards now use Record<string, unknown> and unknown. Core was already clean.)
 - Punkt 1 (Wallbox): Vollständig umgesetzt
-- Punkt 1 (JSDoc): ✅ VOLLSTÄNDIG umgesetzt – exzellentes JSDoc in allen Dateien (Manager, Utils, Models, Converters, Cards, Types). Punkt 1 abgeschlossen. Nächster: Punkt 2.
+- Punkt 1 (JSDoc): ✅ VOLLSTÄNDIG umgesetzt
+- Punkt 2 (ARCHITECTURE): ✅ VOLLSTÄNDIG umgesetzt – massiv erweitert (Datenfluss, Error-Handling, Testing, How-To, Limitationen, Code-Style). Punkt 2 abgeschlossen. Nächster: Punkt 3.
 - Punkt 3 (Test-Qualität): Verbessert – bessere Mocks, Verhaltens-Tests, Edge-Cases in zentralen Test-Dateien
 - Punkt 3: JSDoc in WallboxDevice (onInit, serialize, startScheduleChecker), Action Cards
 - Punkt 4: Test zu Verhaltens-Test verbessert, letzte Kommentare bereinigt
