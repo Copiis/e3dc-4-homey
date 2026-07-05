@@ -60,6 +60,9 @@ export class FlowCardManager {
     // Strongly typed via IHpsDevice (which declares the optional trigger properties).
   }
 
+  /**
+   * Convenience getter for the Homey instance.
+   */
   get homey() {
     return this.device.homey;
   }
@@ -67,6 +70,10 @@ export class FlowCardManager {
   /**
    * Registriert alle Trigger-Cards.
    * Wird typischerweise in onInit aufgerufen.
+   */
+  /**
+   * Registers all device trigger cards (firmware changes, power limits, manual charging, island mode, value changes).
+   * Errors are logged but do not stop other setups.
    */
   setupTriggerCards() {
     const steps: Array<{ name: string, run: () => void }> = [

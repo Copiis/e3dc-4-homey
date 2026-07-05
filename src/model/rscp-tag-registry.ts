@@ -4,10 +4,12 @@
  *
  * Prefer using easy-rscp constants where possible.
  * Add new ones here with source comments.
+ * 
+ * All values are hex strings as used in easy-rscp.
  */
-
 export const RscpTagRegistry = {
   // EMS Power Mode (from ems-power-mode-tags, now inlined for cleanup)
+  /** Set Power Request */
   EMS_REQ_SET_POWER: '01000030',
   EMS_SET_POWER: '01800030',
   EMS_REQ_SET_POWER_MODE: '01000031',

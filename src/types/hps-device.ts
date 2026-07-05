@@ -10,8 +10,15 @@ import type { ChargingConfiguration, EmergencyPowerState, ManualChargeState } fr
 
 /**
  * Interface für das HomePowerStationDevice.
- * Wird von allen Managern verwendet, um das Device zu entkoppeln (Dependency Inversion).
- * Definiert alle benötigten Methoden und Properties für Capability-Updates, Settings, Logging etc.
+ * Wird von allen Managern (CapabilityManager, WallboxManager, etc.) verwendet,
+ * um das Device zu entkoppeln (Dependency Inversion / Athom Beauty).
+ * 
+ * Definiert alle benötigten Methoden und Properties für:
+ * - Capability-Updates
+ * - Settings & Store
+ * - Logging & Error
+ * - Trigger Cards
+ * - Sync-State
  */
 export interface IHpsDevice extends SimpleClass, Homey.Device {
   getId(): string;
@@ -28,6 +35,7 @@ export interface IHpsDevice extends SimpleClass, Homey.Device {
   hasCapability(key: string): boolean;
   removeCapability(key: string): Promise<void>;
 
+  /** Zähler für Sync-Fehler (wird vom CapabilityManager hochgezählt) */
   syncErrorCount: number;
 
   /** Flag used by capability manager to trigger battery capacity refresh */

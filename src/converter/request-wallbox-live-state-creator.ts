@@ -5,11 +5,14 @@ const WB_REQ_GET_CHARGE_PLAN_TEXT = RscpTagRegistry.WB_REQ_GET_CHARGE_PLAN_TEXT;
 
 /**
  * Erzeugt RSCP-Frames für Wallbox-Live-Daten.
- * Erweitert die Standard-Implementation um ALG- und GUI-Tags.
+ * Erweitert die Standard-Implementation um ALG- und GUI-Tags für erweiterte Wallbox-Status.
+ * 
+ * @implements FrameCreator<number[]>
  */
 export class RequestWallboxLiveStateCreator implements FrameCreator<number[]> {
     /**
      * Erzeugt den Frame für die gegebenen Wallbox-IDs.
+     * @param ids - Array von Wallbox-Indizes
      */
     create(ids: number[]): Frame {
         const content = ids.map(id => new DataBuilder()

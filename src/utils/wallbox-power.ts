@@ -1,4 +1,7 @@
-/** Effective wallbox charging power (W) from RSCP EXTERN_DATA blocks. */
+/**
+ * Ermittelt die effektive Ladeleistung der Wallbox in Watt.
+ * Berücksichtigt Sun-Mode und Netzanteil aus EXTERN_DATA.
+ */
 export function resolveWallboxPowerW(state: {
     powerW: number;
     solarPowerW: number;

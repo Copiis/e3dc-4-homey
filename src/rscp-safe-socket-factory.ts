@@ -5,15 +5,17 @@ import {normalizeError} from './utils/error-utils';
 /**
  * Sichere SocketFactory als Workaround für easy-rscp.
  *
- * Problem: Bei Verbindungsfehlern wird der Connection-Timeout nicht immer gecleared.
+ * Problem: Bei Verbindungsfehlern (z.B. EHOSTUNREACH) wird der Connection-Timeout nicht immer gecleared.
  * Dadurch kann ein späteres 'error' Event ohne Listener kommen und die App crashen.
  *
- * Diese Factory stellt sicher, dass Timeouts gecleared werden und Fehler normalisiert werden.
+ * Diese Factory stellt sicher, dass Timeouts gecleared werden, Listener entfernt und Fehler normalisiert werden.
  */
 export class SafeSocketFactory implements SocketFactory {
     /**
-     * Erstellt einen sicheren Socket mit Timeout-Handling.
-     * @param connectionData - Verbindungsdaten mit Timeout etc.
+     * Erstellt einen sicheren Socket mit Timeout-Handling und Error-Protection.
+     * 
+     * @param connectionData - Verbindungsdaten inkl. Timeout
+     * @returns Promise mit dem Socket
      */
     createSocket(connectionData: E3dcConnectionData): Promise<Socket> {
         return new Promise((resolve, reject) => {
