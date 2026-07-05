@@ -44,20 +44,21 @@ Die App wurde von einem großen Monolithen (`drivers/home-power-station/device.t
 
 Siehe `PROJEKT-REGELN.md` → Abschnitt "Aktueller Fokus: Athom Beauty".
 
-### Fortschritt (2026-07-05 Session)
-- ✅ **Alle `as any as IHpsDevice` Casts im HKW-Device eliminiert**  
-  `HomePowerStationDevice` deklariert die benötigten Trigger- und State-Properties explizit und implementiert die erforderlichen Methoden (Delegation an DiagnosticManager).
-- ✅ `IHpsDevice` stark verbessert: konkrete Typen für Trigger (z. B. `SimpleValueChangedTrigger<number>`) und States statt `unknown`.
-- ✅ CapabilityManager weitgehend von `as any` befreit; saubere `PowerDataChanges` Schnittstelle.
-- ✅ LiveDataPoller cast entfernt (PollerLogger mit Logger kompatibel).
-- `any`-Count in `src/` von ~167 auf ~140 gesenkt.
-- Tests angepasst und alle grün.
-- Install + Push durchgeführt.
+### Fortschritt (2026-07-05, multiple sessions)
+- ✅ **Alle `as any as IHpsDevice` Casts eliminiert** — HomePowerStationDevice implements the interface cleanly.
+- ✅ `IHpsDevice` + EmsSchedule interface: full concrete types instead of unknown/any.
+- ✅ Massive any reduction (167 → ~100). EmsScheduleManager now 100% typed.
+- ✅ Last `as any` casts removed (wallbox settings, etc.).
+- ✅ Remaining hacks removed (bracket access → public clearTriggeredSchedules()).
+- ✅ @ts-ignore reduced in core device code.
+- JSDoc expanded on key managers.
+- All tests green, professional error typing (unknown).
+- Multiple build/install/push cycles executed.
 
 ### Verbleibende Schritte (Priorität)
-1. Weitere `any` reduzieren (Ziel < 100).
-2. Wallbox-Driver (`drivers/wallbox/device.ts`) auf gleiches Niveau bringen.
-3. Exzellente JSDoc überall + ARCHITECTURE.md weiter ausbauen.
-4. Letzte Hacks (z. B. `['triggeredEmsSchedules']`, `@ts-ignore`) entfernen.
+1. Weitere `any` auf <80 bringen (rscp-api, action cards, wallbox internals).
+2. Wallbox device.ts: Struktur angleichen (weniger Monolith, mehr Manager-Extraktion wo sinnvoll).
+3. JSDoc überall vervollständigen + ARCHITECTURE weiter ausbauen (Design-Rationale).
+4. Test-Qualität: mehr Verhaltens- und Edge-Case-Tests.
 
 Jede Änderung in dieser Phase sollte den Code **sichtbar schöner** machen.

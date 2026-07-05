@@ -148,13 +148,13 @@ export class RscpApi {
         return openPromise
     }
 
-    closeOwnConnection(log: Logger): Promise<any> {
+    closeOwnConnection(log: Logger): Promise<unknown> {
         const key = this.getKey()
         const toClose = connectionMap.get(key)
         return this.closeConnection(toClose, log)
     }
 
-    closeConnection(connection: HomePowerPlantConnection | undefined, log: Logger):Promise<any> {
+    closeConnection(connection: HomePowerPlantConnection | undefined, log: Logger): Promise<unknown> {
         return new Promise(resolve => {
             if (!connection) {
                 resolve(undefined)
@@ -640,7 +640,7 @@ export class RscpApi {
         allowReconnect: boolean,
         causingError: Error,
         resolve: ((value: boolean | PromiseLike<boolean>) => void),
-        reject: ((reason?: any) => void),
+        reject: ((reason?: unknown) => void),
         log: Logger,
 
     ) {
@@ -705,7 +705,7 @@ export class RscpApi {
         allowReconnect: boolean,
         causingError: Error,
         resolve: ((value: boolean | PromiseLike<boolean>) => void),
-        reject: ((reason?: any) => void),
+        reject: ((reason?: unknown) => void),
         log: Logger,
     ) {
         if (allowReconnect) {
@@ -932,7 +932,7 @@ export class RscpApi {
         allowReconnect: boolean,
         causingError: Error,
         resolve: ((value: LiveData | PromiseLike<LiveData>) => void),
-        reject: ((reason?: any) => void),
+        reject: ((reason?: unknown) => void),
         log: Logger,
 
     ) {
@@ -966,7 +966,7 @@ export class RscpApi {
         allowReconnect: boolean,
         causingError: Error,
         resolve: ((value: SummaryData | PromiseLike<SummaryData>) => void),
-        reject: ((reason?: any) => void),
+        reject: ((reason?: unknown) => void),
         log: Logger,
         timezone?: string,
 
@@ -1003,7 +1003,7 @@ export class RscpApi {
         allowReconnect: boolean,
         causingError: Error,
         resolve: ((value: WriteChargingLimitsResult | PromiseLike<WriteChargingLimitsResult>) => void),
-        reject: ((reason?: any) => void),
+        reject: ((reason?: unknown) => void),
         log: Logger,
 
     ) {
@@ -1038,7 +1038,7 @@ export class RscpApi {
         allowReconnect: boolean,
         causingError: Error,
         resolve: ((value: ChargingConfiguration | PromiseLike<ChargingConfiguration>) => void),
-        reject: ((reason?: any) => void),
+        reject: ((reason?: unknown) => void),
         log: Logger,
 
     ) {
@@ -1073,7 +1073,7 @@ export class RscpApi {
         allowReconnect: boolean,
         causingError: Error,
         resolve: ((value: EmergencyPowerState | PromiseLike<EmergencyPowerState>) => void),
-        reject: ((reason?: any) => void),
+        reject: ((reason?: unknown) => void),
         log: Logger,
 
     ) {
@@ -1165,7 +1165,7 @@ export class RscpApi {
         allowReconnect: boolean,
         causingError: Error,
         resolve: ((value: WallboxInfo[] | PromiseLike<WallboxInfo[]>) => void),
-        reject: ((reason?: any) => void),
+        reject: ((reason?: unknown) => void),
         log: Logger,
 
     ) {
@@ -1287,7 +1287,7 @@ export class RscpApi {
         allowReconnect: boolean,
         causingError: Error,
         resolve: ((value: boolean | PromiseLike<boolean>) => void),
-        reject: ((reason?: any) => void),
+        reject: ((reason?: unknown) => void),
         log: Logger,
     ) {
         if (allowReconnect) {
@@ -1358,7 +1358,7 @@ export class RscpApi {
         allowReconnect: boolean,
         causingError: Error,
         resolve: ((value: boolean | PromiseLike<boolean>) => void),
-        reject: ((reason?: any) => void),
+        reject: ((reason?: unknown) => void),
         log: Logger,
     ) {
         if (allowReconnect) {
@@ -1767,7 +1767,7 @@ export class RscpApi {
         allowReconnect: boolean,
         causingError: Error,
         resolve: (value: T) => void,
-        reject: (reason?: any) => void,
+        reject: (reason?: unknown) => void,
         log: Logger,
     ) {
         if (allowReconnect) {
@@ -1822,7 +1822,7 @@ export class RscpApi {
         allowReconnect: boolean,
         causingError: Error,
         resolve: ((value: number[] | PromiseLike<number[]>) => void),
-        reject: ((reason?: any) => void),
+        reject: ((reason?: unknown) => void),
         log: Logger,
 
     ) {
