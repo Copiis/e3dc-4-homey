@@ -43,10 +43,11 @@ import { IsMaxDischargingLimitGreaterThanConditionCard } from './condition/is-ma
 import { IsMaxChargingLimitActiveConditionCard } from './condition/is-max-charging-limit-active.condition.card';
 import { IsMaxDischargingLimitActiveConditionCard } from './condition/is-max-discharging-limit-active.condition.card';
 import { IsAnyPowerLimitActiveConditionCard } from './condition/is-any-power-limit-active.condition.card';
+import { IHpsDevice } from '../types/hps-device';
 
 export class FlowCardManager {
-  constructor(private readonly device: any) {
-    // device is the HomePowerStationDevice instance for triggers
+  constructor(private readonly device: IHpsDevice) {
+    // Strongly typed via IHpsDevice (which declares the optional trigger properties).
   }
 
   get homey() {

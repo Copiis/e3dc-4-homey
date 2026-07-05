@@ -112,6 +112,29 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
   private emsScheduleManager: EmsScheduleManager | null = null
   private powerModeManager: PowerModeManager | null = null
   private diagnosticManager: DiagnosticManager | null = null
+
+  // Dynamically attached value-changed and event triggers (populated by FlowCardManager)
+  // Declared here so the class structurally satisfies IHpsDevice without casts.
+  firmwareChangedTrigger?: SimpleValueChangedTrigger<string>;
+  maxChargingLimitHasChangedTrigger?: SimpleValueChangedTrigger<number>;
+  maxDischargingLimitHasChangedTrigger?: SimpleValueChangedTrigger<number>;
+  emergencyPowerReserveChangedTrigger?: SimpleValueChangedTrigger<number>;
+  houseConsumptionHasChangedTrigger?: SimpleValueChangedTrigger<number>;
+  batteryPowerHasChangedTrigger?: SimpleValueChangedTrigger<number>;
+  gridPowerHasChangedTrigger?: SimpleValueChangedTrigger<number>;
+  manualBatteryChargingStartedTrigger?: ManualBatteryChargingStartedTrigger;
+  manualBatteryChargingStoppedTrigger?: ManualBatteryChargingStoppedTrigger;
+  islandModeStartedTrigger?: IslandModeStartedTrigger;
+  islandModeStoppedTrigger?: IslandModeStoppedTrigger;
+
+  // Properties required by IHpsDevice (managers access them directly)
+  syncErrorCount: number = 0;
+  updateBatteryData: boolean = false;
+  lastPvSurplusW: number = 0;
+  currentChargingConfig: import('easy-rscp').ChargingConfiguration | null = null;
+  currentManualChargeState: import('easy-rscp').ManualChargeState | null = null;
+  currentEmergencyPowerState: import('easy-rscp').EmergencyPowerState | null = null;
+
   async onInit() {
     this.log('HomePowerStationDevice has been initialized');
     const initialStoredSettings: PowerStationConfig | undefined = this.getStoreValue('settings')
@@ -151,12 +174,12 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
       this,
       () => this.getApi(),
     )
-    this.capabilityManager = new CapabilityManager(this as any as IHpsDevice, new EnergyMeterIntegrator(this));
-    this.powerModeManager = new PowerModeManager(this as any as IHpsDevice, () => this.getApi(), this);
-    this.emsScheduleManager = new EmsScheduleManager(this as any as IHpsDevice, () => this.getApi(), this, this.powerModeManager);
+    this.capabilityManager = new CapabilityManager(this, new EnergyMeterIntegrator(this));
+    this.powerModeManager = new PowerModeManager(this, () => this.getApi(), this);
+    this.emsScheduleManager = new EmsScheduleManager(this, () => this.getApi(), this, this.powerModeManager);
     this.emsScheduleManager.loadEmsSchedules();
     this.emsScheduleManager.startEmsScheduleChecker();
-    this.diagnosticManager = new DiagnosticManager(this as any as IHpsDevice, DIAGNOSTIC_ANALYSIS_STORE_KEY);
+    this.diagnosticManager = new DiagnosticManager(this, DIAGNOSTIC_ANALYSIS_STORE_KEY);
     this.liveDataPoller = new LiveDataPoller(
       () => this.getApi(),
       this,
@@ -253,8 +276,8 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
    */
   private processLiveData(result: LiveData) {
     try {
-      const capChanges = this.capabilityManager?.processLivePowerData(result) ?? {};
-      const batteryLevelChange = (capChanges as any).batteryLevelChange;
+      const capChanges = this.capabilityManager?.processLivePowerData(result) ?? { batteryLevelChange: undefined };
+      const batteryLevelChange = capChanges.batteryLevelChange;
       this.emsScheduleManager?.handleEmsTriggers(result, batteryLevelChange)
       this.capabilityManager?.updateExternalPower(result)
       this.capabilityManager?.handleChargeTime(result);
@@ -309,11 +332,33 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
     return report;
   }
 
+  postTimelineNotification(excerpt: string): void {
+    this.homey.notifications
+      .createNotification({ excerpt })
+      .catch((reason: unknown) => {
+        this.error('Failed to create timeline notification: ' + formatError(reason));
+      });
+  }
 
+  publishDiagnosticReport(force = false): Promise<void> {
+    return this.diagnosticManager?.publishDiagnosticReport(force) ?? Promise.resolve();
+  }
 
+  recordAnalysisEvent(level: 'info' | 'warn' | 'error', message: string): void {
+    this.diagnosticManager?.recordAnalysisEvent(level, message);
+  }
 
+  countLinkedDevices(type: string): number {
+    return this.diagnosticManager?.countLinkedDevicesPublic?.(type) ?? 0;
+  }
 
+  getAppVersion(): string {
+    return this.homey.manifest?.version ?? 'unknown';
+  }
 
+  isDetailedDiagnosticsEnabled(): boolean {
+    return this.diagnosticManager?.isDetailedDiagnosticsEnabledPublic?.() ?? (this.getSetting('detailedDiagnostics') === true);
+  }
 
   async onSettings({
     oldSettings,

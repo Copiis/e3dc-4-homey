@@ -10,7 +10,7 @@ describe('EmsScheduleManager', () => {
       recordAnalysisEvent: () => {},
       log: () => {},
       setSettings: () => Promise.resolve(),
-      homey: { setInterval: () => 0 },
+      homey: { setInterval: () => 0, setTimeout: () => 123, clearTimeout: () => {} },
       getCurrentSOC: () => 0,
     } as any;
     const mockApi = () => ({ setPowerMode: () => Promise.resolve(true) } as any);
@@ -34,7 +34,7 @@ describe('EmsScheduleManager more', () => {
       recordAnalysisEvent: () => {},
       log: () => {},
       setSettings: () => Promise.resolve(),
-      homey: { setInterval: () => 0 },
+      homey: { setInterval: () => 0, setTimeout: () => 123, clearTimeout: () => {} },
       getCurrentSOC: () => 0,
     } as any;
     const mockApi = () => ({ setPowerMode: () => Promise.resolve(true) } as any);
@@ -50,7 +50,7 @@ describe('EmsScheduleManager more', () => {
       recordAnalysisEvent: () => {},
       log: () => {},
       setSettings: () => Promise.resolve(),
-      homey: { setInterval: () => 0 },
+      homey: { setInterval: () => 0, setTimeout: () => 123, clearTimeout: () => {} },
       getCurrentSOC: () => 0,
     } as any;
     const mockApi = () => ({ setPowerMode: () => Promise.resolve(true) } as any);

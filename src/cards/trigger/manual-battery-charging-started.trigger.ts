@@ -3,7 +3,7 @@ import {Device, FlowCardTriggerDevice} from 'homey';
 import {TriggerCard} from '../trigger-card';
 import {formatError} from '../../utils/error-utils';
 
-export class ManualBatteryChargingStartedTrigger implements TriggerCard<undefined>{
+export class ManualBatteryChargingStartedTrigger implements TriggerCard<number | undefined>{
 
     constructor(
         private device: Device,
@@ -11,7 +11,9 @@ export class ManualBatteryChargingStartedTrigger implements TriggerCard<undefine
         private logger: Logger) {
     }
 
-    trigger(input: undefined): void {
+    trigger(input: number | undefined): void {
+        // Note: currently no tokens are defined for this trigger card in compose.
+        // The charged energy value is logged but not forwarded (matching existing behavior).
         this.logger.log('ManualBatteryChargingStartedTrigger: Triggering card')
         this.card.trigger(this.device)
             .then(value => {

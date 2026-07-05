@@ -1,5 +1,12 @@
-import Homey, { SimpleClass } from 'homey';
+import * as Homey from 'homey';
+import { SimpleClass } from 'homey';
+import type { SimpleValueChangedTrigger } from '../cards/trigger/simple-value-changed.trigger';
+import type { ManualBatteryChargingStartedTrigger } from '../cards/trigger/manual-battery-charging-started.trigger';
+import type { ManualBatteryChargingStoppedTrigger } from '../cards/trigger/manual-battery-charging-stopped.trigger';
+import type { IslandModeStartedTrigger } from '../cards/trigger/island-mode-started.trigger';
+import type { IslandModeStoppedTrigger } from '../cards/trigger/island-mode-stopped.trigger';
 import { LiveData } from '../model/live-data';
+import type { ChargingConfiguration, EmergencyPowerState, ManualChargeState } from 'easy-rscp';
 
 export interface IHpsDevice extends SimpleClass, Homey.Device {
   getId(): string;
@@ -15,24 +22,32 @@ export interface IHpsDevice extends SimpleClass, Homey.Device {
   getCapabilityValue(key: string): unknown;
   hasCapability(key: string): boolean;
   removeCapability(key: string): Promise<void>;
-  homey: any;
+
   syncErrorCount: number;
+
+  /** Flag used by capability manager to trigger battery capacity refresh */
   updateBatteryData: boolean;
+
   lastPvSurplusW: number;
-  currentChargingConfig: unknown;
-  currentManualChargeState: unknown;
-  currentEmergencyPowerState: unknown;
-  firmwareChangedTrigger: unknown;
-  maxChargingLimitHasChangedTrigger: unknown;
-  maxDischargingLimitHasChangedTrigger: unknown;
-  emergencyPowerReserveChangedTrigger: unknown;
-  houseConsumptionHasChangedTrigger: unknown;
-  batteryPowerHasChangedTrigger: unknown;
-  gridPowerHasChangedTrigger: unknown;
-  manualBatteryChargingStartedTrigger: unknown;
-  manualBatteryChargingStoppedTrigger: unknown;
-  islandModeStartedTrigger: unknown;
-  islandModeStoppedTrigger: unknown;
+
+  // Current state snapshots (populated by CapabilityManager)
+  currentChargingConfig: ChargingConfiguration | null;
+  currentManualChargeState: ManualChargeState | null;
+  currentEmergencyPowerState: EmergencyPowerState | null;
+
+  // Dynamically attached trigger objects (set by FlowCardManager)
+  firmwareChangedTrigger?: SimpleValueChangedTrigger<string>;
+  maxChargingLimitHasChangedTrigger?: SimpleValueChangedTrigger<number>;
+  maxDischargingLimitHasChangedTrigger?: SimpleValueChangedTrigger<number>;
+  emergencyPowerReserveChangedTrigger?: SimpleValueChangedTrigger<number>;
+  houseConsumptionHasChangedTrigger?: SimpleValueChangedTrigger<number>;
+  batteryPowerHasChangedTrigger?: SimpleValueChangedTrigger<number>;
+  gridPowerHasChangedTrigger?: SimpleValueChangedTrigger<number>;
+  manualBatteryChargingStartedTrigger?: ManualBatteryChargingStartedTrigger;
+  manualBatteryChargingStoppedTrigger?: ManualBatteryChargingStoppedTrigger;
+  islandModeStartedTrigger?: IslandModeStartedTrigger;
+  islandModeStoppedTrigger?: IslandModeStoppedTrigger;
+
   getBatteryCapacity(): Promise<number>;
   postTimelineNotification(excerpt: string): void;
   publishDiagnosticReport(force?: boolean): Promise<void>;
@@ -42,7 +57,8 @@ export interface IHpsDevice extends SimpleClass, Homey.Device {
   isDetailedDiagnosticsEnabled(): boolean;
   getData(): { id: string };
   getCurrentSOC(): number;
-  // for managers
+
+  // Optional delegation methods used by managers for linked devices
   updateLinkedBatteryLiveData?(result: LiveData): void;
   updateLinkedGridMeter?(result: LiveData): void;
 }

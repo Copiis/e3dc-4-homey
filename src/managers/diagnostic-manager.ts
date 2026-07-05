@@ -113,6 +113,16 @@ export class DiagnosticManager {
     return { lastSyncAt: this.lastSyncAt, lastSyncResult: this.lastSyncResult };
   }
 
+  /** Public for device to satisfy IHpsDevice without exposing internals */
+  isDetailedDiagnosticsEnabledPublic(): boolean {
+    return this.isDetailedDiagnosticsEnabled();
+  }
+
+  /** Public for device to satisfy IHpsDevice */
+  countLinkedDevicesPublic(driverId: string): number {
+    return this.countLinkedDevices(driverId);
+  }
+
   private isDetailedDiagnosticsEnabled(): boolean {
     return this.device.getSetting('detailedDiagnostics') === true;
   }

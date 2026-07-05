@@ -34,7 +34,7 @@ describe('DiagnosticManager', () => {
       error: () => {},
     } as any;
     const manager = new DiagnosticManager(mockDevice, 'key');
-    manager.recordSyncSuccess({ pvDelivery: 100 } as any);
+    manager.recordSyncSuccess({ pvDelivery: 100, houseConsumption: 0, gridDelivery: 0, batteryChargingLevel: 0.5, firmwareVersion: '1.0', wallboxPowerState: [] } as any);
     manager.recordSyncFailure('test error');
     assert.ok(true);
   });

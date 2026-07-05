@@ -3,20 +3,30 @@ import { updateCapabilityValue } from '../utils/capability-utils';
 import { EnergyMeterIntegrator } from '../utils/energy-meter-integrator';
 import { formatError } from '../utils/error-utils';
 import { IHpsDevice } from '../types/hps-device';
+import type { ChargingConfiguration, EmergencyPowerState, ManualChargeState } from 'easy-rscp';
+import { ValueChanged } from '../model/value-changed';
+
+/**
+ * Result of processing live power data (used by HKW device for EMS triggers).
+ */
+export interface PowerDataChanges {
+  batteryLevelChange?: ValueChanged<number>;
+  gridDeliveryChange?: ValueChanged<number>;
+  batteryDeliveryChange?: ValueChanged<number>;
+}
 
 /**
  * CapabilityManager / Synchronizer - extracted to reduce device.ts monolith.
  * Central place for updating capabilities from live data.
- * (Initial version as part of bigger refactor)
  */
 export class CapabilityManager {
-  currentChargingConfig: any = null;
-  currentManualChargeState: any = null;
-  currentEmergencyPowerState: any = null;
+  currentChargingConfig: ChargingConfiguration | null = null;
+  currentManualChargeState: ManualChargeState | null = null;
+  currentEmergencyPowerState: EmergencyPowerState | null = null;
 
   constructor(private readonly device: IHpsDevice, private readonly energyMeter: EnergyMeterIntegrator) {}
 
-  processLivePowerData(result: LiveData) {
+  processLivePowerData(result: LiveData): PowerDataChanges {
     updateCapabilityValue('measure_power', result.pvDelivery, this.device);
     const generatedKwh = this.energyMeter.integrateGeneration(result.pvDelivery);
     updateCapabilityValue('meter_power', generatedKwh, this.device);
@@ -25,10 +35,10 @@ export class CapabilityManager {
     const batteryDeliveryChange = updateCapabilityValue('measure_battery_delivery', result.batteryDelivery * -1, this.device);
     const houseConsumptionChange = updateCapabilityValue('measure_house_consumption', result.houseConsumption, this.device);
 
-    // Triggers (if exist on device)
-    (this.device.gridPowerHasChangedTrigger as any)?.runIfChanged(gridDeliveryChange);
-    (this.device.batteryPowerHasChangedTrigger as any)?.runIfChanged(batteryDeliveryChange);
-    (this.device.houseConsumptionHasChangedTrigger as any)?.runIfChanged(houseConsumptionChange);
+    // Triggers are now properly typed on IHpsDevice (optional)
+    this.device.gridPowerHasChangedTrigger?.runIfChanged(gridDeliveryChange);
+    this.device.batteryPowerHasChangedTrigger?.runIfChanged(batteryDeliveryChange);
+    this.device.houseConsumptionHasChangedTrigger?.runIfChanged(houseConsumptionChange);
 
     const batteryLevelChange = updateCapabilityValue('measure_battery', result.batteryChargingLevel * 100, this.device);
     return { batteryLevelChange, gridDeliveryChange, batteryDeliveryChange };
@@ -87,7 +97,7 @@ export class CapabilityManager {
 
           updateCapabilityValue('charge_time', finalValue, this.device);
         })
-        .catch((reason: any) => {
+        .catch((reason: unknown) => {
           this.device.log('handleChargeTimeCapability: ' + formatError(reason));
         });
   }
@@ -100,15 +110,15 @@ export class CapabilityManager {
   updateBatteryDataIfNeeded() {
     // moved from device to reduce monolith
     // the flag logic is now here
-    if ((this.device as any).updateBatteryData) {
-      (this.device as any).updateBatteryData = false;
+    if (this.device.updateBatteryData) {
+      this.device.updateBatteryData = false;
       this.device.getBatteryCapacity().catch(() => {});
     }
   }
 
   handleFirmwareChange(result: LiveData) {
     const firmwareChange = updateCapabilityValue('firmware_version', result.firmwareVersion, this.device);
-    (this.device.firmwareChangedTrigger as any)?.runIfChanged(firmwareChange);
+    this.device.firmwareChangedTrigger?.runIfChanged(firmwareChange);
     if (firmwareChange?.oldValue) {
       this.device.postTimelineNotification(this.device.homey.__('timeline.firmware-updated', {
         OLD: String(firmwareChange.oldValue),
@@ -130,7 +140,7 @@ export class CapabilityManager {
       this.currentManualChargeState = result.manualChargeState;
       if (result.manualChargeState && result.manualChargeState.active) {
         try {
-          (this.device.manualBatteryChargingStartedTrigger as any)?.trigger(result.manualChargeState.chargedEnergyWh);
+          this.device.manualBatteryChargingStartedTrigger?.trigger(result.manualChargeState.chargedEnergyWh);
         } catch (e) {
           this.device.error('manualBatteryChargingStartedTrigger failed: ' + formatError(e));
         }
@@ -142,10 +152,8 @@ export class CapabilityManager {
     const change = updateCapabilityValue('emergency_power_state', result.emergencyPowerState, this.device);
     if (change) {
       this.currentEmergencyPowerState = result.emergencyPowerState;
-      if (result.emergencyPowerState) {
-        if (result.emergencyPowerState.island) {
-          (this.device.islandModeStartedTrigger as any)?.trigger(undefined);
-        }
+      if (result.emergencyPowerState?.island) {
+        this.device.islandModeStartedTrigger?.trigger(undefined);
       }
     }
     this.currentEmergencyPowerState = result.emergencyPowerState;
@@ -157,7 +165,7 @@ export class CapabilityManager {
     if (wasUnavailable) {
       this.device.recordAnalysisEvent('info', 'HKW wieder verfügbar / available again');
       if (!this.device.getAvailable()) {
-        this.device.setAvailable(true).catch((reason: any) => this.device.error('Failed to set available: ' + formatError(reason)));
+        this.device.setAvailable(true).catch((reason: unknown) => this.device.error('Failed to set available: ' + formatError(reason)));
       }
       this.device.publishDiagnosticReport().catch(() => undefined);
     }
@@ -166,13 +174,14 @@ export class CapabilityManager {
   updateLinkedGridMeter(result: LiveData): void {
     const gridMeterDevices = this.device.homey.drivers.getDriver('grid-meter').getDevices();
     const stationId = this.device.getId();
-    gridMeterDevices.forEach((currentDevice: any) => {
-      const gridConfig: any = currentDevice.getStoreValue('settings');
+    gridMeterDevices.forEach((currentDevice: unknown) => {
+      // Linked grid-meter devices expose a sync() method (duck-typed)
+      const gridConfig = (currentDevice as { getStoreValue: (k: string) => unknown }).getStoreValue('settings') as { stationId?: string } | undefined;
       if (!gridConfig?.stationId) {
         return;
       }
       if (gridConfig.stationId === stationId) {
-        (currentDevice as any).sync(result.gridDelivery);
+        (currentDevice as { sync?: (v: number) => void }).sync?.(result.gridDelivery);
       }
     });
   }
@@ -180,17 +189,20 @@ export class CapabilityManager {
   updateLinkedBatteryLiveData(result: LiveData) {
     const batteryDevices = this.device.homey.drivers.getDriver('battery-module').getDevices();
     const stationId = this.device.getId();
-    batteryDevices.forEach((currentDevice: any) => {
-      const batteryConfig: any = currentDevice.getStoreValue('settings');
+    batteryDevices.forEach((currentDevice: unknown) => {
+      const batteryConfig = (currentDevice as { getStoreValue: (k: string) => unknown }).getStoreValue('settings') as { stationId?: string } | undefined;
       if (!batteryConfig?.stationId) {
         return;
       }
       if (batteryConfig.stationId == stationId) {
-        (currentDevice as any).syncLive(
-            result.batteryChargingLevel * 100,
-            result.batteryDelivery * -1,
-            result.chargingConfig,
-            result.emergencyPowerState);
+        const linked = currentDevice as {
+          syncLive?: (level: number, delivery: number, config: unknown, eps: unknown) => void
+        };
+        linked.syncLive?.(
+          result.batteryChargingLevel * 100,
+          result.batteryDelivery * -1,
+          result.chargingConfig,
+          result.emergencyPowerState);
       }
     });
   }

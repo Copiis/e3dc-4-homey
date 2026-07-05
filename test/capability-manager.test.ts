@@ -18,10 +18,20 @@ describe('CapabilityManager', () => {
   it('processes live power data', () => {
     const mockDevice = {
       hasCapability: () => false,
+      addCapability: () => Promise.resolve(),
       removeCapability: () => Promise.resolve(),
+      getCapabilityValue: () => undefined,
+      setCapabilityValue: () => Promise.resolve(),
+      getName: () => 'Test HKW',
+      log: () => {},
+      error: () => {},
+      getBatteryCapacity: () => Promise.resolve(10000),
       gridPowerHasChangedTrigger: { runIfChanged: () => {} },
       batteryPowerHasChangedTrigger: { runIfChanged: () => {} },
       houseConsumptionHasChangedTrigger: { runIfChanged: () => {} },
+      // other IHpsDevice members not needed for this test
+      syncErrorCount: 0,
+      updateBatteryData: false,
     } as any;
     const mockEnergy = { integrateGeneration: (p: number) => p } as any;
     const manager = new CapabilityManager(mockDevice, mockEnergy);
