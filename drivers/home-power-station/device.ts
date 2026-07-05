@@ -131,6 +131,9 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
   private readonly energyMeter = new EnergyMeterIntegrator(this)
   private lastPvSurplusW = 0
 
+  // Auto-disable timer for detailed diagnostics (saves resources when user forgets to turn off)
+  private detailedDiagnosticsAutoOffTimer: NodeJS.Timeout | null = null
+
   // EMS manual schedules (from settings)
   private emsSchedules: any[] = []
   private emsScheduleCheckId: NodeJS.Timeout | null = null
@@ -230,7 +233,7 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
       this.emsSchedules = JSON.parse(json)
       if (!Array.isArray(this.emsSchedules)) this.emsSchedules = []
       this.log(`[Ladeplan] device=${this.getData().id} raw json length: ${json.length}, parsed ${this.emsSchedules.length} plans`)
-      this.diagnostic.recordAnalysis('info', `[Ladeplan] Loaded ${this.emsSchedules.length} plans from settings after setting change (device=${this.getData().id})`)
+      this.recordAnalysisEvent('info', `[Ladeplan] Loaded ${this.emsSchedules.length} plans from settings after setting change (device=${this.getData().id})`)
 
       // Clean up any already expired fixed plans on load (immediate on expiry)
       const now = Date.now()
@@ -262,7 +265,7 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
         });
         if (!stillPresent) {
           this.log(`[Ladeplan] Manually deleted running schedule ${activeId} — reverting power mode to AUTO`);
-          this.diagnostic.recordAnalysis('info', `[Ladeplan] Manually deleted active schedule ${activeId}, reverting to AUTO`);
+          this.recordAnalysisEvent('info', `[Ladeplan] Manually deleted active schedule ${activeId}, reverting to AUTO`);
           this.clearExpireTimer(activeId);
           this.powerModeState = null;
           this.getApi().setPowerMode(POWER_MODE_AUTO, 0, true, this)
@@ -296,7 +299,7 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
         const id = s.id || (s.start + '_' + (s.mode || ''))
         const delay = startTs - nowTs
         this.log(`[Ladeplan] scheduling timer for plan ${id} in ${delay}ms (start=${s.start} startTs=${startTs} now=${nowTs})`)
-        this.diagnostic.recordAnalysis('info', `[Ladeplan] scheduling timer for ${id} delay=${delay}ms start=${s.start}`)
+        this.recordAnalysisEvent('info', `[Ladeplan] scheduling timer for ${id} delay=${delay}ms start=${s.start}`)
         const timer = setTimeout(() => {
           this.activateScheduledPlanIfNeeded(s, id)
           this.scheduledPlanTimers.delete(id)
@@ -343,7 +346,7 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
 
   private revertPowerMode(scheduleId?: string) {
     this.log(`[Ladeplan] Power mode EXPIRED, reverting to AUTO (scheduleId=${scheduleId || 'none'})`)
-    this.diagnostic.recordAnalysis('info', `[Ladeplan] Power mode expired for ${scheduleId || 'unknown'}`)
+    this.recordAnalysisEvent('info', `[Ladeplan] Power mode expired for ${scheduleId || 'unknown'}`)
     if (scheduleId) {
       this.clearExpireTimer(scheduleId)
       this.removeCompletedEmsSchedule(scheduleId)
@@ -617,7 +620,7 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
         .then(result => {
           if (result === false) {
             this.log(`[Ladeplan] refreshPowerMode result for ${state.scheduleId || 'unknown'}: false`)
-            this.diagnostic.recordAnalysis('info', `[Ladeplan] refresh setPowerMode result: false (schedule ${state.scheduleId || 'unknown'})`)
+            this.recordAnalysisEvent('info', `[Ladeplan] refresh setPowerMode result: false (schedule ${state.scheduleId || 'unknown'})`)
           }
         })
         .catch(e => this.error('[Ladeplan] Power mode refresh failed: ' + formatError(e)))
@@ -1349,12 +1352,27 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
 
 
   async buildDiagnosticReport(): Promise<string> {
+    const wasEnabled = this.isDetailedDiagnosticsEnabled();
     await this.publishDiagnosticReport(true) // force for export card
-    return this.diagnostic.formatReport(this.createDiagnosticSnapshot())
+    const report = this.diagnostic.formatReport(this.createDiagnosticSnapshot());
+
+    // After user exports the report via flow card, give a short grace period then auto-disable
+    // (this is the natural "I captured the problematic run" signal)
+    if (wasEnabled) {
+      // 10 minutes grace to allow multiple exports / verification
+      this.scheduleDetailedDiagnosticsAutoOff(10 * 60 * 1000, 'after-export');
+    }
+
+    return report;
   }
 
   private getAppVersion(): string {
     return this.homey.manifest?.version ?? 'unknown'
+  }
+
+  private isDetailedDiagnosticsEnabled(): boolean {
+    // Default false: user should only enable when reproducing a specific problem
+    return this.getSetting('detailedDiagnostics') === true;
   }
 
   private createDiagnosticSnapshot(): DiagnosticSnapshot {
@@ -1383,6 +1401,7 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
       wallboxAlgHex: this.lastSnapshot.wallboxAlgHex,
       wallboxChargePlanSoc: this.lastSnapshot.wallboxChargePlanSoc,
       wallboxChargePlanText: this.lastSnapshot.wallboxChargePlanText,
+      detailedDiagnosticsEnabled: this.isDetailedDiagnosticsEnabled(),
     }
   }
 
@@ -1397,6 +1416,11 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
   }
 
   private recordAnalysisEvent(level: 'info' | 'warn' | 'error', message: string): void {
+    // Gate info-level analysis events behind the user-controlled switch.
+    // Errors and warnings are always recorded (basic health info).
+    if (level === 'info' && !this.isDetailedDiagnosticsEnabled()) {
+      return;
+    }
     if (!this.diagnostic.recordAnalysis(level, message)) {
       return
     }
@@ -1414,6 +1438,36 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
     const report = this.diagnostic.formatReport(this.createDiagnosticSnapshot())
     updateCapabilityValue('diagnostic_report', report, this)
     await this.setSettings({ diagnosticReport: report })
+  }
+
+  /** Schedule automatic disable of detailed diagnostics (resource saving). */
+  private scheduleDetailedDiagnosticsAutoOff(delayMs: number, reason: 'timeout' | 'after-export' = 'timeout') {
+    this.clearDetailedDiagnosticsAutoOff();
+    this.detailedDiagnosticsAutoOffTimer = this.homey.setTimeout(() => {
+      this.autoDisableDetailedDiagnostics(reason);
+    }, delayMs);
+  }
+
+  private clearDetailedDiagnosticsAutoOff() {
+    if (this.detailedDiagnosticsAutoOffTimer) {
+      clearTimeout(this.detailedDiagnosticsAutoOffTimer);
+      this.detailedDiagnosticsAutoOffTimer = null;
+    }
+  }
+
+  private async autoDisableDetailedDiagnostics(reason: 'timeout' | 'after-export' = 'timeout') {
+    if (!this.getSetting('detailedDiagnostics')) {
+      return;
+    }
+    try {
+      await this.setSettings({ detailedDiagnostics: false });
+      this.diagnostic.recordAnalysis('info', `Detailed diagnostics automatically disabled (${reason})`);
+      await this.persistDiagnosticAnalysisLog();
+      await this.publishDiagnosticReport(true);
+      this.log(`Detailed diagnostics auto-disabled (${reason})`);
+    } catch (e) {
+      this.error('Failed to auto-disable detailed diagnostics: ' + formatError(e));
+    }
   }
 
   private recordSyncSuccess(result: LiveData): void {
@@ -1484,11 +1538,28 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
 
     if (changedKeys.includes('emsSchedules')) {
       this.log('[Ladeplan] emsSchedules setting changed, reloading')
-      this.diagnostic.recordAnalysis('info', '[Ladeplan] emsSchedules setting changed, reloading')
+      this.recordAnalysisEvent('info', '[Ladeplan] emsSchedules setting changed, reloading')
       this.loadEmsSchedules()
       this.triggeredEmsSchedules.clear()
       this.checkEmsSchedules()  // evaluate immediately for new/future plans
     }
+
+    if (changedKeys.includes('detailedDiagnostics')) {
+      const enabled = !!newSettings.detailedDiagnostics;
+      // Always record the toggle change (bypass gate so the event is captured)
+      this.diagnostic.recordAnalysis('info', `Detailed diagnostics logging ${enabled ? 'ENABLED' : 'DISABLED'}`);
+      this.persistDiagnosticAnalysisLog().catch(() => {});
+      this.publishDiagnosticReport(true).catch(() => {}); // force update
+      this.log(`Detailed diagnostics ${enabled ? 'enabled' : 'disabled'}`);
+
+      if (enabled) {
+        // Start safety timeout (60 min max) so resources are not wasted if user forgets to turn off
+        this.scheduleDetailedDiagnosticsAutoOff(60 * 60 * 1000, 'timeout');
+      } else {
+        this.clearDetailedDiagnosticsAutoOff();
+      }
+    }
+
   }
 
   async onRenamed(name: string) {
@@ -1506,6 +1577,7 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
     if (this.emsScheduleCheckId) {
       clearInterval(this.emsScheduleCheckId)
     }
+    this.clearDetailedDiagnosticsAutoOff();
     this.clearScheduledPlanTimers()
     if (this.api) {
       this.api.closeOwnConnection(this).catch(reason => {

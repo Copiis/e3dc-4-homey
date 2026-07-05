@@ -32,6 +32,7 @@ export interface DiagnosticSnapshot {
     wallboxAlgHex?: string;
     wallboxChargePlanSoc?: number;
     wallboxChargePlanText?: string;
+    detailedDiagnosticsEnabled?: boolean;
 }
 
 /** Persisted analysis events — append-only; oldest trimmed only above this count. */
@@ -127,7 +128,7 @@ export class DeviceDiagnostic {
     formatReport(snapshot: DiagnosticSnapshot): string {
         const lines: string[] = [];
         lines.push('E3DC 4 Homey — Diagnosebericht / Diagnostic report');
-        lines.push('(Gesamten Text markieren, kopieren, im Forum einfügen / select all, copy, paste in forum)');
+        lines.push('(Gesamten Text markieren + kopieren oder Flow-Karte "Diagnosebericht erstellen" nutzen / Select all + copy or use Flow card "Create diagnostic report")');
         lines.push('');
         lines.push('=== Aktueller Stand / Current status ===');
         lines.push(`App: ${snapshot.appVersion}`);
@@ -150,6 +151,9 @@ export class DeviceDiagnostic {
         );
         if (snapshot.firmware) {
             lines.push(`Firmware: ${snapshot.firmware}`);
+        }
+        if (snapshot.detailedDiagnosticsEnabled !== undefined) {
+            lines.push(`Detaillierte Diagnose / detailed diagnostics: ${snapshot.detailedDiagnosticsEnabled ? 'EIN / ON' : 'AUS / OFF'}`);
         }
         lines.push('');
         lines.push('Werte / values (letzter erfolgreicher Sync / last successful sync):');

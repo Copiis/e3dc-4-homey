@@ -146,6 +146,19 @@
     },
     "children": [
       {
+        "id": "detailedDiagnostics",
+        "type": "checkbox",
+        "label": {
+          "en": "Enable detailed diagnostic logging (analysis log)",
+          "de": "Detaillierte Diagnoseaufzeichnung aktivieren (Analyse-Protokoll)"
+        },
+        "value": false,
+        "hint": {
+          "en": "Only turn ON when reproducing a problem. Automatically turns OFF after 60 minutes (safety) or 10 minutes after you export the report via flow card. The current state is shown in the diagnostic report.",
+          "de": "Nur bei Problemen EINSCHALTEN. Schaltet sich automatisch aus nach 60 Minuten (Sicherheit) oder 10 Minuten nach Export des Berichts per Flow-Karte. Der aktuelle Zustand steht im Diagnosebericht."
+        }
+      },
+      {
         "id": "diagnosticReport",
         "type": "textarea",
         "label": {
@@ -154,8 +167,21 @@
         },
         "value": "(wird nach dem ersten Sync erstellt / created after first sync)",
         "hint": {
-          "en": "Select all, copy, paste into the forum thread. Top section = current status; analysis log below keeps error events (not cleared by new syncs). Flow card “Create diagnostic report” also works.",
-          "de": "Alles markieren, kopieren, im Forum-Thread einfügen. Oben = aktueller Stand; Analyse-Protokoll unten behält Fehler-Ereignisse (wird nicht von neuen Syncs gelöscht). Flow-Karte „Diagnosebericht erstellen“ geht auch."
+          "en": "Click the field → Ctrl+A → Ctrl+C (Cmd+C on Mac). Easier: Use Flow card 'Create diagnostic report' and put the token in a notification.",
+          "de": "Feld anklicken → Strg+A → Strg+C (Cmd+C auf Mac). Einfacher: Flow-Karte 'Diagnosebericht erstellen' + Token in Benachrichtigung."
+        }
+      },
+      {
+        "id": "copyInstructions",
+        "type": "label",
+        "label": {
+          "en": "Copy instructions: Click into the report field above, press Ctrl+A (select all), then Ctrl+C. The full report is also available as a token from the Flow action card 'Create diagnostic report'.",
+          "de": "Kopier-Anleitung: In das Bericht-Feld oben klicken, Strg+A (alles markieren), dann Strg+C. Der komplette Bericht ist auch als Token über die Flow-Aktionskarte 'Diagnosebericht erstellen' verfügbar."
+        },
+        "value": " ",
+        "hint": {
+          "en": "The report updates automatically with every sync and when detailed diagnostics are toggled.",
+          "de": "Der Bericht aktualisiert sich automatisch bei jedem Sync und bei Änderung der detaillierten Diagnose."
         }
       },
       {

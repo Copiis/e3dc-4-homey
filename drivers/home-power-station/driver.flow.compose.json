@@ -281,8 +281,8 @@
         "en": "Create diagnostic report"
       },
       "hint": {
-        "de": "Aktualisiert den Diagnosebericht (auch unter HKW-Einstellungen → Diagnose) und stellt ihn als Token bereit — z. B. für eine Benachrichtigung im Forum.",
-        "en": "Refreshes the diagnostic report (also under HPS settings → Diagnosis) and exposes it as a token, e.g. for a support notification."
+        "de": "Aktualisiert den Diagnosebericht (auch unter HKW-Einstellungen → Diagnose) und stellt ihn als Token bereit. Tipp: Detaillierte Diagnoseaufzeichnung vorher in den Einstellungen einschalten, wenn du Probleme nachvollziehen willst.",
+        "en": "Refreshes the diagnostic report (also under HPS settings → Diagnosis) and exposes it as a token. Tip: Turn on detailed diagnostics in settings first if you want to capture a problematic flow."
       },
       "tokens": [
         {

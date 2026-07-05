@@ -63,13 +63,15 @@ class MyApp extends Homey.App {
 
   logFromWidget(widget: string, message: string) {
     this.log('[WIDGET] [' + widget + '] ' + message);
-    // Auch als diagnostic record, damit es im Diagnosebericht auftaucht
+    // Auch als diagnostic record, damit es im Diagnosebericht auftaucht (nur wenn detaillierte Diagnose aktiviert)
     try {
       const hpsDriver = this.homey.drivers.getDriver('home-power-station');
       const devices = hpsDriver.getDevices();
       if (devices.length > 0) {
-        // @ts-ignore - custom diagnostic property on our device subclass
-        devices[0].diagnostic.recordAnalysis('info', `[WIDGET ${widget}] ${message}`);
+        const dev = devices[0] as any;
+        if (typeof dev.isDetailedDiagnosticsEnabled === 'function' ? dev.isDetailedDiagnosticsEnabled() : true) {
+          dev.diagnostic.recordAnalysis('info', `[WIDGET ${widget}] ${message}`);
+        }
       }
     } catch (e) {
       // ignore

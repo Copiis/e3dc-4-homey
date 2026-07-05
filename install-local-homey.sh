@@ -1,7 +1,7 @@
 #!/bin/bash
 # Arctic (Homey CLI): Build + lokales Install
-# Primär: Homey Pro (Early 2023) → 192.168.188.86
-# Hinweis: 192.168.188.62 könnte derselbe Homey 2023 über LAN-Verbindung sein
+# Primär (LAN): Homey Pro (Early 2023) → 192.168.188.62
+# WLAN Backup-IP: 192.168.188.86
 # Siehe PROJEKT-REGELN.md → "Netzwerk / IPs (Arctic)"
 set -euo pipefail
 
@@ -17,7 +17,7 @@ fi
 echo "=== Build ==="
 npm run build
 
-echo "=== Lokal installieren (Homey 2023 @ 192.168.188.86, ggf. .62 via LAN) ==="
+echo "=== Lokal installieren (Homey 2023 LAN @ 192.168.188.62, WLAN-Backup .86) ==="
 homey app install
 
 echo "✅ Lokales Homey-Update fertig."

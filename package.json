@@ -1,6 +1,6 @@
 {
   "name": "de.jnkconsulting.e3dc.v2",
-  "version": "1.8.27",
+  "version": "1.8.28",
   "description": "E3DC Home Power Station integration for Homey (community maintained fork with improved Wallbox support)",
   "main": "app.ts",
   "repository": {
