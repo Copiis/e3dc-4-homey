@@ -15,15 +15,16 @@ const MAX_ALLOWED_ERROR_BEFORE_UNAVAILABLE = 5;
  * EnergySummaryDevice
  *
  * Aggregiert und stellt summarische Energiedaten für das E3DC-System bereit
- * (z.B. PV-Surplus, Verbräuche, Wallbox-Aggregationen).
+ * (z.B. PV-Surplus, Verbräuche, Wallbox-Aggregationen, Grid, Battery).
  *
  * Verantwortlichkeiten:
- * - Periodisches Syncen von aggregierten Werten
+ * - Periodisches Syncen von aggregierten Werten vom verknüpften HKW
  * - Berechnung von PV-Surplus unter Berücksichtigung der Wallboxen
  * - Fehlerzählung und Auto-Unavailable nach zu vielen Fehlern
  *
  * Design: Leichtgewichtiger Treiber, nutzt Utils aus src/ und integriert
  * sich mit dem zentralen HKW für Konsistenz (Athom Beauty).
+ * Wird parallel zum Hauptgerät betrieben.
  */
 class EnergySummaryDevice extends Homey.Device {
 

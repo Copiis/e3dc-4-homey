@@ -15,13 +15,15 @@ import {formatError} from '../../src/utils/error-utils';
 /**
  * BatterModuleDevice
  *
- * Repräsentiert ein einzelnes Batterie-Modul des E3DC HKW.
- * Verantwortlich für:
- * - Messung von geladener/entladener Energie (kWh)
- * - Migration und Ordnung der Capabilities auf dem Tile
- * - Integration in den zentralen Energy-Meter
+ * Repräsentiert ein einzelnes Batterie-Modul (DCB) des E3DC Hauskraftwerks.
  *
- * Folgt dem gleichen Schönheitsstandard wie HKW und Wallbox.
+ * Verantwortlichkeiten:
+ * - Live-Sync von SoC, Temperatur, Spannung, Kapazität
+ * - Akkumulation von geladener/entladener Energie über EnergyMeterIntegrator
+ * - Capability-Migration und Tile-Optimierung
+ * - Power-Limits und Emergency-Power-Handling
+ *
+ * Wird vom CapabilityManager des Haupt-HKW synchronisiert.
  */
 class BatterModuleDevice extends Homey.Device implements BatteryModule{
 

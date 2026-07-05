@@ -16,10 +16,12 @@ const MAX_ALLOWED_ERROR_BEFORE_UNAVAILABLE = 5
  * SummaryDevice
  *
  * Stellt zusammengefasste System-Informationen und Zustände bereit
- * (z.B. aktuelle Werte, Status-Meldungen).
+ * (z.B. aktuelle Werte, Status-Meldungen, Autarkie etc.).
  *
  * Verwendet i18n für lokalisierte Ausgaben.
  * Folgt dem einheitlichen Polling- und Error-Handling-Pattern der App.
+ *
+ * Wird parallel zum Haupt-HKW betrieben und aggregiert Daten.
  */
 class SummaryDevice extends Homey.Device implements I18n{
 

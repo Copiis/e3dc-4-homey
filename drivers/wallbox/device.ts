@@ -256,6 +256,14 @@ class WallboxDevice extends Homey.Device implements Wallbox {
     this.lastSyncedAt = Date.now();
 
     const effectivePowerW = resolveWallboxPowerW(state);
+    this.updateWallboxCapabilities(state, effectivePowerW);
+    this.handleWallboxReadyTrigger(state, effectivePowerW);
+  }
+
+  /**
+   * Aktualisiert alle Wallbox-spezifischen Capabilities basierend auf Live-State.
+   */
+  private updateWallboxCapabilities(state: WallboxLiveState, effectivePowerW: number): void {
     updateCapabilityValue('measure_power', effectivePowerW, this);
     const meterKwh = wallboxTotalEnergyKwh(state.totalEnergyWh, effectivePowerW, this);
     if (meterKwh !== undefined) {
@@ -275,8 +283,6 @@ class WallboxDevice extends Homey.Device implements Wallbox {
     if (state.activePhases !== undefined) {
       updateCapabilityValue('measure_wallbox_phases', state.activePhases, this);
     }
-
-    this.handleWallboxReadyTrigger(state, effectivePowerW);
   }
 
   private handleWallboxReadyTrigger(state: WallboxLiveState, powerW: number): void {
@@ -528,11 +534,7 @@ class WallboxDevice extends Homey.Device implements Wallbox {
   async setBatteryToCar(enabled: boolean): Promise<boolean> {
     const api = await this.getApi();
     const ok = await api.setBatteryToCarMode(enabled, true, this);
-    if (ok) {
-      await this.refreshEmsSettings().catch(e => {
-        this.log('refreshEmsSettings after setBatteryToCar failed: ' + formatError(e));
-      });
-    }
+    await this.refreshEmsAfterApiCall(ok, 'setBatteryToCar');
     return ok;
   }
 
@@ -542,11 +544,7 @@ class WallboxDevice extends Homey.Device implements Wallbox {
   async setBatteryBeforeCar(enabled: boolean): Promise<boolean> {
     const api = await this.getApi();
     const ok = await api.setBatteryBeforeCarMode(enabled, true, this);
-    if (ok) {
-      await this.refreshEmsSettings().catch(e => {
-        this.log('refreshEmsSettings after setBatteryBeforeCar failed: ' + formatError(e));
-      });
-    }
+    await this.refreshEmsAfterApiCall(ok, 'setBatteryBeforeCar');
     return ok;
   }
 
@@ -556,11 +554,7 @@ class WallboxDevice extends Homey.Device implements Wallbox {
   async setDischargeBatteryUntil(percent: number): Promise<boolean> {
     const api = await this.getApi();
     const ok = await api.setWbDischargeBatteryUntil(percent, true, this);
-    if (ok) {
-      await this.refreshEmsSettings().catch(e => {
-        this.log('refreshEmsSettings after setDischargeBatteryUntil failed: ' + formatError(e));
-      });
-    }
+    await this.refreshEmsAfterApiCall(ok, 'setDischargeBatteryUntil');
     return ok;
   }
 
@@ -570,12 +564,16 @@ class WallboxDevice extends Homey.Device implements Wallbox {
   async setDisableBatteryAtMixMode(enabled: boolean): Promise<boolean> {
     const api = await this.getApi();
     const ok = await api.setWallboxDisableBatteryAtMixMode(enabled, true, this);
+    await this.refreshEmsAfterApiCall(ok, 'setDisableBatteryAtMixMode');
+    return ok;
+  }
+
+  private async refreshEmsAfterApiCall(ok: boolean, method: string): Promise<void> {
     if (ok) {
       await this.refreshEmsSettings().catch(e => {
-        this.log('refreshEmsSettings after setDisableBatteryAtMixMode failed: ' + formatError(e));
+        this.log(`refreshEmsSettings after ${method} failed: ` + formatError(e));
       });
     }
-    return ok;
   }
 
   /**

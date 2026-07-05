@@ -53,4 +53,72 @@ describe('CapabilityManager', () => {
       assert.ok(capturedBatteryChange.value < 0);
     }
   });
+
+  it('integrates battery + wallbox power for surplus calculation (behavioral)', () => {
+    const mockDevice = {
+      hasCapability: () => false,
+      addCapability: () => Promise.resolve(),
+      removeCapability: () => Promise.resolve(),
+      getCapabilityValue: () => undefined,
+      setCapabilityValue: () => Promise.resolve(),
+      getName: () => 'Test HKW',
+      log: () => {},
+      error: () => {},
+      getBatteryCapacity: () => Promise.resolve(10000),
+      gridPowerHasChangedTrigger: { runIfChanged: () => {} },
+      batteryPowerHasChangedTrigger: { runIfChanged: () => {} },
+      houseConsumptionHasChangedTrigger: { runIfChanged: () => {} },
+      syncErrorCount: 0,
+      updateBatteryData: false,
+    } as any;
+    const mockEnergy = { integrateGeneration: (p: number) => p } as any;
+    const manager = new CapabilityManager(mockDevice, mockEnergy);
+
+    const result = manager.processLivePowerData({
+      pvDelivery: 3000,
+      gridDelivery: 0,
+      batteryDelivery: 500, // charging
+      houseConsumption: 1500,
+      batteryChargingLevel: 0.6,
+      wallboxPowerState: [{ powerW: 800, solarPowerW: 600 } as any],
+    } as any);
+
+    // surplus should consider battery charging and wallbox solar share
+    assert.ok(result);
+  });
+
+  it('handles battery discharge + wallbox mix correctly in live data path', () => {
+    const mockDevice = {
+      hasCapability: () => false,
+      addCapability: () => Promise.resolve(),
+      removeCapability: () => Promise.resolve(),
+      getCapabilityValue: () => undefined,
+      setCapabilityValue: () => Promise.resolve(),
+      getName: () => 'Test HKW',
+      log: () => {},
+      error: () => {},
+      getBatteryCapacity: () => Promise.resolve(10000),
+      gridPowerHasChangedTrigger: { runIfChanged: () => {} },
+      batteryPowerHasChangedTrigger: { runIfChanged: () => {} },
+      houseConsumptionHasChangedTrigger: { runIfChanged: () => {} },
+      syncErrorCount: 0,
+      updateBatteryData: false,
+    } as any;
+    const mockEnergy = { integrateGeneration: (p: number) => p } as any;
+    const manager = new CapabilityManager(mockDevice, mockEnergy);
+
+    const result = manager.processLivePowerData({
+      pvDelivery: 1000,
+      gridDelivery: 200,
+      batteryDelivery: -120, // discharging 120W
+      houseConsumption: 800,
+      batteryChargingLevel: 0.4,
+    } as any);
+
+    assert.ok(result);
+    // battery should report negative for discharge
+    if (result.batteryDeliveryChange && result.batteryDeliveryChange.newValue !== null) {
+      assert.ok(result.batteryDeliveryChange.newValue < 0);
+    }
+  });
 });

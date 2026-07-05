@@ -49,7 +49,7 @@ class PvForecastDevice extends Homey.Device {
 
   /**
    * Initialisiert die PV-Prognose.
-   * Startet Scheduler für regelmäßige Updates.
+   * Lädt Segmente, stellt Capabilities sicher und startet den Scheduler.
    */
   async onInit() {
     this.log('PvForecastDevice has been initialized');
@@ -281,6 +281,10 @@ class PvForecastDevice extends Homey.Device {
       .join(' + ');
   }
 
+  /**
+   * Führt den vollen Sync der PV-Prognose durch.
+   * Holt aktuelle Wetterdaten, berechnet Forecast und aktualisiert Capabilities.
+   */
   async sync() {
     const ownConfig: PvForecastStoreConfig | undefined = this.getStoreValue('settings');
     if (!ownConfig?.stationId) {
