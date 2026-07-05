@@ -9,10 +9,10 @@ export class StopManualBatteryChargeActionCard implements RunListener {
     constructor() {
     }
 
-    run(args: any, state: any): Promise<any> {
-        return new Promise<any>(async (resolve, reject) => {
-            const hps: HomePowerStation = args.device;
-            const amount: number = args.amount
+    run(args: Record<string, unknown>, state: Record<string, unknown>): Promise<unknown> {
+        return new Promise<unknown>(async (resolve, reject) => {
+            const hps: HomePowerStation = args.device as HomePowerStation;
+            const amount: number = (args.amount as number) ?? 0
             hps.log('StopManualBatteryChargeActionCard: triggered')
             const state = hps.getManualChargeState()
             if (state && state.active) {

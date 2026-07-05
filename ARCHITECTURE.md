@@ -46,7 +46,7 @@ Siehe `PROJEKT-REGELN.md` → Abschnitt "Aktueller Fokus: Athom Beauty".
 
 ### Fortschritt (Punkte 1-4 Batch)
 - Punkt 1: any 76 → 41 (alle Condition Cards + viele Action Cards auf Record<string, unknown> umgestellt; Core any bereinigt)
-- Punkt 2: Wallbox Device mit mehr JSDoc, Struktur-Kommentaren, Duplikat-Felder bereinigt
+- Punkt 2: Wallbox komplett aufgeräumt – WallboxSchedule Interface, parse/revert/handleUntilFullStop Helper, Schedule-Methode stark vereinfacht, exzellentes JSDoc, onSettings sauberer
 - Punkt 3: JSDoc in WallboxDevice (onInit, serialize, startScheduleChecker), Action Cards
 - Punkt 4: Test zu Verhaltens-Test verbessert, letzte Kommentare bereinigt
 - Deploy-Zyklus durchgeführt (Build + Install + Push)

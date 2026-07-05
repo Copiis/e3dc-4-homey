@@ -4,7 +4,7 @@ import {formatError} from '../../utils/error-utils';
 
 export class WallboxSunModeIsOffConditionCard implements RunListener {
     run(args: Record<string, unknown>, state: Record<string, unknown>): Promise<unknown> {
-        return new Promise<any>((resolve) => {
+        return new Promise<unknown>((resolve) => {
             const wallbox = args.device as Wallbox & { getCapabilityValue(id: string): unknown };
             if (!wallbox || typeof wallbox.getCapabilityValue !== 'function') {
                 resolve(true);

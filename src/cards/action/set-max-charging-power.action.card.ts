@@ -7,11 +7,11 @@ import {HomePowerStation} from '../../model/home-power-station';
 import {formatError} from '../../utils/error-utils';
 
 export class SetMaxChargingPowerActionCard implements RunListener {
-    run(args: any, state: any): Promise<any> {
-        return new Promise<any>(async (resolve, reject) => {
-            const hps: HomePowerStation = args.device;
-            const value: number = args.limit
-            const unit: CardUnit = args.unit
+    run(args: Record<string, unknown>, state: Record<string, unknown>): Promise<unknown> {
+        return new Promise<unknown>(async (resolve, reject) => {
+            const hps: HomePowerStation = args.device as HomePowerStation;
+            const value: number = (args.limit as number) ?? 0;
+            const unit: CardUnit = (args.unit as CardUnit) ?? 'w';
             hps.log('Starting card to configure the max charging power to ' + value + ' ' + unit)
             const validationResult = hps.validateUnit(value, unit)
             if (validationResult) {

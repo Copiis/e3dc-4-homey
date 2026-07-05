@@ -5,11 +5,11 @@ import {resolveWallboxFlowResult} from './wallbox-flow-result';
 import {formatError} from '../../utils/error-utils';
 
 export class WallboxSunModeOnActionCard implements RunListener {
-    run(args: any, state: any): Promise<any> {
-        return new Promise<any>(async (resolve, reject) => {
-            const wallbox: Wallbox = args.device;
+    run(args: Record<string, unknown>, state: Record<string, unknown>): Promise<unknown> {
+        return new Promise<unknown>(async (resolve, reject) => {
+            const wallbox: Wallbox = args.device as Wallbox;
             const current: number = (args.current !== undefined && args.current !== null)
-                ? args.current
+                ? (args.current as number)
                 : DEFAULT_WALLBOX_CURRENT_A;
 
             if (!wallbox || typeof wallbox.applySunMode !== 'function') {

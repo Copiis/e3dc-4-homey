@@ -5,7 +5,7 @@ import {formatError} from '../../utils/error-utils';
 function startCharge(amount: number,
                       hps: HomePowerStation,
                       resolve: ((value: unknown | PromiseLike<unknown>) => void),
-                      reject: ((reason?: any) => void)) {
+                      reject: ((reason?: unknown) => void)) {
     if (amount < 200) {
         reject(hps.translate('messages.manual-charge-input-wrong-wh-to-low', {MIN: 200}))
     }

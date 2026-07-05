@@ -4,9 +4,9 @@ import {RunListener} from '../run-listener';
 import {formatError} from '../../utils/error-utils';
 
 export class WallboxBatteryBeforeCarActionCard implements RunListener {
-    run(args: any, state: any): Promise<any> {
-        return new Promise<any>(async (resolve, reject) => {
-            const wallbox: Wallbox = args.device;
+    run(args: Record<string, unknown>, state: Record<string, unknown>): Promise<unknown> {
+        return new Promise<unknown>(async (resolve, reject) => {
+            const wallbox: Wallbox = args.device as Wallbox;
             const batteryFirst = isBatteryFirst(args.priority, args.enabled);
 
             if (!wallbox || typeof wallbox.setBatteryBeforeCar !== 'function') {

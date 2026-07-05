@@ -4,11 +4,11 @@ import {formatError} from '../../utils/error-utils';
 
 export class ConfigureEmergencyReserveActionCard implements RunListener {
 
-    run(args: any, state: any): Promise<any> {
-        return new Promise<any>(async (resolve, reject) => {
-            const hps: HomePowerStation = args.device;
-            const amount: number = args.amount
-            const unit: string = args.unit
+    run(args: Record<string, unknown>, state: Record<string, unknown>): Promise<unknown> {
+        return new Promise<unknown>(async (resolve, reject) => {
+            const hps: HomePowerStation = args.device as HomePowerStation;
+            const amount: number = (args.amount as number) ?? 0;
+            const unit: string = (args.unit as string) ?? 'w';
             hps.log('ConfigureEmergencyReserveActionCard: triggered -> ' + amount + '' + unit)
             const api = hps.getApi()
             api.writeEmergencyPowerReserve(amount, unit == 'percentage', true, hps)

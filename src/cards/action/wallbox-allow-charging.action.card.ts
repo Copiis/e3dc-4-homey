@@ -33,7 +33,7 @@ export class WallboxAllowChargingActionCard implements RunListener {
 }
 
 // helper to avoid changing resolve function for now
-function resolveWallboxFlowResultForAsync(result: any, payload: any, rejectMessage: string) {
+function resolveWallboxFlowResultForAsync(result: { ok: boolean; skipped?: boolean }, payload: Record<string, unknown>, rejectMessage: string) {
     if (!result.ok) {
         throw new Error(rejectMessage);
     }
