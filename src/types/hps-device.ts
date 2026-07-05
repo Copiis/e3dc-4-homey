@@ -70,8 +70,4 @@ export interface IHpsDevice extends SimpleClass, Homey.Device {
   isDetailedDiagnosticsEnabled(): boolean;
   getData(): { id: string };
   getCurrentSOC(): number;
-
-  // Optional delegation methods used by managers for linked devices
-  updateLinkedBatteryLiveData?(result: LiveData): void;
-  updateLinkedGridMeter?(result: LiveData): void;
 }
