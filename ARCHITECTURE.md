@@ -47,7 +47,7 @@ Siehe `PROJEKT-REGELN.md` → Abschnitt "Aktueller Fokus: Athom Beauty".
 ### Fortschritt (Punkte 1-4 Batch)
 - Punkt 1: any 41 → 0 (ALL any eliminated. All flow cards now use Record<string, unknown> and unknown. Core was already clean.)
 - Punkt 1 (Wallbox): Vollständig umgesetzt
-- Punkt 1 (JSDoc): VOLLSTÄNDIG umgesetzt – exzellentes JSDoc in allen Dateien (Manager, Utils, Models, Converters, Cards, Types). Punkt 1 abgeschlossen.
+- Punkt 1 (JSDoc): ✅ VOLLSTÄNDIG umgesetzt – exzellentes JSDoc in allen Dateien (Manager, Utils, Models, Converters, Cards, Types). Punkt 1 abgeschlossen. Nächster: Punkt 2.
 - Punkt 3 (Test-Qualität): Verbessert – bessere Mocks, Verhaltens-Tests, Edge-Cases in zentralen Test-Dateien
 - Punkt 3: JSDoc in WallboxDevice (onInit, serialize, startScheduleChecker), Action Cards
 - Punkt 4: Test zu Verhaltens-Test verbessert, letzte Kommentare bereinigt
@@ -97,3 +97,81 @@ Der ursprüngliche HomePowerStationDevice war >1600 Zeilen. Durch Extraktion in 
 Neue Felder in `src/model/live-data.ts` definieren → im Poller und Converter updaten → im CapabilityManager verarbeiten.
 
 Dieses Dokument soll für Außenstehende (Athom-Dev oder neue Entwickler) sofort verständlich machen, warum der Code so aufgebaut ist.
+
+## Detaillierter Datenfluss
+
+1. **Polling**: LiveDataPoller fragt alle X Sekunden RSCP-Daten ab (debounced).
+2. **RSCP → Model**: Converter wandeln Raw-Data in LiveData / WallboxLiveState um.
+3. **Manager-Verarbeitung**:
+   - CapabilityManager aktualisiert Capabilities + feuert Value-Changed-Triggers.
+   - EmsScheduleManager & PowerModeManager prüfen Pläne und setzen Power-Modes.
+   - WallboxManager sync't verknüpfte Wallbox-Devices.
+   - DiagnosticManager zeichnet Events auf.
+4. **Flow-Karten**: FlowCardManager + spezialisierte Cards reagieren auf Triggers / Conditions / Actions.
+5. **Settings-Änderungen**: onSettings → Manager-Handler → sofortiges Revert + Timer-Reset.
+
+## Error-Handling-Strategie
+
+- Alle RSCP-Fehler werden über `normalizeError` + `formatError` normalisiert.
+- Kritische Fehler → `recordAnalysisEvent('error', ...)`
+- Transient Errors (z.B. Polling) → Error-Count + Diagnostic-Snapshot
+- Kein Crash durch unhandled Rejections (SafeSocketFactory + Promise-Chains)
+- User-facing Errors immer mit i18n-Keys (siehe `i18n-utils`)
+
+## Testing-Strategie (Athom Beauty)
+
+- Manager sind **unit-testbar** mit Mocks für IHpsDevice + ApiFactory.
+- Edge-Cases werden explizit getestet (untilSoc, manuelles Löschen von Plänen, gleichzeitige Flows).
+- Integrationstests für kritische Pfade (z.B. kompletter Ladeplan-Lebenszyklus).
+- Keine Tests für "kann instanziiert werden" – nur Verhalten.
+
+## Performance & Ressourcen
+
+- Einziger zentraler Poller (LiveDataPoller) mit Debounce.
+- Wallbox-Scheduler nur alle 60s (wie HKW).
+- Keine unnötigen RSCP-Requests (z.B. readChargingConfiguration nur bei Bedarf mit Force-Flag).
+- Capability-Updates nur bei tatsächlichen Änderungen (ValueChanged-Helper).
+
+## Secrets & Sicherheit
+
+- E3DC-Zugangsdaten ausschließlich über Homey Settings (nie im Code).
+- Keine Logging von Passwörtern oder Tokens.
+- Alle API-Calls über sichere SocketFactory mit Timeouts.
+
+## Erweiterbarkeit (How-To erweitert)
+
+### Neues RSCP-Tag hinzufügen
+1. In `RscpTagRegistry` eintragen (mit Kommentar).
+2. Im entsprechenden Converter parsen.
+3. Im CapabilityManager oder speziellem Manager verarbeiten.
+4. JSDoc + Eintrag in diesem Dokument.
+
+### Neue Wallbox-Funktion
+1. Methode im `Wallbox` Interface definieren.
+2. Implementierung im `WallboxDevice` (delegiert an Handler wo sinnvoll).
+3. Flow-Card in `src/cards/action` oder `condition`.
+4. Registrierung im `FlowCardManager`.
+5. JSDoc + Test + Update ARCHITECTURE.md.
+
+### Neuer Manager
+1. Interface in `src/types` oder direkt als Klasse.
+2. Dependency Injection im Device (Constructor oder onInit).
+3. Alle Aufrufe über Interface (nie direkt auf Device casten).
+4. Unit-Tests mit Mocks.
+
+## Bekannte Limitationen & Future Work
+
+- Wallbox-Schedule-Handler ist noch etwas komplex (kann weiter extrahiert werden).
+- Keine echte Multi-Wallbox-Unterstützung pro Station (aktuell 1:1).
+- Energy-Summary und Grid-Meter haben noch Potenzial für mehr Extraktion.
+- Tests könnten noch mehr Edge-Cases abdecken (z.B. Netz-Ausfall-Szenarien).
+
+## Code-Style & Konventionen (über JSDoc hinaus)
+
+- Immer `unknown` statt `any` (außer in expliziten Legacy-Wrappers).
+- Methoden-Namen sind sprechend (keine Abkürzungen wie `proc()`).
+- Private Methoden mit `_` nur wenn wirklich intern.
+- Error-Messages immer mit Kontext (was, warum, welches Device).
+- Logs sind sparsam und nur bei tatsächlichen Events (kein Spam alle 60s).
+
+Dieses Dokument wird nach jedem größeren Refactoring aktualisiert.
