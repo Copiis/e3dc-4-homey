@@ -15,7 +15,7 @@ describe('CapabilityManager', () => {
     assert.ok(true); // placeholder for full test with mocks
   });
 
-  it('processes live power data', () => {
+  it('processes live power data and returns changes', () => {
     const mockDevice = {
       hasCapability: () => false,
       addCapability: () => Promise.resolve(),
@@ -29,13 +29,22 @@ describe('CapabilityManager', () => {
       gridPowerHasChangedTrigger: { runIfChanged: () => {} },
       batteryPowerHasChangedTrigger: { runIfChanged: () => {} },
       houseConsumptionHasChangedTrigger: { runIfChanged: () => {} },
-      // other IHpsDevice members not needed for this test
       syncErrorCount: 0,
       updateBatteryData: false,
     } as any;
     const mockEnergy = { integrateGeneration: (p: number) => p } as any;
     const manager = new CapabilityManager(mockDevice, mockEnergy);
-    const result = manager.processLivePowerData({ pvDelivery: 100, gridDelivery: 50, batteryDelivery: -30, houseConsumption: 80, batteryChargingLevel: 0.5 } as any);
+
+    const result = manager.processLivePowerData({
+      pvDelivery: 100,
+      gridDelivery: 50,
+      batteryDelivery: -30,
+      houseConsumption: 80,
+      batteryChargingLevel: 0.5,
+    } as any);
+
+    // Verhaltens-Assertion: sollte Änderungen zurückgeben
     assert.ok(result);
+    assert.ok('batteryLevelChange' in result || 'gridDeliveryChange' in result);
   });
 });

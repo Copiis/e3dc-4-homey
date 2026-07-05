@@ -44,16 +44,13 @@ Die App wurde von einem großen Monolithen (`drivers/home-power-station/device.t
 
 Siehe `PROJEKT-REGELN.md` → Abschnitt "Aktueller Fokus: Athom Beauty".
 
-### Fortschritt (2026-07-05, multiple sessions)
-- ✅ **Alle `as any as IHpsDevice` Casts eliminiert** — HomePowerStationDevice implements the interface cleanly.
-- ✅ `IHpsDevice` + EmsSchedule interface: full concrete types instead of unknown/any.
-- ✅ Massive any reduction (167 → ~100). EmsScheduleManager now 100% typed.
-- ✅ Last `as any` casts removed (wallbox settings, etc.).
-- ✅ Remaining hacks removed (bracket access → public clearTriggeredSchedules()).
-- ✅ @ts-ignore reduced in core device code.
-- JSDoc expanded on key managers.
-- All tests green, professional error typing (unknown).
-- Multiple build/install/push cycles executed.
+### Fortschritt (Punkte 1-4 Session)
+- ✅ Punkt 1: any 100 → 88 (PowerModeManager, Logger, Wallbox, WallboxManager getypt)
+- ✅ Punkt 2: Wallbox erste Struktur- und Typ-Cleanups + Klassen-JSDoc
+- ✅ Punkt 3: Starkes JSDoc in WallboxManager, DiagnosticManager, PowerModeManager
+- ✅ Punkt 4: Letzte Kommentar-Hacks entfernt
+- Weitere any-Reduktion, saubere Typen, professionelle Docs
+- Build + alle Tests grün + Deploy durchgeführt
 
 ### Verbleibende Schritte (Priorität)
 1. Weitere `any` auf <80 bringen (rscp-api, action cards, wallbox internals).
