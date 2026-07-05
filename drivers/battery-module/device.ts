@@ -18,12 +18,13 @@ import {formatError} from '../../src/utils/error-utils';
  * Repräsentiert ein einzelnes Batterie-Modul (DCB) des E3DC Hauskraftwerks.
  *
  * Verantwortlichkeiten:
- * - Live-Sync von SoC, Temperatur, Spannung, Kapazität
+ * - Live-Sync von SoC, Temperatur, Spannung, Kapazität pro Modul
  * - Akkumulation von geladener/entladener Energie über EnergyMeterIntegrator
- * - Capability-Migration und Tile-Optimierung
+ * - Capability-Migration und Tile-Optimierung (hide/reorder)
  * - Power-Limits und Emergency-Power-Handling
  *
  * Wird vom CapabilityManager des Haupt-HKW synchronisiert.
+ * Folgt demselben Schönheitsstandard wie HKW und Wallbox.
  */
 class BatterModuleDevice extends Homey.Device implements BatteryModule{
 
@@ -57,6 +58,10 @@ class BatterModuleDevice extends Homey.Device implements BatteryModule{
     this.log('BatterModuleDevice has been added');
   }
 
+  /**
+   * Live-Update für das Modul (wird vom CapabilityManager aufgerufen).
+   * Aktualisiert Power, Energy-Meter, SoC und Limits.
+   */
   syncLive(rsoc: number, batteryPowerW: number,
       chargingConfiguration: ChargingConfiguration, emergencyPower: EmergencyPowerState) {
     updateCapabilityValue('measure_power', batteryPowerW, this, { force: true })

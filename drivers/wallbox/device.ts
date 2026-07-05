@@ -303,18 +303,17 @@ class WallboxDevice extends Homey.Device implements Wallbox {
     if (!this.capabilitiesReady) {
       return;
     }
-    if (settings.batteryBeforeCar !== undefined) {
-      updateCapabilityValue('wallbox_priority_battery_first', settings.batteryBeforeCar, this);
-    }
-    if (settings.batteryToCarAllowed !== undefined) {
-      updateCapabilityValue('wallbox_battery_discharge_sun', settings.batteryToCarAllowed, this);
-    }
-    if (settings.dischargeBatteryUntilPercent !== undefined) {
-      updateCapabilityValue('measure_wallbox_discharge_soc', settings.dischargeBatteryUntilPercent, this);
-    }
-    if (settings.batteryDischargeMixBlocked !== undefined) {
-      updateCapabilityValue('wallbox_battery_discharge_mix', !settings.batteryDischargeMixBlocked, this);
-    }
+    const emsUpdates: Array<[string, unknown]> = [
+      ['wallbox_priority_battery_first', settings.batteryBeforeCar],
+      ['wallbox_battery_discharge_sun', settings.batteryToCarAllowed],
+      ['measure_wallbox_discharge_soc', settings.dischargeBatteryUntilPercent],
+      ['wallbox_battery_discharge_mix', settings.batteryDischargeMixBlocked !== undefined ? !settings.batteryDischargeMixBlocked : undefined],
+    ];
+    emsUpdates.forEach(([cap, val]) => {
+      if (val !== undefined) {
+        updateCapabilityValue(cap, val, this);
+      }
+    });
   }
 
   private getApi(): Promise<RscpApi> {
@@ -362,6 +361,9 @@ class WallboxDevice extends Homey.Device implements Wallbox {
 
   private static readonly LIVE_STATE_VERIFY_DELAYS_MS = [1000, 2500, 5000];
 
+  /**
+   * Warte auf Live-State-Änderung mit Retries.
+   */
   private async waitForLiveStateMatch(
     matches: (state: WallboxLiveState) => boolean,
     label: string,
@@ -385,6 +387,9 @@ class WallboxDevice extends Homey.Device implements Wallbox {
     return last;
   }
 
+  /**
+   * Formatiert ALG-Log für Debug.
+   */
   private formatWallboxAlgLog(state: WallboxLiveState): string {
     const hex = state.socDiagnostics?.algHex ?? 'n/a';
     return `chargingEnabled=${state.chargingEnabled}, chargingCanceled=${state.chargingCanceled}, `
@@ -424,18 +429,13 @@ class WallboxDevice extends Homey.Device implements Wallbox {
     }
 
     const after = await this.waitForLiveStateMatch(
-      state => enabled
-        ? wallboxChargingAllowSucceeded(live, state)
-        : wallboxChargingBlockSucceeded(state),
+      state => enabled ? wallboxChargingAllowSucceeded(live, state) : wallboxChargingBlockSucceeded(state),
       `applyChargingAllowed(${enabled})`,
     );
     this.refreshCapabilities(after);
-    if (enabled && !wallboxChargingAllowSucceeded(live, after)) {
-      this.error(`applyChargingAllowed: RSCP did not allow charging (${this.formatWallboxAlgLog(after)})`);
-      return { ok: false, skipped: false };
-    }
-    if (!enabled && !wallboxChargingBlockSucceeded(after)) {
-      this.error(`applyChargingAllowed: RSCP did not block charging (${this.formatWallboxAlgLog(after)})`);
+    const success = enabled ? wallboxChargingAllowSucceeded(live, after) : wallboxChargingBlockSucceeded(after);
+    if (!success) {
+      this.error(`applyChargingAllowed: RSCP did not ${enabled ? 'allow' : 'block'} charging (${this.formatWallboxAlgLog(after)})`);
       return { ok: false, skipped: false };
     }
     this.log(`applyChargingAllowed(${enabled}): success (${this.formatWallboxAlgLog(after)})`);

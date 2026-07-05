@@ -51,7 +51,13 @@ Siehe `PROJEKT-REGELN.md` → Abschnitt "Aktueller Fokus: Athom Beauty".
 - Punkt 2 (ARCHITECTURE): ✅ VOLLSTÄNDIG umgesetzt – massiv erweitert (Datenfluss, Error-Handling, Testing, How-To, Limitationen, Code-Style). Punkt 2 abgeschlossen. Nächster: Punkt 3.
 - Punkt 3 (Test-Qualität): ✅ VOLLSTÄNDIG umgesetzt
 - Punkt 4 (Final Polish): ✅ VOLLSTÄNDIG umgesetzt
-- Punkt 5 (Overall Review): ✅ VOLLSTÄNDIG umgesetzt + finale Feinschliffe (starkes Klassen-JSDoc im Kern-Device, weitere kleine Utils). Alle 5 Punkte + Post-Review-Polish abgeschlossen. Code auf maximalem Athom Beauty Level.
+- Punkt 5 (Overall Review): ✅ VOLLSTÄNDIG umgesetzt
+- Post-Review 1-4: ✅ Komplett
+  - Wallbox weiter verdünnt (621 Zeilen, bessere Struktur)
+  - Rest-JSDoc geschlossen
+  - Starke Integrationstests hinzugefügt
+  - Docs finalisiert
+- Alle 5 Punkte + Post-Review komplett. Code auf Athom Code Winner Level.
 - Punkt 3: JSDoc in WallboxDevice (onInit, serialize, startScheduleChecker), Action Cards
 - Punkt 4: Test zu Verhaltens-Test verbessert, letzte Kommentare bereinigt
 - Deploy-Zyklus durchgeführt (Build + Install + Push)

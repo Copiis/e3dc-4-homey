@@ -55,6 +55,8 @@ export function findPercentStringsInTree(
  * Gibt verschiedene Kandidaten zurück (RSCP, ALG, Charge-Plan, % Strings).
  * Wird verwendet, um Vehicle SOC zu schätzen, wenn kein direkter Wert verfügbar ist
  * (z. B. für Flow-Karten und Diagnose).
+ *
+ * Wird von Wallbox und anderen Komponenten genutzt.
  */
 export function probeVehicleSocSources(
     blocks: Data[],
