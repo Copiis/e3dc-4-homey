@@ -371,16 +371,11 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
   }): Promise<string | void> {
     this.log("HomePowerStationDevice settings where changed");
     const e3dcData: E3dcConnectionData = {
-      // @ts-ignore
-      address: newSettings.stationAddress,
-      // @ts-ignore
-      port: newSettings.stationPort,
-      // @ts-ignore
-      portalUser: newSettings.portalUsername,
-      // @ts-ignore
-      portalPassword: newSettings.portalPassword,
-      // @ts-ignore
-      rscpPassword: newSettings.rscpKey
+      address: (newSettings.stationAddress as string) || '',
+      port: parseInt(String(newSettings.stationPort || '502')),
+      portalUser: (newSettings.portalUsername as string) || '',
+      portalPassword: (newSettings.portalPassword as string) || '',
+      rscpPassword: (newSettings.rscpKey as string) || '',
     }
     if (changedKeys.includes('emsSchedules')) {
       this.log('[Ladeplan] emsSchedules setting changed, reloading')

@@ -92,12 +92,15 @@ class WallboxDevice extends Homey.Device implements Wallbox {
     this.lastScheduleCheck = now;
 
     const json = this.getSetting('schedules') || '[]';
-    let schedules: any[] = [];
+    let schedules: unknown[] = [];
     try { schedules = JSON.parse(json); } catch (e) { schedules = []; }
     // light check: removed routine log every tick (was spamming even with 0 plans)
 
     // Cancel actions for any running schedules that were manually deleted
-    const currentIds = new Set(schedules.map(s => s.id || (s.start + '_' + s.action)));
+    const currentIds = new Set(schedules.map((s: unknown) => {
+      const sched = s as { id?: string; start?: string; action?: string };
+      return sched.id || (sched.start + '_' + sched.action);
+    }));
     for (const [id, action] of this.triggeredWallboxSchedules.entries()) {
       if (!currentIds.has(id)) {
         this.log(`Wallbox schedule ${id} manually deleted, reverting action ${action}`);
@@ -116,10 +119,11 @@ class WallboxDevice extends Homey.Device implements Wallbox {
 
     if (schedules.length === 0) return; // nothing to do after delete handling — keeps load low for flow editor
 
-    for (const s of schedules) {
+    for (const item of schedules) {
+      const s = item as { id?: string; start?: string; action?: string; startTs?: number; endTs?: number; end?: string; untilFull?: boolean; untilVehicleSoc?: number; current?: number };
       if (!s || !s.start || !s.action) continue;
       const id = s.id || (s.start + '_' + s.action);
-      let startTs = (typeof s.startTs === 'number') ? s.startTs : new Date(s.start).getTime();
+      let startTs = (typeof s.startTs === 'number') ? s.startTs : new Date(s.start!).getTime();
       if (isNaN(startTs)) continue;
 
       let endTs: number | null = null;
@@ -142,9 +146,9 @@ class WallboxDevice extends Homey.Device implements Wallbox {
             // force override for Ladeplan ( Sonnenmodus aus + Laden )
             // Für Ladeplan "Laden": ALLE Checks/Guards überbrücken und erzwingen
             await this.applySunMode(false, undefined, true);   // force
-            await this.applyChargingAllowed(true, s.current, true); // force
-            if (s.current) {
-              await this.setCurrentLimit(s.current);
+            await this.applyChargingAllowed(true, (s as any).current, true); // force (current is optional extra field)
+            if ((s as any).current) {
+              await this.setCurrentLimit((s as any).current);
             }
           }
           if (s.action === 'block') await this.applyChargingAllowed(false);
@@ -202,22 +206,26 @@ class WallboxDevice extends Homey.Device implements Wallbox {
           this.untilFullLowPowerSince.delete(id);
 
           // remove the completed untilFull plan
-          const planId = s.id || (s.start + '_' + s.action);
-          schedules = schedules.filter(p => (p.id || (p.start + '_' + p.action)) !== planId);
+          const planId = (s as { id?: string; start?: string; action?: string }).id || ((s as any).start + '_' + (s as any).action);
+          schedules = schedules.filter((p: unknown) => {
+            const pp = p as { id?: string; start?: string; action?: string };
+            return (pp.id || (pp.start + '_' + pp.action)) !== planId;
+          });
         }
       }
     }
 
     // Auto-remove expired fixed-time plans and persist (untilFull removed above when fulfilled)
     const beforeLen = schedules.length;
-    const cleaned = schedules.filter(s => {
-      if (!s || !s.start) return false;
-      if (s.untilFull) return true; // keep until SOC condition met
+    const cleaned = schedules.filter((s: unknown) => {
+      const sched = s as { start?: string; untilFull?: boolean; endTs?: number; end?: string };
+      if (!sched || !sched.start) return false;
+      if (sched.untilFull) return true; // keep until SOC condition met
       let eTs: number | null = null;
-      if (typeof s.endTs === 'number' && !isNaN(s.endTs)) {
-        eTs = s.endTs;
-      } else if (s.end) {
-        const parsed = new Date(s.end).getTime();
+      if (typeof sched.endTs === 'number' && !isNaN(sched.endTs)) {
+        eTs = sched.endTs;
+      } else if (sched.end) {
+        const parsed = new Date(sched.end).getTime();
         eTs = isNaN(parsed) ? null : parsed;
       }
       if (eTs !== null && now >= eTs) return false;
@@ -225,7 +233,10 @@ class WallboxDevice extends Homey.Device implements Wallbox {
     });
     if (cleaned.length < beforeLen) {
       // auto-removed some expired plans (log removed from hot path)
-      const currentIds = new Set(cleaned.map(s => s.id || (s.start + '_' + s.action)));
+      const currentIds = new Set(cleaned.map((s: unknown) => {
+        const sched = s as { id?: string; start?: string; action?: string };
+        return sched.id || (sched.start + '_' + sched.action);
+      }));
       for (const [id, action] of this.triggeredWallboxSchedules.entries()) {
         if (!currentIds.has(id)) {
           try {

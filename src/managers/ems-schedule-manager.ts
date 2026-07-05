@@ -1,8 +1,11 @@
-import { PowerModeState } from '../model/home-power-station';
+import { PowerModeState, EmsSchedule } from '../model/home-power-station';
+import type { PowerModeManager } from './power-mode-manager';
 import { RscpApi } from '../rscp-api';
 import { formatError } from '../utils/error-utils';
 import { calculatePvSurplusW } from '../utils/pv-surplus';
 import { IHpsDevice } from '../types/hps-device';
+import { LiveData } from '../model/live-data';
+import { ValueChanged } from '../model/value-changed';
 
 
 
@@ -16,7 +19,7 @@ const POWER_MODE_GRID_CHARGE = 4;
  * EmsScheduleManager - handles EMS schedules and power mode logic.
  */
 export class EmsScheduleManager {
-  private emsSchedules: any[] = [];
+  private emsSchedules: EmsSchedule[] = [];
   private emsScheduleCheckId: NodeJS.Timeout | null = null;
   private scheduledPlanTimers: Map<string, NodeJS.Timeout> = new Map();
   private scheduledExpireTimers: Map<string, NodeJS.Timeout> = new Map();
@@ -30,7 +33,7 @@ export class EmsScheduleManager {
     private readonly device: IHpsDevice,
     private readonly apiFactory: () => RscpApi,
     private readonly logger: { log: (msg: string) => void; error: (msg: string) => void },
-    private readonly powerModeManager?: any,
+    private readonly powerModeManager?: PowerModeManager,  // was any, now properly referenced (imported below if needed)
   ) {}
 
   loadEmsSchedules() {
@@ -43,7 +46,7 @@ export class EmsScheduleManager {
 
       const now = Date.now();
       const before = this.emsSchedules.length;
-      this.emsSchedules = this.emsSchedules.filter((s: any) => {
+      this.emsSchedules = this.emsSchedules.filter((s: EmsSchedule) => {
         if (s.untilSoc || s.untilFull) return true;
         const eTs = (typeof s.endTs === 'number') ? s.endTs : (s.end ? this.parseDateTime(s.end) : null);
         if (eTs != null) {
@@ -57,12 +60,12 @@ export class EmsScheduleManager {
       if (this.emsSchedules.length < before) {
         this.logger.log('Cleaned expired EMS schedules on load');
         this.device.setSettings({ emsSchedules: JSON.stringify(this.emsSchedules) })
-          .catch((e: any) => this.logger.error('Failed to persist cleaned schedules on load: ' + formatError(e)));
+          .catch((e: unknown) => this.logger.error('Failed to persist cleaned schedules on load: ' + formatError(e)));
       }
 
       if (this.powerModeState && this.powerModeState.scheduleId) {
         const activeId = this.powerModeState.scheduleId;
-        const stillPresent = this.emsSchedules.some((p: any) => {
+        const stillPresent = this.emsSchedules.some((p: EmsSchedule) => {
           const pId = p.id || (p.start + '_' + (p.mode || ''));
           return pId === activeId;
         });
@@ -72,18 +75,18 @@ export class EmsScheduleManager {
           this.clearExpireTimer(activeId);
           this.setPowerModeState(null);
           this.apiFactory().setPowerMode(POWER_MODE_AUTO, 0, true, this.device)
-            .catch((e: any) => this.logger.error('Failed to revert power mode after manual plan delete: ' + formatError(e)));
+            .catch((e: unknown) => this.logger.error('Failed to revert power mode after manual plan delete: ' + formatError(e)));
           this.triggeredEmsSchedules.delete(activeId);
         }
       }
 
-      const currentIds = new Set(this.emsSchedules.map((s: any) => s.id || (s.start + '_' + (s.mode || ''))));
+      const currentIds = new Set(this.emsSchedules.map((s: EmsSchedule) => s.id || (s.start + '_' + (s.mode || ''))));
       this.triggeredEmsSchedules.forEach(id => {
         if (!currentIds.has(id)) this.triggeredEmsSchedules.delete(id);
       });
 
       for (const id of Array.from(this.scheduledExpireTimers.keys())) {
-        const stillPresent = this.emsSchedules.some((s: any) => (s.id || (s.start + '_' + (s.mode || ''))) === id);
+        const stillPresent = this.emsSchedules.some((s: EmsSchedule) => (s.id || (s.start + '_' + (s.mode || ''))) === id);
         if (!stillPresent) {
           this.clearExpireTimer(id);
         }
@@ -142,7 +145,7 @@ export class EmsScheduleManager {
     const now = Date.now();
 
     const beforeLen = this.emsSchedules.length;
-    this.emsSchedules = this.emsSchedules.filter((s: any) => {
+    this.emsSchedules = this.emsSchedules.filter((s: EmsSchedule) => {
       if (s.untilSoc || s.untilFull) return true;
       const endTs = (typeof s.endTs === 'number') ? s.endTs : (s.end ? this.parseDateTime(s.end) : NaN);
       if (!isNaN(endTs) && now >= endTs) {
@@ -152,23 +155,23 @@ export class EmsScheduleManager {
     });
     if (this.emsSchedules.length < beforeLen) {
       this.logger.log('[Ladeplan] Removed expired plans from storage');
-      const remainingIds = new Set(this.emsSchedules.map((s: any) => s.id || (s.start + '_' + (s.mode || ''))));
+      const remainingIds = new Set(this.emsSchedules.map((s: EmsSchedule) => s.id || (s.start + '_' + (s.mode || ''))));
       this.triggeredEmsSchedules.forEach(id => {
         if (!remainingIds.has(id)) this.triggeredEmsSchedules.delete(id);
       });
       this.device.setSettings({ emsSchedules: JSON.stringify(this.emsSchedules) })
-        .catch((e: any) => this.logger.error('[Ladeplan] persist cleaned schedules failed: ' + formatError(e)));
+        .catch((e: unknown) => this.logger.error('[Ladeplan] persist cleaned schedules failed: ' + formatError(e)));
     }
 
     if (this.powerModeState && this.powerModeState.scheduleId) {
       const activeId = this.powerModeState.scheduleId;
-      const stillPresent = this.emsSchedules.some((s: any) => (s.id || (s.start + '_' + (s.mode || ''))) === activeId);
+      const stillPresent = this.emsSchedules.some((s: EmsSchedule) => (s.id || (s.start + '_' + (s.mode || ''))) === activeId);
       if (!stillPresent) {
         this.logger.log(`[Ladeplan] Manually deleted running schedule ${activeId} during check — reverting to AUTO`);
         this.clearExpireTimer(activeId);
         this.setPowerModeState(null);
         this.apiFactory().setPowerMode(POWER_MODE_AUTO, 0, true, this.device)
-          .catch((e: any) => this.logger.error('Failed to revert power mode after manual delete (check): ' + formatError(e)));
+          .catch((e: unknown) => this.logger.error('Failed to revert power mode after manual delete (check): ' + formatError(e)));
         this.triggeredEmsSchedules.delete(activeId);
       }
     }
@@ -179,7 +182,7 @@ export class EmsScheduleManager {
       if (!s || !s.start || !s.mode) continue;
 
       const id = s.id || (s.start + '_' + (s.mode || ''));
-      let startTs = (typeof s.startTs === 'number') ? s.startTs : this.parseDateTime(s.start);
+      let startTs = (typeof s.startTs === 'number') ? s.startTs : (s.start ? this.parseDateTime(s.start) : NaN);
       if (isNaN(startTs)) continue;
 
       let endTs: number | null = null;
@@ -205,27 +208,27 @@ export class EmsScheduleManager {
         if (s.untilSoc) {
           this.setPowerModeState({ mode: modeNum, powerW, expiresAt: Date.now() + 48 * 60 * 60 * 1000, untilSoc: s.untilSoc, scheduleId });
           this.apiFactory().setPowerMode(modeNum, powerW, true, this.device)
-            .catch((e: any) => this.logger.error('Scheduled untilSoc powerMode failed: ' + formatError(e)));
+            .catch((e: unknown) => this.logger.error('Scheduled untilSoc powerMode failed: ' + formatError(e)));
         } else if (s.untilFull || !endTs) {
           this.setPowerModeState({ mode: modeNum, powerW, expiresAt: Date.now() + 24 * 60 * 60 * 1000, scheduleId });
           this.apiFactory().setPowerMode(modeNum, powerW, true, this.device)
-            .catch((e: any) => this.logger.error('Scheduled open powerMode failed: ' + formatError(e)));
+            .catch((e: unknown) => this.logger.error('Scheduled open powerMode failed: ' + formatError(e)));
         } else {
           const expiresAt = endTs || (Date.now() + 60 * 60 * 1000);
           this.setPowerModeState({ mode: modeNum, powerW, expiresAt, scheduleId });
           this.logger.log(`[Ladeplan] sending setPowerMode mode=${modeNum} power=${powerW} expiresAt=${expiresAt}`);
           this.apiFactory().setPowerMode(modeNum, powerW, true, this.device)
-            .then((result: any) => {
+            .then((result: unknown) => {
               this.logger.log(`[Ladeplan] setPowerMode result for ${id}: ${result}`);
               if (result === false) {
                 setTimeout(() => {
                   this.apiFactory().setPowerMode(modeNum, powerW, true, this.device)
-                    .then((r: any) => this.logger.log(`[Ladeplan] setPowerMode retry result for ${id}: ${r}`))
+                    .then((r: unknown) => this.logger.log(`[Ladeplan] setPowerMode retry result for ${id}: ${r}`))
                     .catch(() => {});
                 }, 2000);
               }
             })
-            .catch((e: any) => this.logger.error('[Ladeplan] setPowerMode failed: ' + formatError(e)));
+            .catch((e: unknown) => this.logger.error('[Ladeplan] setPowerMode failed: ' + formatError(e)));
         }
 
         this.triggeredEmsSchedules.add(id);
@@ -249,23 +252,23 @@ export class EmsScheduleManager {
 
   private removeCompletedEmsSchedule(scheduleId: string) {
     const before = this.emsSchedules.length;
-    this.emsSchedules = this.emsSchedules.filter((s: any) => {
+    this.emsSchedules = this.emsSchedules.filter((s: EmsSchedule) => {
       const sId = s.id || (s.start + '_' + (s.mode || ''));
       return sId !== scheduleId;
     });
     if (this.emsSchedules.length < before) {
       this.logger.log(`Removing completed EMS schedule ${scheduleId}`);
       this.device.setSettings({ emsSchedules: JSON.stringify(this.emsSchedules) })
-        .catch((e: any) => this.logger.error('Failed to persist removed EMS schedule: ' + formatError(e)));
+        .catch((e: unknown) => this.logger.error('Failed to persist removed EMS schedule: ' + formatError(e)));
     }
   }
 
-  private activateScheduledPlanIfNeeded(s: any, id: string) {
-    const stillPresent = this.emsSchedules.some((p: any) => (p.id || (p.start + '_' + (p.mode || ''))) === id);
+  private activateScheduledPlanIfNeeded(s: EmsSchedule, id: string) {
+    const stillPresent = this.emsSchedules.some((p: EmsSchedule) => (p.id || (p.start + '_' + (p.mode || ''))) === id);
     if (!stillPresent || this.triggeredEmsSchedules.has(id)) return;
 
     const now = Date.now();
-    let startTs = (typeof s.startTs === 'number') ? s.startTs : this.parseDateTime(s.start);
+    let startTs = (typeof s.startTs === 'number') ? s.startTs : (s.start ? this.parseDateTime(s.start) : NaN);
     let endTs: number | null = null;
     if (typeof s.endTs === 'number') endTs = s.endTs;
     else if (s.end) endTs = this.parseDateTime(s.end);
@@ -286,16 +289,16 @@ export class EmsScheduleManager {
     if (s.untilSoc) {
       this.setPowerModeState({ mode: modeNum, powerW, expiresAt: now + 48 * 60 * 60 * 1000, untilSoc: s.untilSoc, scheduleId });
       this.apiFactory().setPowerMode(modeNum, powerW, true, this.device)
-        .catch((e: any) => this.logger.error('Scheduled untilSoc powerMode failed: ' + formatError(e)));
+        .catch((e: unknown) => this.logger.error('Scheduled untilSoc powerMode failed: ' + formatError(e)));
     } else if (s.untilFull || !endTs) {
       this.setPowerModeState({ mode: modeNum, powerW, expiresAt: now + 24 * 60 * 60 * 1000, scheduleId });
       this.apiFactory().setPowerMode(modeNum, powerW, true, this.device)
-        .catch((e: any) => this.logger.error('Scheduled open powerMode failed: ' + formatError(e)));
+        .catch((e: unknown) => this.logger.error('Scheduled open powerMode failed: ' + formatError(e)));
     } else {
       const expiresAt = endTs || (now + 60 * 60 * 1000);
       this.setPowerModeState({ mode: modeNum, powerW, expiresAt, scheduleId });
       this.apiFactory().setPowerMode(modeNum, powerW, true, this.device)
-        .catch((e: any) => this.logger.error('Scheduled setPowerMode failed: ' + formatError(e)));
+        .catch((e: unknown) => this.logger.error('Scheduled setPowerMode failed: ' + formatError(e)));
     }
 
     this.triggeredEmsSchedules.add(id);
@@ -340,7 +343,7 @@ export class EmsScheduleManager {
         this.clearExpireTimer(state.scheduleId || '');
         this.setPowerModeState(null);
         this.apiFactory().setPowerMode(POWER_MODE_AUTO, 0, true, this.device)
-          .catch((e: any) => this.logger.error('[Ladeplan] untilSoc revert failed: ' + formatError(e)));
+          .catch((e: unknown) => this.logger.error('[Ladeplan] untilSoc revert failed: ' + formatError(e)));
         return;
       }
     }
@@ -352,13 +355,13 @@ export class EmsScheduleManager {
     this.logger.log(`[Ladeplan] refreshPowerMode: sending mode=${state.mode} power=${state.powerW} (scheduleId=${state.scheduleId || 'none'})`);
     this.apiFactory()
       .setPowerMode(state.mode, state.powerW, true, this.device)
-      .then((result: any) => {
+      .then((result: unknown) => {
         if (result === false) {
           this.logger.log(`[Ladeplan] refreshPowerMode result for ${state.scheduleId || 'unknown'}: false`);
           this.device.recordAnalysisEvent('info', `[Ladeplan] refresh setPowerMode result: false (schedule ${state.scheduleId || 'unknown'})`);
         }
       })
-      .catch((e: any) => this.logger.error('[Ladeplan] Power mode refresh failed: ' + formatError(e)));
+      .catch((e: unknown) => this.logger.error('[Ladeplan] Power mode refresh failed: ' + formatError(e)));
     this.schedulePowerModeRefresh();
   }
 
@@ -371,7 +374,7 @@ export class EmsScheduleManager {
     }
     this.setPowerModeState(null);
     this.apiFactory().setPowerMode(POWER_MODE_AUTO, 0, true, this.device)
-      .catch((e: any) => this.logger.error('[Ladeplan] auto revert failed: ' + formatError(e)));
+      .catch((e: unknown) => this.logger.error('[Ladeplan] auto revert failed: ' + formatError(e)));
   }
 
   private scheduleExpireTimer(scheduleId: string, expiresAt: number) {
@@ -424,7 +427,7 @@ export class EmsScheduleManager {
   }
   getPowerModeState() { return this.powerModeManager ? this.powerModeManager.getPowerModeState() : this.powerModeState; }
 
-  handleEmsTriggers(result: any, batteryLevelChange: any) {
+  handleEmsTriggers(result: LiveData, batteryLevelChange?: ValueChanged<number>) {
     const batteryPowerW = result.batteryDelivery * -1
     const surplus = calculatePvSurplusW(result.pvDelivery, result.houseConsumption, batteryPowerW)
     const previousSurplus = this.lastPvSurplusW || 0
@@ -433,7 +436,7 @@ export class EmsScheduleManager {
     try {
       const pvSurplusCard = this.device.homey.flow.getDeviceTriggerCard('pv_surplus_exceeds')
       pvSurplusCard.trigger(this.device, { surplus }, { surplus, previousSurplus })
-        .catch((reason: any) => this.logger.error('PV surplus trigger failed: ' + formatError(reason)))
+        .catch((reason: unknown) => this.logger.error('PV surplus trigger failed: ' + formatError(reason)))
     } catch (e) {
       this.logger.error('PV surplus trigger card unavailable: ' + formatError(e))
     }
@@ -444,7 +447,7 @@ export class EmsScheduleManager {
         socCard.trigger(this.device, { soc: batteryLevelChange.newValue }, {
           soc: batteryLevelChange.newValue,
           previousSoc: batteryLevelChange.oldValue,
-        }).catch((reason: any) => this.logger.error('Battery SoC trigger failed: ' + formatError(reason)))
+        }).catch((reason: unknown) => this.logger.error('Battery SoC trigger failed: ' + formatError(reason)))
       } catch (e) {
         this.logger.error('Battery SoC trigger card unavailable: ' + formatError(e))
       }

@@ -11,6 +11,24 @@ export interface PowerModeState {
     scheduleId?: string // optional: id of the emsSchedule that started this mode (for auto-cleanup)
 }
 
+/**
+ * Typed representation of an EMS / Ladeplan schedule entry.
+ * Used by EmsScheduleManager and related flow/widget logic.
+ * All fields are optional except the core mode because user input from widgets can be partial.
+ */
+export interface EmsSchedule {
+  id?: string;
+  start?: string;          // e.g. "08:00"
+  startTs?: number;        // pre-parsed timestamp
+  end?: string;
+  endTs?: number;
+  durationMin?: number;
+  mode: string;            // "auto" | "idle" | "discharge" | "charge" | "grid_charge" etc.
+  powerW?: number;
+  untilSoc?: number;
+  untilFull?: boolean;
+}
+
 export interface HomePowerStation extends InternalDevice{
     getApi(): RscpApi
     getId(): string
