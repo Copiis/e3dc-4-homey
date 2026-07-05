@@ -93,6 +93,25 @@ class WallboxDevice extends Homey.Device implements Wallbox {
     }
   }
 
+  private async applyScheduleAction(s: WallboxSchedule, id: string) {
+    try {
+      if (s.action === 'allow') {
+        await this.applySunMode(false, undefined, true);
+        await this.applyChargingAllowed(true, s.current, true);
+        if (s.current) await this.setCurrentLimit(s.current);
+      } else if (s.action === 'block') {
+        await this.applyChargingAllowed(false);
+      } else if (s.action === 'sun_on') {
+        await this.applySunMode(true);
+      } else if (s.action === 'sun_off') {
+        await this.applySunMode(false);
+      }
+      this.triggeredWallboxSchedules.set(id, s.action);
+    } catch (e) {
+      this.error('Wallbox schedule apply error: ' + formatError(e));
+    }
+  }
+
   private async handleUntilFullStop(s: WallboxSchedule, id: string, now: number) {
     const vSoc = this.getCapabilityValue('measure_vehicle_soc');
     const powerW = this.getCapabilityValue('measure_wallbox_consumption') || 0;
@@ -224,24 +243,7 @@ class WallboxDevice extends Homey.Device implements Wallbox {
       // per-plan log removed from hot path (was logging every interval even for inactive plans)
 
       if (active && !this.triggeredWallboxSchedules.has(id)) {
-        try {
-          if (s.action === 'allow') {
-            // force override for Ladeplan ( Sonnenmodus aus + Laden )
-            // Für Ladeplan "Laden": ALLE Checks/Guards überbrücken und erzwingen
-            await this.applySunMode(false, undefined, true);   // force
-            await this.applyChargingAllowed(true, s.current, true); // force (current is optional extra field)
-            if (s.current) {
-              await this.setCurrentLimit(s.current);
-            }
-          }
-          if (s.action === 'block') await this.applyChargingAllowed(false);
-          if (s.action === 'sun_on') await this.applySunMode(true);
-          if (s.action === 'sun_off') await this.applySunMode(false);
-
-          this.triggeredWallboxSchedules.set(id, s.action);
-        } catch (e) {
-          this.error('Wallbox schedule apply error: ' + formatError(e));
-        }
+        await this.applyScheduleAction(s, id);
       }
 
       if (endTs && now > endTs && this.triggeredWallboxSchedules.has(id)) {
