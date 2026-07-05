@@ -56,7 +56,7 @@ export function findPercentStringsInTree(
  * Wird verwendet, um Vehicle SOC zu schätzen, wenn kein direkter Wert verfügbar ist
  * (z. B. für Flow-Karten und Diagnose).
  *
- * Wird von Wallbox und anderen Komponenten genutzt.
+ * Wird von WallboxManager und anderen Komponenten genutzt.
  */
 export function probeVehicleSocSources(
     blocks: Data[],

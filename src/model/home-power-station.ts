@@ -4,6 +4,13 @@ import {InternalDevice} from '../internal-api/internal-device';
 import {EmergencyPowerState, ManualChargeState} from 'easy-rscp';
 
 /**
+ * Model-Definitionen für das HomePowerStationDevice.
+ *
+ * Enthält die zentralen Interfaces und State-Typen, die zwischen
+ * Device, Managern und Flow-Karten ausgetauscht werden.
+ */
+
+/**
  * Repräsentiert den aktuellen Power-Mode des HKW.
  *
  * Modi: AUTO (0), IDLE (1), CHARGE (2), DISCHARGE (3), GRID_CHARGE (4).

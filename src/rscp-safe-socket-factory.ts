@@ -9,7 +9,7 @@ import {normalizeError} from './utils/error-utils';
  * Dadurch kann ein späteres 'error' Event ohne Listener kommen und die App crashen.
  *
  * Diese Factory stellt sicher, dass Timeouts gecleared werden, Listener entfernt und Fehler normalisiert werden.
- * Wird beim Erstellen der RscpApi verwendet.
+ * Wird beim Erstellen der RscpApi verwendet (siehe rscp-api.ts).
  */
 export class SafeSocketFactory implements SocketFactory {
     /**

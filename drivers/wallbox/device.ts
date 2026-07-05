@@ -171,8 +171,7 @@ class WallboxDevice extends Homey.Device implements Wallbox {
     this.registerCapabilityListener('wallbox_sun_mode', this.onWallboxSunModeSet.bind(this));
   }
 
-  private async onWallboxChargingSet(value: boolean): Promise<void> {
-    // Button press toggles the state (for button uiComponent)
+  private async onWallboxChargingSet(): Promise<void> {
     const current = this.getCapabilityValue('wallbox_charging') === true;
     const newValue = !current;
     const result = await this.applyChargingAllowed(newValue);
@@ -183,7 +182,7 @@ class WallboxDevice extends Homey.Device implements Wallbox {
     this.log(`Wallbox charging toggled via button to ${newValue}`);
   }
 
-  private async onWallboxSunModeSet(value: boolean): Promise<void> {
+  private async onWallboxSunModeSet(): Promise<void> {
     const current = this.getCapabilityValue('wallbox_sun_mode') === true;
     const newValue = !current;
     const result = await this.applySunMode(newValue);
@@ -403,6 +402,8 @@ class WallboxDevice extends Homey.Device implements Wallbox {
   async applyChargingAllowed(enabled: boolean, maxCurrentA?: number, force = false): Promise<WallboxCommandResult> {
     return this.serialize(() => this._applyChargingAllowed(enabled, maxCurrentA, force));
   }
+
+  // Weitere Apply-Methoden folgen (SunMode, CurrentLimit, EMS-Settings) 
 
   private async _applyChargingAllowed(enabled: boolean, maxCurrentA?: number, force = false): Promise<WallboxCommandResult> {
     const live = await this.fetchLiveState();

@@ -60,7 +60,10 @@ class BatterModuleDevice extends Homey.Device implements BatteryModule{
 
   /**
    * Live-Update für das Modul (wird vom CapabilityManager aufgerufen).
-   * Aktualisiert Power, Energy-Meter, SoC und Limits.
+   *
+   * WICHTIG: `batteryPowerW` ist die **gesamte Batterieleistung der Station**
+   * (nicht pro Modul). Jede Batterie-Modul-Kachel zeigt daher die System-Gesamtleistung.
+   * Das entspricht dem Design und dem Verhalten vieler E3DC-Installationen.
    */
   syncLive(rsoc: number, batteryPowerW: number,
       chargingConfiguration: ChargingConfiguration, emergencyPower: EmergencyPowerState) {

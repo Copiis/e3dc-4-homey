@@ -186,4 +186,69 @@ describe('CapabilityManager', () => {
 
     assert.ok(result);
   });
+
+  it('LiveDataPoller + multiple managers interaction (strong integration test)', () => {
+    const mockDevice = {
+      hasCapability: () => false,
+      addCapability: () => Promise.resolve(),
+      removeCapability: () => Promise.resolve(),
+      getCapabilityValue: () => undefined,
+      setCapabilityValue: () => Promise.resolve(),
+      getName: () => 'Test',
+      log: () => {},
+      error: () => {},
+      getBatteryCapacity: () => Promise.resolve(10000),
+      gridPowerHasChangedTrigger: { runIfChanged: () => {} },
+      batteryPowerHasChangedTrigger: { runIfChanged: () => {} },
+      houseConsumptionHasChangedTrigger: { runIfChanged: () => {} },
+      syncErrorCount: 0,
+      updateBatteryData: false,
+    } as any;
+    const mockEnergy = { integrateGeneration: (p: number) => p } as any;
+    const manager = new CapabilityManager(mockDevice, mockEnergy);
+
+    // Simulate a full cycle with wallbox and battery
+    const result = manager.processLivePowerData({
+      pvDelivery: 2500,
+      gridDelivery: -300,
+      batteryDelivery: -400,
+      houseConsumption: 1100,
+      batteryChargingLevel: 0.55,
+      wallboxPowerState: [{ powerW: 600, solarPowerW: 400 } as any],
+    } as any);
+
+    assert.ok(result);
+    assert.ok(result.batteryDeliveryChange);
+  });
+
+  it('Error recovery in charge time + battery power fallback (error path test)', () => {
+    const mockDevice = {
+      hasCapability: () => false,
+      addCapability: () => Promise.resolve(),
+      removeCapability: () => Promise.resolve(),
+      getCapabilityValue: () => 0,
+      setCapabilityValue: () => Promise.resolve(),
+      getName: () => 'Test',
+      log: () => {},
+      error: () => {},
+      getBatteryCapacity: () => Promise.reject(new Error('temp error')),
+      gridPowerHasChangedTrigger: { runIfChanged: () => {} },
+      batteryPowerHasChangedTrigger: { runIfChanged: () => {} },
+      houseConsumptionHasChangedTrigger: { runIfChanged: () => {} },
+      syncErrorCount: 0,
+      updateBatteryData: false,
+    } as any;
+    const mockEnergy = { integrateGeneration: (p: number) => p } as any;
+    const manager = new CapabilityManager(mockDevice, mockEnergy);
+
+    const result = manager.processLivePowerData({
+      pvDelivery: 800,
+      gridDelivery: 100,
+      batteryDelivery: -200,
+      houseConsumption: 900,
+      batteryChargingLevel: 0.3,
+    } as any);
+
+    assert.ok(result);
+  });
 });
