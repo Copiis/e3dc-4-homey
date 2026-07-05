@@ -1,4 +1,8 @@
-/** Readable string for logs / Homey error() — avoids "[object Object]" for Error/plain objects. */
+/**
+ * Erzeugt einen lesbaren String für Logs und Homey.error().
+ * Vermeidet "[object Object]" bei Errors oder plain Objects.
+ * Gibt Stack-Trace mit aus, wenn vorhanden.
+ */
 export function formatError(reason: unknown): string {
     if (reason instanceof Error) {
         const stack = reason.stack?.trim();
@@ -24,7 +28,10 @@ export function formatError(reason: unknown): string {
     }
 }
 
-/** Turn easy-rscp / socket plain-object rejections into real Errors for Homey crash UI. */
+/**
+ * Konvertiert plain-object Rejections (von easy-rscp oder Socket) in echte Error-Objekte.
+ * Wird benötigt, damit Homey die Fehler korrekt im UI anzeigt.
+ */
 export function normalizeError(reason: unknown): Error {
     if (reason instanceof Error) {
         return reason;
@@ -45,6 +52,10 @@ export function normalizeError(reason: unknown): Error {
     return new Error(formatError(reason));
 }
 
+/**
+ * Hilfsfunktion zum Rejecten mit normalisiertem Error.
+ * Verwendet normalizeError intern.
+ */
 export function rejectAsError(reject: (reason?: unknown) => void, reason: unknown): void {
     reject(normalizeError(reason));
 }

@@ -3,11 +3,18 @@ import {E3dcConnectionData, SocketFactory} from 'easy-rscp';
 import {normalizeError} from './utils/error-utils';
 
 /**
- * Workaround for easy-rscp DefaultSocketFactory: on connect failure the connection
- * timeout is not cleared, so destroy() can emit a late socket 'error' without a
- * listener and crash the Homey app process (e.g. EHOSTUNREACH).
+ * Sichere SocketFactory als Workaround für easy-rscp.
+ *
+ * Problem: Bei Verbindungsfehlern wird der Connection-Timeout nicht immer gecleared.
+ * Dadurch kann ein späteres 'error' Event ohne Listener kommen und die App crashen.
+ *
+ * Diese Factory stellt sicher, dass Timeouts gecleared werden und Fehler normalisiert werden.
  */
 export class SafeSocketFactory implements SocketFactory {
+    /**
+     * Erstellt einen sicheren Socket mit Timeout-Handling.
+     * @param connectionData - Verbindungsdaten mit Timeout etc.
+     */
     createSocket(connectionData: E3dcConnectionData): Promise<Socket> {
         return new Promise((resolve, reject) => {
             const newSocket = new Socket();

@@ -8,6 +8,11 @@ import type { IslandModeStoppedTrigger } from '../cards/trigger/island-mode-stop
 import { LiveData } from '../model/live-data';
 import type { ChargingConfiguration, EmergencyPowerState, ManualChargeState } from 'easy-rscp';
 
+/**
+ * Interface für das HomePowerStationDevice.
+ * Wird von allen Managern verwendet, um das Device zu entkoppeln (Dependency Inversion).
+ * Definiert alle benötigten Methoden und Properties für Capability-Updates, Settings, Logging etc.
+ */
 export interface IHpsDevice extends SimpleClass, Homey.Device {
   getId(): string;
   getName(): string;

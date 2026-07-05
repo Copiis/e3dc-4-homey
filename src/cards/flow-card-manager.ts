@@ -1,8 +1,3 @@
-/**
- * FlowCardManager - extracted to reduce device.ts monolith.
- * Handles registration of action/condition/trigger cards.
- */
-
 import * as Homey from 'homey';
 import {
   SetPowerModeAutoActionCard,
@@ -45,6 +40,21 @@ import { IsMaxDischargingLimitActiveConditionCard } from './condition/is-max-dis
 import { IsAnyPowerLimitActiveConditionCard } from './condition/is-any-power-limit-active.condition.card';
 import { IHpsDevice } from '../types/hps-device';
 
+/**
+ * FlowCardManager
+ *
+ * Zentrale Stelle zur Registrierung aller Flow-Karten (Actions, Conditions, Triggers).
+ *
+ * Extrahiert aus dem Device-Monolithen zur besseren Wartbarkeit.
+ * Verwendet bindDevice-Pattern für korrekte Device-Instanz in Listenern.
+ *
+ * Zuständig für:
+ * - Setup aller Trigger-Cards (Firmware, Limits, Island-Mode, Manual Charge, Value Changed)
+ * - Setup aller Condition-Cards (Island, Manual Charge, Power Limits, Wallbox States)
+ * - Setup aller Action-Cards (Power Mode, Wallbox, Limits, Emergency Reserve, etc.)
+ *
+ * Wird im HKW-Device und Wallbox-Device verwendet.
+ */
 export class FlowCardManager {
   constructor(private readonly device: IHpsDevice) {
     // Strongly typed via IHpsDevice (which declares the optional trigger properties).
@@ -54,6 +64,10 @@ export class FlowCardManager {
     return this.device.homey;
   }
 
+  /**
+   * Registriert alle Trigger-Cards.
+   * Wird typischerweise in onInit aufgerufen.
+   */
   setupTriggerCards() {
     const steps: Array<{ name: string, run: () => void }> = [
       { name: 'firmware_has_changed', run: () => this.setupFirmwareChangedCard() },
