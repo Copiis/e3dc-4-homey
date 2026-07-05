@@ -1,3 +1,16 @@
+/**
+ * PvForecastDevice
+ *
+ * Liefert PV-Ertragsprognosen basierend auf Open-Meteo und lokalen Modul-Einstellungen.
+ * Unterstützt Multi-Segment-Konfigurationen (verschiedene Ausrichtungen/Neigungen).
+ *
+ * Verantwortlichkeiten:
+ * - Abruf und Berechnung von Tages-/Stunden-Prognosen
+ * - Caching und Fehlerbehandlung
+ * - Integration in Summary und Capabilities
+ *
+ * Nutzt zentrale Services und Utils für saubere Trennung.
+ */
 import Homey from 'homey';
 import {clearTimeout} from 'node:timers';
 import {HomePowerStation} from '../../src/model/home-power-station';
@@ -34,6 +47,10 @@ class PvForecastDevice extends Homey.Device {
   private syncErrorCount = 0;
   private cachedWeather: WeatherCache = {};
 
+  /**
+   * Initialisiert die PV-Prognose.
+   * Startet Scheduler für regelmäßige Updates.
+   */
   async onInit() {
     this.log('PvForecastDevice has been initialized');
     this.cachedWeather = this.getStoreValue(STORE_WEATHER_KEY) ?? {};

@@ -12,10 +12,25 @@ import {
 import {ensureCapabilities} from '../../src/utils/energy-capability-migration';
 import {formatError} from '../../src/utils/error-utils';
 
+/**
+ * BatterModuleDevice
+ *
+ * Repräsentiert ein einzelnes Batterie-Modul des E3DC HKW.
+ * Verantwortlich für:
+ * - Messung von geladener/entladener Energie (kWh)
+ * - Migration und Ordnung der Capabilities auf dem Tile
+ * - Integration in den zentralen Energy-Meter
+ *
+ * Folgt dem gleichen Schönheitsstandard wie HKW und Wallbox.
+ */
 class BatterModuleDevice extends Homey.Device implements BatteryModule{
 
   private readonly energyMeter = new EnergyMeterIntegrator(this)
 
+  /**
+   * Initialisiert das Batterie-Modul-Gerät.
+   * Stellt Capabilities sicher und migriert Tile-Order wenn nötig.
+   */
   async onInit() {
     this.log('BatterModuleDevice has been initialized');
     try {

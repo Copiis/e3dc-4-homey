@@ -12,11 +12,23 @@ const SYNC_INTERVAL_SUMMARY = 1000 * 60 * 5; // 5 min
 // const SYNC_INTERVAL = 1000 * 20; // 20 sec
 const MAX_ALLOWED_ERROR_BEFORE_UNAVAILABLE = 5
 
+/**
+ * SummaryDevice
+ *
+ * Stellt zusammengefasste System-Informationen und Zustände bereit
+ * (z.B. aktuelle Werte, Status-Meldungen).
+ *
+ * Verwendet i18n für lokalisierte Ausgaben.
+ * Folgt dem einheitlichen Polling- und Error-Handling-Pattern der App.
+ */
 class SummaryDevice extends Homey.Device implements I18n{
 
   private loopId: NodeJS.Timeout |null = null
   private syncErrorCount: number = 0
 
+  /**
+   * Initialisiert das Summary-Gerät und startet das Polling.
+   */
   async onInit() {
     this.log('SummaryDevice has been initialized');
     try {
