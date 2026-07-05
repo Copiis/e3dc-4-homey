@@ -13,7 +13,7 @@ export class SimpleValueChangedTrigger<T> implements ValueChangedTrigger<T> {
         private logger: Logger) {
     }
 
-    runIfChanged(input: ValueChanged<T> | undefined): any {
+    runIfChanged(input: ValueChanged<T> | undefined): void {
         this.logger.log(this.name + ' change trigger running:')
         this.logger.log(input)
         if (input && input.oldValue != null && input.newValue != null && input.oldValue != input.newValue) {

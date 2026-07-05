@@ -413,6 +413,15 @@ export class EmsScheduleManager {
   }
 
   getEmsSchedules() { return this.emsSchedules; }
+
+  /**
+   * Clears the set of already-triggered schedules.
+   * Used when the user manually deletes schedules in settings (onSettings handler).
+   * Avoids private property access from the device.
+   */
+  clearTriggeredSchedules(): void {
+    this.triggeredEmsSchedules.clear();
+  }
   getPowerModeState() { return this.powerModeManager ? this.powerModeManager.getPowerModeState() : this.powerModeState; }
 
   handleEmsTriggers(result: any, batteryLevelChange: any) {

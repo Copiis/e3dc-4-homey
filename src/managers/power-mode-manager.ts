@@ -58,7 +58,7 @@ export class PowerModeManager {
         this.clearExpireTimer(state.scheduleId || '');
         this.powerModeState = null;
         this.apiFactory().setPowerMode(POWER_MODE_AUTO, 0, true, this.device)
-          .catch((e: any) => this.logger.error('[Ladeplan] untilSoc revert failed: ' + formatError(e)));
+          .catch((e: unknown) => this.logger.error('[Ladeplan] untilSoc revert failed: ' + formatError(e)));
         return;
       }
     }

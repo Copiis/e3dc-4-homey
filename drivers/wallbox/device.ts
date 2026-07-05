@@ -669,9 +669,14 @@ class WallboxDevice extends Homey.Device implements Wallbox {
       // Immediately handle manual deletion of a running plan (exactly like HKW Ladeplaner).
       // When the widget removes a schedule from the list, we must stop the corresponding action right away.
       try {
-        const json = (newSettings as any).schedules || '[]';
-        const freshSchedules: any[] = JSON.parse(json) || [];
-        const newIds = new Set(freshSchedules.map((s: any) => s.id || (s.start + '_' + (s.action || ''))));
+        // Safe access without any-cast (newSettings is a string-indexed record)
+        const schedulesValue = newSettings['schedules'];
+        const json = typeof schedulesValue === 'string' ? schedulesValue : '[]';
+        const freshSchedules: unknown[] = JSON.parse(json) || [];
+        const newIds = new Set(freshSchedules.map((s: unknown) => {
+          const sched = s as { id?: string; start?: string; action?: string };
+          return sched.id || (sched.start + '_' + (sched.action || ''));
+        }));
 
         for (const [id, action] of this.triggeredWallboxSchedules.entries()) {
           if (!newIds.has(id)) {
