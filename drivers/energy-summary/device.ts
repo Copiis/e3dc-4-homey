@@ -12,7 +12,18 @@ const SYNC_INTERVAL_ENERGY_SUMMARY = 1000 * 20;
 const MAX_ALLOWED_ERROR_BEFORE_UNAVAILABLE = 5;
 
 /**
- * EnergySummaryDevice - provides aggregated energy data and summaries for the E3DC system.
+ * EnergySummaryDevice
+ *
+ * Aggregiert und stellt summarische Energiedaten für das E3DC-System bereit
+ * (z.B. PV-Surplus, Verbräuche, Wallbox-Aggregationen).
+ *
+ * Verantwortlichkeiten:
+ * - Periodisches Syncen von aggregierten Werten
+ * - Berechnung von PV-Surplus unter Berücksichtigung der Wallboxen
+ * - Fehlerzählung und Auto-Unavailable nach zu vielen Fehlern
+ *
+ * Design: Leichtgewichtiger Treiber, nutzt Utils aus src/ und integriert
+ * sich mit dem zentralen HKW für Konsistenz (Athom Beauty).
  */
 class EnergySummaryDevice extends Homey.Device {
 
@@ -20,12 +31,20 @@ class EnergySummaryDevice extends Homey.Device {
   private syncErrorCount = 0;
   private lastSyncTime = 0;
 
+  /**
+   * Initialisiert den EnergySummaryDevice.
+   * Startet asynchrones Polling nach kurzer Verzögerung.
+   */
   async onInit() {
     this.log('EnergySummaryDevice has been initialized');
     // Note: simple polling; could integrate with central LiveDataPoller for HPS consistency
     setTimeout(() => this.autoSync(), 3000);
   }
 
+  /**
+   * Automatisches Sync-Intervall mit Debounce und Error-Handling.
+   * Bei Fehlern wird weiter gepollt, um Erholung zu ermöglichen.
+   */
   private autoSync() {
     const now = Date.now();
     if (now - this.lastSyncTime < 5000) return; // debounce like main poller
@@ -41,6 +60,10 @@ class EnergySummaryDevice extends Homey.Device {
       });
   }
 
+  /**
+   * Aggregiert die aktuelle Wallbox-Leistung für eine Station.
+   * Wird für Surplus-Berechnungen genutzt.
+   */
   private aggregateWallboxPowerW(stationId: string): number {
     const wallboxDevices = this.homey.drivers.getDriver('wallbox').getDevices();
     let total = 0;
@@ -54,6 +77,11 @@ class EnergySummaryDevice extends Homey.Device {
     return total;
   }
 
+  /**
+   * Führt das eigentliche Sync der aggregierten Werte durch.
+   * Liest vom verknüpften HKW, aggregiert Wallboxen und updated Capabilities.
+   * Bei zu vielen Fehlern wird unavailable gesetzt.
+   */
   async sync() {
     const ownConfig: EnergySummaryConfig | undefined = this.getStoreValue('settings');
     if (!ownConfig?.stationId) {

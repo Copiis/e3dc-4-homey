@@ -42,9 +42,10 @@ class MyApp extends Homey.App {
 
   private registerPlantAutocompleteWidget(widgetId: string): void {
     try {
-      // @ts-ignore
-      const widget = this.homey.dashboards.getWidget(widgetId);
-      // @ts-ignore
+      // Dashboard widgets API is not fully typed in current Homey SDK.
+      // Safe cast after runtime check in try/catch.
+      const dashboards = (this.homey as any).dashboards;
+      const widget = dashboards.getWidget(widgetId);
       widget.registerSettingAutocompleteListener('plantId', async (query: string) => {
         try {
           const devices = await this.readHomePowerPlants();

@@ -7,11 +7,11 @@ describe('WallboxExternAlgParser', () => {
   const parser: DataParser = new DefaultDataParser();
 
   function makeAlgBlock(hex: string): Data {
-    return {
+    // Minimal mock for Data with valueAsContainer for ALG parsing tests.
+    const block = {
       tag: WBTag.EXTERN_DATA_ALG,
       type: 0,
-      value: Buffer.from(hex, 'hex'), // simplified
-      // @ts-ignore - minimal mock
+      value: Buffer.from(hex, 'hex'),
       valueAsContainer: () => [
         {
           tag: WBTag.EXTERN_DATA,
@@ -21,7 +21,8 @@ describe('WallboxExternAlgParser', () => {
           size: () => hex.length / 2,
         }
       ],
-    } as any;
+    } as unknown as Data;
+    return block;
   }
 
   it('parses basic ALG data correctly', () => {

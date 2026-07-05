@@ -49,7 +49,7 @@ Siehe `PROJEKT-REGELN.md` → Abschnitt "Aktueller Fokus: Athom Beauty".
 - Punkt 1 (Wallbox): Vollständig umgesetzt
 - Punkt 1 (JSDoc): ✅ VOLLSTÄNDIG umgesetzt
 - Punkt 2 (ARCHITECTURE): ✅ VOLLSTÄNDIG umgesetzt – massiv erweitert (Datenfluss, Error-Handling, Testing, How-To, Limitationen, Code-Style). Punkt 2 abgeschlossen. Nächster: Punkt 3.
-- Punkt 3 (Test-Qualität): Verbessert – bessere Mocks, Verhaltens-Tests, Edge-Cases in zentralen Test-Dateien
+- Punkt 3 (Test-Qualität): ✅ VOLLSTÄNDIG umgesetzt – dedizierter Handler Test, Behavioral + Edge-Cases, improved mocks, removed junk tests. Punkt 3 abgeschlossen.
 - Punkt 3: JSDoc in WallboxDevice (onInit, serialize, startScheduleChecker), Action Cards
 - Punkt 4: Test zu Verhaltens-Test verbessert, letzte Kommentare bereinigt
 - Deploy-Zyklus durchgeführt (Build + Install + Push)

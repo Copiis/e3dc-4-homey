@@ -29,11 +29,28 @@ import {
 
 const TODAY_SYNC_INTERVAL_MS = 1000 * 60 * 5;
 
+/**
+ * GridMeterDevice
+ *
+ * Repräsentiert einen externen Netz-Zähler (Grid-Meter) für das E3DC-System.
+ * Verantwortlich für:
+ * - Messung von Import/Export (kWh und W)
+ * - Kumulative Archive für Tages-/Monatswerte
+ * - Rollover-Erkennung und Catch-Up Logik
+ * - Synchronisation mit dem zentralen HKW
+ *
+ * Nutzt grid-cumulative-archive Utils für saubere Langzeit-Speicherung.
+ * Folgt demselben Schönheitsstandard wie HKW und Wallbox (Athom Beauty).
+ */
 class GridMeterDevice extends Homey.Device implements GridMeter {
 
   private todayLoopId: NodeJS.Timeout | null = null;
   private lastSyncedDate?: string;
 
+  /**
+   * Initialisiert den GridMeterDevice.
+   * Stellt Capabilities sicher, lädt Archive und startet Sync.
+   */
   async onInit() {
     this.log('GridMeterDevice has been initialized');
     try {
