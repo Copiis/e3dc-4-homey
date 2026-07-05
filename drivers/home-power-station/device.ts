@@ -94,6 +94,7 @@ import {PowerModeState} from '../../src/model/home-power-station';
 import {calculatePvSurplusW} from '../../src/utils/pv-surplus';
 import {buildPowerStateFromLiveData, publishPlantPowerStateFromStation, setPlantPowerState} from '../../src/utils/plant-power-cache';
 import {LiveDataPoller} from '../../src/polling/live-data-poller';
+import {FlowCardManager} from '../../src/cards/flow-card-manager';
 
 
 const SYNC_INTERVAL = 1000 * 30; // 30 sec (was 20s; reduces CPU/RSCP/cap churn on older Homeys while flow editor is open)
@@ -198,9 +199,11 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
     this.migrateLegacyCapabilities().then()
     this.loadDiagnosticAnalysisLog()
 
-    this.setupActionCards()
-    this.setupConditionCards()
-    this.setupTriggerCards()
+    const flowManager = new FlowCardManager(this.homey);
+    flowManager.setupActionCards();
+    // condition and trigger setup still partially in device for now
+    this.setupConditionCards();
+    this.setupTriggerCards();
     this.publishDiagnosticReport().catch(reason => {
       this.error('Initial diagnostic report failed: ' + formatError(reason))
     })
