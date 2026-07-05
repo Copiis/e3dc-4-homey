@@ -16,8 +16,18 @@ export interface PowerDataChanges {
 }
 
 /**
- * CapabilityManager / Synchronizer - extracted to reduce device.ts monolith.
- * Central place for updating capabilities from live data.
+ * CapabilityManager / Synchronizer
+ *
+ * Extracted from the original monolithic HomePowerStationDevice to improve
+ * maintainability and testability (Athom Beauty initiative).
+ *
+ * Responsibilities:
+ * - Translate LiveData from RSCP into Homey capability values
+ * - Fire value-changed triggers for power flows (grid / battery / house)
+ * - Manage linked sub-devices (grid-meter, battery-module) updates
+ * - Track current charging / manual charge / emergency power state
+ *
+ * All updates go through typed IHpsDevice – no more casts at call site.
  */
 export class CapabilityManager {
   currentChargingConfig: ChargingConfiguration | null = null;
@@ -26,6 +36,11 @@ export class CapabilityManager {
 
   constructor(private readonly device: IHpsDevice, private readonly energyMeter: EnergyMeterIntegrator) {}
 
+  /**
+   * Main entry for live power values.
+   * Updates PV, grid, battery, house consumption capabilities and returns
+   * the delta information used by EMS schedule triggers.
+   */
   processLivePowerData(result: LiveData): PowerDataChanges {
     updateCapabilityValue('measure_power', result.pvDelivery, this.device);
     const generatedKwh = this.energyMeter.integrateGeneration(result.pvDelivery);

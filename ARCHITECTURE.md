@@ -44,11 +44,20 @@ Die App wurde von einem großen Monolithen (`drivers/home-power-station/device.t
 
 Siehe `PROJEKT-REGELN.md` → Abschnitt "Aktueller Fokus: Athom Beauty".
 
-Zusammengefasst die wichtigsten verbleibenden Schritte:
-1. Alle `as any as IHpsDevice` Casts eliminieren.
-2. `any` deutlich reduzieren.
-3. Wallbox-Driver auf gleiches Niveau bringen.
-4. Hervorragende JSDoc + beeindruckende `ARCHITECTURE.md`.
-5. Letzte Hacks entfernen + Test- und Error-Handling-Qualität auf Profi-Niveau heben.
+### Fortschritt (2026-07-05 Session)
+- ✅ **Alle `as any as IHpsDevice` Casts im HKW-Device eliminiert**  
+  `HomePowerStationDevice` deklariert die benötigten Trigger- und State-Properties explizit und implementiert die erforderlichen Methoden (Delegation an DiagnosticManager).
+- ✅ `IHpsDevice` stark verbessert: konkrete Typen für Trigger (z. B. `SimpleValueChangedTrigger<number>`) und States statt `unknown`.
+- ✅ CapabilityManager weitgehend von `as any` befreit; saubere `PowerDataChanges` Schnittstelle.
+- ✅ LiveDataPoller cast entfernt (PollerLogger mit Logger kompatibel).
+- `any`-Count in `src/` von ~167 auf ~140 gesenkt.
+- Tests angepasst und alle grün.
+- Install + Push durchgeführt.
+
+### Verbleibende Schritte (Priorität)
+1. Weitere `any` reduzieren (Ziel < 100).
+2. Wallbox-Driver (`drivers/wallbox/device.ts`) auf gleiches Niveau bringen.
+3. Exzellente JSDoc überall + ARCHITECTURE.md weiter ausbauen.
+4. Letzte Hacks (z. B. `['triggeredEmsSchedules']`, `@ts-ignore`) entfernen.
 
 Jede Änderung in dieser Phase sollte den Code **sichtbar schöner** machen.
