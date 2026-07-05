@@ -3,7 +3,7 @@ import {Wallbox} from '../../model/wallbox';
 import {formatError} from '../../utils/error-utils';
 
 export class WallboxSunModeIsOffConditionCard implements RunListener {
-    run(args: any, state: any): Promise<any> {
+    run(args: Record<string, unknown>, state: Record<string, unknown>): Promise<unknown> {
         return new Promise<any>((resolve) => {
             const wallbox = args.device as Wallbox & { getCapabilityValue(id: string): unknown };
             if (!wallbox || typeof wallbox.getCapabilityValue !== 'function') {

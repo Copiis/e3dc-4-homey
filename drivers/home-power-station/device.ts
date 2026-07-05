@@ -230,8 +230,8 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
           })
           .catch(reason => {
             this.error('getBatteryCapacity: Error reading battery data: ' + formatError(reason))
-            const settings: any = this.getSettings()
-            const fromSettings = settings.rscpAsoc || settings.capacity || 0
+            const settings = this.getSettings() as Record<string, unknown>
+            const fromSettings = (settings.rscpAsoc as number) || (settings.capacity as number) || 0
             resolve(fromSettings > 0 ? fromSettings : 0)
           })
     })

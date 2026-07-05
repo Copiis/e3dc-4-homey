@@ -3,10 +3,10 @@ import {Wallbox} from '../../model/wallbox';
 import {formatError} from '../../utils/error-utils';
 
 export class SetWallboxCurrentActionCard implements RunListener {
-    run(args: any, state: any): Promise<any> {
-        return new Promise<any>(async (resolve, reject) => {
-            const wallbox: Wallbox = args.device;
-            const current: number = args.current;
+    run(args: Record<string, unknown>, state: Record<string, unknown>): Promise<unknown> {
+        return new Promise<unknown>(async (resolve, reject) => {
+            const wallbox: Wallbox = args.device as Wallbox;
+            const current: number = (args.current as number) ?? 0;
 
             if (!wallbox || typeof wallbox.setCurrentLimit !== 'function') {
                 reject('Invalid wallbox device');

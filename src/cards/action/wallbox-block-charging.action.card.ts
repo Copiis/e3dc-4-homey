@@ -4,9 +4,9 @@ import {resolveWallboxFlowResult} from './wallbox-flow-result';
 import {formatError} from '../../utils/error-utils';
 
 export class WallboxBlockChargingActionCard implements RunListener {
-    run(args: any, state: any): Promise<any> {
+    run(args: Record<string, unknown>, state: Record<string, unknown>): Promise<unknown> {
         return new Promise<any>(async (resolve, reject) => {
-            const wallbox: Wallbox = args.device;
+            const wallbox: Wallbox = args.device as Wallbox;
 
             if (!wallbox || typeof wallbox.applyChargingAllowed !== 'function') {
                 reject('Invalid wallbox device');

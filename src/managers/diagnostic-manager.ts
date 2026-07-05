@@ -139,8 +139,9 @@ export class DiagnosticManager {
     const stationId = this.device.getId();
     const driver = this.device.homey.drivers.getDriver(driverId);
     if (!driver) return 0;
-    return driver.getDevices().filter((device: any) => {
-      const settings = device.getStoreValue('settings') as { stationId?: string } | undefined;
+    return driver.getDevices().filter((device: unknown) => {
+      const d = device as { getStoreValue?: (key: string) => unknown };
+      const settings = d.getStoreValue?.('settings') as { stationId?: string } | undefined;
       return settings?.stationId === stationId;
     }).length;
   }

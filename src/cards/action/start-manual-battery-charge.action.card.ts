@@ -4,7 +4,7 @@ import {formatError} from '../../utils/error-utils';
 
 function startCharge(amount: number,
                       hps: HomePowerStation,
-                      resolve: ((value: any | PromiseLike<any>) => void),
+                      resolve: ((value: unknown | PromiseLike<unknown>) => void),
                       reject: ((reason?: any) => void)) {
     if (amount < 200) {
         reject(hps.translate('messages.manual-charge-input-wrong-wh-to-low', {MIN: 200}))
@@ -32,10 +32,10 @@ function startCharge(amount: number,
 export class StartManualBatteryChargeActionPercentageCard implements RunListener {
 
 
-    run(args: any, state: any): Promise<any> {
-        return new Promise<any>(async (resolve, reject) => {
-            const hps: HomePowerStation = args.device;
-            const amount: number = args.amount
+    run(args: Record<string, unknown>, state: Record<string, unknown>): Promise<unknown> {
+        return new Promise<unknown>(async (resolve, reject) => {
+            const hps: HomePowerStation = args.device as HomePowerStation;
+            const amount: number = (args.amount as number) ?? 0
             hps.log('StartManualBatteryChargingActionCard: triggered -> ' + amount + '%')
             const currentState = hps.getManualChargeState()
             if (!currentState?.active) {
@@ -71,10 +71,10 @@ export class StartManualBatteryChargeActionPercentageCard implements RunListener
 export class StartManualBatteryChargeWhActionCard implements RunListener {
 
 
-    run(args: any, state: any): Promise<any> {
-        return new Promise<any>(async (resolve, reject) => {
-            const hps: HomePowerStation = args.device;
-            const amount: number = args.amount
+    run(args: Record<string, unknown>, state: Record<string, unknown>): Promise<unknown> {
+        return new Promise<unknown>(async (resolve, reject) => {
+            const hps: HomePowerStation = args.device as HomePowerStation;
+            const amount: number = (args.amount as number) ?? 0
             hps.log('StartManualBatteryChargingActionCardWh: triggered -> ' + amount)
             const currentState = hps.getManualChargeState()
             if (!currentState?.active) {

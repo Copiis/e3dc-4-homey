@@ -7,11 +7,11 @@ import {HomePowerStation} from '../../model/home-power-station';
 import {formatError} from '../../utils/error-utils';
 
 export class IsEmergencyPowerReserveGreaterThanConditionCard implements RunListener {
-    run(args: any, state: any): Promise<any> {
-        return new Promise<any>(async (resolve, reject) => {
-            const hps: HomePowerStation = args.device;
-            const value: number = args.reserve
-            const unit: string = args.unit
+    run(args: { device: HomePowerStation; [key: string]: unknown }, state: Record<string, unknown>): Promise<unknown> {
+        return new Promise<unknown>(async (resolve, reject) => {
+            const hps: HomePowerStation = args.device as HomePowerStation;
+            const value: number = (args.reserve as number) ?? 0
+            const unit: string = (args.unit as string) ?? 'w'
             hps.log('Starting card to check if the emergency power is greater than ' + value + ' ' + unit)
             const state = hps.getEmergencyPowerState()
             if (state) {

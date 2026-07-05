@@ -7,8 +7,8 @@ import {HomePowerStation} from '../../model/home-power-station';
 import {formatError} from '../../utils/error-utils';
 
 export class IsMaxDischargingLimitActiveConditionCard implements RunListener {
-    run(args: any, state: any): Promise<any> {
-        return new Promise<any>(async (resolve, reject) => {
+    run(args: { device: HomePowerStation; [key: string]: unknown }, state: Record<string, unknown>): Promise<unknown> {
+        return new Promise<unknown>(async (resolve, reject) => {
             const hps: HomePowerStation = args.device;
             hps.log('Starting card to check if the max discharging limit is active')
             hps.getApi().readChargingConfiguration(true, hps.asSimple())

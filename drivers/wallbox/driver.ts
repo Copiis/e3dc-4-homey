@@ -17,7 +17,7 @@ class WallboxDriver extends Homey.Driver {
 
   async onPairListDevices(): Promise<any[]> {
     const homePowerStations = this.homey.drivers.getDriver('home-power-station').getDevices();
-    const devices: any[] = [];
+    const devices: unknown[] = [];
     for (let i = 0; i < homePowerStations.length; i++) {
       const rawStation = homePowerStations[i];
       const station: HomePowerStation = rawStation as unknown as HomePowerStation;

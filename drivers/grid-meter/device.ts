@@ -222,7 +222,10 @@ class GridMeterDevice extends Homey.Device implements GridMeter {
       return undefined;
     }
     const station = this.homey.drivers.getDriver('home-power-station').getDevices()
-      .find((device: any) => device.getId && device.getId() === config.stationId) as unknown as HomePowerStation | undefined;
+      .find((device: unknown) => {
+        const d = device as { getId?: () => string };
+        return d.getId && d.getId() === config.stationId;
+      }) as HomePowerStation | undefined;
     if (!station?.getApi) {
       this.log('Grid today sync skipped: linked HPS not found');
       return undefined;
