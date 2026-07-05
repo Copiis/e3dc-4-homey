@@ -41,16 +41,16 @@ describe('CapabilityManager', () => {
     const result = manager.processLivePowerData({
       pvDelivery: 100,
       gridDelivery: 50,
-      batteryDelivery: -30,
+      batteryDelivery: -30,  // negative = discharging (app convention)
       houseConsumption: 80,
       batteryChargingLevel: 0.5,
     } as any);
 
     assert.ok(result);
     assert.ok(capturedBatteryChange || capturedGridChange);
-    // Edge case: negative battery means discharge
+    // negative in LiveData (discharge) should result in negative in capability
     if (capturedBatteryChange) {
-      assert.ok(capturedBatteryChange.value < 0 || capturedBatteryChange.value > 0);
+      assert.ok(capturedBatteryChange.value < 0);
     }
   });
 });

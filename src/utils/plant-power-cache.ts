@@ -45,7 +45,7 @@ export function buildPowerStateFromLiveData(
     consumption: result.houseConsumption,
     pvPower: result.pvDelivery,
     gridPower: result.gridDelivery * -1,
-    batteryPower: result.batteryDelivery * -1,
+    batteryPower: result.batteryDelivery,
     batteryLevel,
     wallboxPower,
     wallboxSolarShare,

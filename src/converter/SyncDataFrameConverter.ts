@@ -29,7 +29,8 @@ export class SyncDataFrameConverter implements FrameConverter<LiveData> {
         return {
             pvDelivery: frame.numberByTag(EMSTag.POWER_PV),
             gridDelivery: frame.numberByTag(EMSTag.POWER_GRID),
-            batteryDelivery: frame.numberByTag(EMSTag.POWER_BAT) * -1,
+            // app convention: positive = charging the battery (power into battery), negative = discharging (power out)
+            batteryDelivery: -frame.numberByTag(EMSTag.POWER_BAT),
             houseConsumption: frame.numberByTag(EMSTag.POWER_HOME),
             batteryChargingLevel: frame.numberByTag(EMSTag.BAT_SOC) / 100.0,
             firmwareVersion: frame.stringByTag(InfoTag.SW_RELEASE),

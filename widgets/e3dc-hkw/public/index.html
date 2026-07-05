@@ -414,7 +414,7 @@
   }
 
   function splitBatteryChargeW(powerState) {
-    // positive batteryPower = charging battery (in)
+    // positive batteryPower = charging battery (in) -- matches app convention for measure_battery_delivery
     const batteryChargeW = Math.max(0, powerState.batteryPower);
     if (batteryChargeW <= 0) {
       return { fromPvW: 0, fromGridW: 0 };

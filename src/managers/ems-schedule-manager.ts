@@ -464,7 +464,7 @@ export class EmsScheduleManager {
    * Triggern von Surplus- oder SoC-basierten EMS-Flows.
    */
   handleEmsTriggers(result: LiveData, batteryLevelChange?: ValueChanged<number>) {
-    const batteryPowerW = result.batteryDelivery * -1
+    const batteryPowerW = result.batteryDelivery
     const surplus = calculatePvSurplusW(result.pvDelivery, result.houseConsumption, batteryPowerW)
     const previousSurplus = this.lastPvSurplusW || 0
     this.lastPvSurplusW = surplus

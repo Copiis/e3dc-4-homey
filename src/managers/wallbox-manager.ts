@@ -139,12 +139,12 @@ export class WallboxManager {
    * Extracted from device.ts to reduce monolith.
    */
   updateWidgetPowerCache(result: LiveData, agg: { wallboxPower: number; wallboxSolarShare: number; hasWallbox: boolean }) {
-    const pvSurplus = calculatePvSurplusW(result.pvDelivery, result.houseConsumption, result.batteryDelivery * -1);
+    const pvSurplus = calculatePvSurplusW(result.pvDelivery, result.houseConsumption, result.batteryDelivery);
     const widgetPower = {
       pv: result.pvDelivery,
       house: result.houseConsumption,
       grid: result.gridDelivery,
-      battery: result.batteryDelivery * -1,
+      battery: result.batteryDelivery,
       wallbox: agg.wallboxPower,
       wallboxSolarShare: agg.wallboxSolarShare,
       hasWallbox: agg.hasWallbox,
