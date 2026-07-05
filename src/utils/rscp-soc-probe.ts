@@ -49,7 +49,10 @@ export function findPercentStringsInTree(
     return results;
 }
 
-/** Find first positive SOC in WBTag.SOC, charge-plan text, or any % string in the tree. */
+/**
+ * Untersucht RSCP-Daten nach Vehicle-SOC Quellen.
+ * Gibt verschiedene Kandidaten zurück (RSCP, ALG, Charge-Plan, % Strings).
+ */
 export function probeVehicleSocSources(
     blocks: Data[],
     parser: DataParser = new DefaultDataParser(),

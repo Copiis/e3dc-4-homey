@@ -1,6 +1,6 @@
 /**
- * Open-Meteo panel azimuth: 0° = south, -90° = east, 90° = west, ±180° = north.
- * @see https://open-meteo.com/en/docs (Solar Radiation Variables)
+ * Kompass-Ausrichtung für PV-Module (für Open-Meteo und interne Logik).
+ * Open-Meteo: 0° = south, -90° = east, 90° = west, ±180° = north.
  */
 export type PvCompassOrientation = 'S' | 'SO' | 'O' | 'NO' | 'N' | 'NW' | 'W' | 'SW';
 
@@ -22,7 +22,9 @@ export function compassOrientationToAzimuth(orientation: string | undefined): nu
   return ORIENTATION_TO_AZIMUTH.S;
 }
 
-/** Map legacy settings that used 0°=north compass degrees to Open-Meteo azimuth. */
+/**
+ * Konvertiert alte Einstellungen (0°=Nord) in Open-Meteo Azimut.
+ */
 export function legacyAzimuthDegreesToOpenMeteo(azimuthDegrees: number): number {
   if (!Number.isFinite(azimuthDegrees)) {
     return ORIENTATION_TO_AZIMUTH.S;
@@ -41,6 +43,9 @@ export function legacyAzimuthDegreesToOpenMeteo(azimuthDegrees: number): number 
   return legacyCompassToOpenMeteo[normalized] ?? ORIENTATION_TO_AZIMUTH.S;
 }
 
+/**
+ * Ermittelt den finalen Azimut-Wert aus Orientierung + Legacy-Wert.
+ */
 export function resolveOpenMeteoAzimuth(
   orientation: string | undefined,
   legacyAzimuth?: number,

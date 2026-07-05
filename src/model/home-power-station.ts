@@ -3,6 +3,10 @@ import {CardUnit} from '../../drivers/home-power-station/device';
 import {InternalDevice} from '../internal-api/internal-device';
 import {EmergencyPowerState, ManualChargeState} from 'easy-rscp';
 
+/**
+ * Repräsentiert den aktuellen Power-Mode des HKW.
+ * Wird von PowerModeManager und EmsScheduleManager verwendet.
+ */
 export interface PowerModeState {
     mode: number
     powerW: number

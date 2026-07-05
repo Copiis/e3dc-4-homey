@@ -1,13 +1,23 @@
 import {formatWallboxAlgHexSummary} from './wallbox-charging-state';
 
+/**
+ * Schweregrad für Diagnose-Events.
+ */
 export type DiagnosticLevel = 'info' | 'warn' | 'error';
 
+/**
+ * Ein einzelner Eintrag im Analysis-Log.
+ */
 export interface DiagnosticAnalysisEntry {
     at: Date;
     level: DiagnosticLevel;
     message: string;
 }
 
+/**
+ * Snapshot des aktuellen Geräte-Zustands für Diagnose-Reports.
+ * Wird für UI, Export und Support verwendet.
+ */
 export interface DiagnosticSnapshot {
     appVersion: string;
     deviceName: string;
@@ -43,6 +53,10 @@ export const MAX_REPORT_CHARS = 12000;
 
 const FORUM_URL = 'https://community.homey.app/t/app-pro-e3dc-hauskraftwerke/105181';
 
+/**
+ * Parst das gespeicherte Analysis-Log aus dem Store.
+ * Gibt leeres Array bei ungültigen Daten zurück.
+ */
 export function parseAnalysisLogFromStore(raw: unknown): DiagnosticAnalysisEntry[] {
     if (!Array.isArray(raw)) {
         return [];
@@ -65,6 +79,9 @@ export function parseAnalysisLogFromStore(raw: unknown): DiagnosticAnalysisEntry
     return entries;
 }
 
+/**
+ * Serialisiert das Analysis-Log für den Store.
+ */
 export function serializeAnalysisLog(entries: DiagnosticAnalysisEntry[]): Array<{ at: string; level: DiagnosticLevel; message: string }> {
     return entries.map(entry => ({
         at: entry.at.toISOString(),
@@ -100,6 +117,10 @@ export function appendAnalysisEntry(
     return next.slice(next.length - MAX_ANALYSIS_ENTRIES);
 }
 
+/**
+ * Hilfsklasse zum Aufzeichnen und Verwalten von Diagnose-Events.
+ * Wird vom DiagnosticManager verwendet.
+ */
 export class DeviceDiagnostic {
     private analysisEntries: DiagnosticAnalysisEntry[];
 
@@ -115,7 +136,11 @@ export class DeviceDiagnostic {
         this.analysisEntries = entries;
     }
 
-    recordAnalysis(level: DiagnosticLevel, message: string): boolean {
+    /**
+   * Zeichnet ein neues Analysis-Event auf.
+   * Gibt true zurück, wenn es tatsächlich gespeichert wurde.
+   */
+  recordAnalysis(level: DiagnosticLevel, message: string): boolean {
         const trimmed = message.trim();
         if (trimmed.length === 0) {
             return false;

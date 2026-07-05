@@ -7,7 +7,10 @@ import {
     WB_ALG_STATUS_SUN_MODE,
 } from '../model/wallbox-extern-alg-status';
 
-/** Mixed mode with charging not paused (sun+canceled is not “allowed”). */
+/**
+ * Prüft ob gemischtes Laden (Wallbox + Hausbatterie) aktuell erlaubt ist.
+ * Sun-Mode oder canceled = nicht erlaubt.
+ */
 export function isWallboxMixedChargingAllowed(state: WallboxLiveState): boolean {
     if (state.sunModeActive) {
         return false;
@@ -15,6 +18,10 @@ export function isWallboxMixedChargingAllowed(state: WallboxLiveState): boolean 
     return !state.chargingCanceled;
 }
 
+/**
+ * Prüft ob ein "Allow Charging" Befehl erfolgreich war.
+ * Berücksichtigt State-Änderungen und Sun-Mode-Übergänge.
+ */
 export function wallboxChargingAllowSucceeded(before: WallboxLiveState, after: WallboxLiveState): boolean {
     if (!after.chargingCanceled) {
         return true;
@@ -28,10 +35,16 @@ export function wallboxChargingAllowSucceeded(before: WallboxLiveState, after: W
     return false;
 }
 
+/**
+ * Prüft ob ein "Block Charging" Befehl erfolgreich war.
+ */
 export function wallboxChargingBlockSucceeded(after: WallboxLiveState): boolean {
     return after.chargingCanceled;
 }
 
+/**
+ * Formatiert den ALG-Status-Hex-String für Logs/Diagnose (menschlich lesbar + englisch).
+ */
 export function formatWallboxAlgHexSummary(hex: string | undefined): string | undefined {
     if (!hex || hex.length < 8) {
         return undefined;

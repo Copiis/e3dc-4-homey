@@ -3,8 +3,14 @@ import { RscpTagRegistry } from '../model/rscp-tag-registry';
 const EMS_REQ_GET_RUNSCREENVALUES = RscpTagRegistry.EMS_REQ_GET_RUNSCREENVALUES;
 const WB_REQ_GET_CHARGE_PLAN_TEXT = RscpTagRegistry.WB_REQ_GET_CHARGE_PLAN_TEXT;
 
-/** Like easy-rscp RequestWallboxLiveDataCreator, but also requests EXTERN_DATA_ALG + GUI tags. */
+/**
+ * Erzeugt RSCP-Frames für Wallbox-Live-Daten.
+ * Erweitert die Standard-Implementation um ALG- und GUI-Tags.
+ */
 export class RequestWallboxLiveStateCreator implements FrameCreator<number[]> {
+    /**
+     * Erzeugt den Frame für die gegebenen Wallbox-IDs.
+     */
     create(ids: number[]): Frame {
         const content = ids.map(id => new DataBuilder()
             .tag(WBTag.REQ_DATA)
