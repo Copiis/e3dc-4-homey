@@ -1,5 +1,7 @@
 import {DataBuilder, Frame, FrameBuilder, FrameCreator, WBTag} from 'easy-rscp';
-import {EMS_REQ_GET_RUNSCREENVALUES, WB_REQ_GET_CHARGE_PLAN_TEXT} from '../model/wb-extra-tags';
+import { RscpTagRegistry } from '../model/rscp-tag-registry';
+const EMS_REQ_GET_RUNSCREENVALUES = RscpTagRegistry.EMS_REQ_GET_RUNSCREENVALUES;
+const WB_REQ_GET_CHARGE_PLAN_TEXT = RscpTagRegistry.WB_REQ_GET_CHARGE_PLAN_TEXT;
 
 /** Like easy-rscp RequestWallboxLiveDataCreator, but also requests EXTERN_DATA_ALG + GUI tags. */
 export class RequestWallboxLiveStateCreator implements FrameCreator<number[]> {

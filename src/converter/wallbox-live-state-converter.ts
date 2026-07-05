@@ -5,7 +5,8 @@ import {
     FrameConverter,
     WBTag,
 } from 'easy-rscp';
-import {EMS_GET_RUNSCREENVALUES} from '../model/wb-extra-tags';
+import { RscpTagRegistry } from '../model/rscp-tag-registry';
+const EMS_GET_RUNSCREENVALUES = RscpTagRegistry.EMS_GET_RUNSCREENVALUES;
 import {WallboxLiveState} from '../model/wallbox-live-state';
 import {findDataByTag} from '../utils/rscp-data-utils';
 import {findPercentStringsInTree, probeVehicleSocSources} from '../utils/rscp-soc-probe';

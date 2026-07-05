@@ -37,6 +37,9 @@ import {
   wallboxChargingBlockSucceeded,
 } from '../../src/utils/wallbox-charging-state';
 
+/**
+ * WallboxDevice - controls and monitors a wallbox connected to the E3DC system.
+ */
 class WallboxDevice extends Homey.Device implements Wallbox {
 
   private lastSyncedState?: WallboxLiveState;
@@ -70,19 +73,24 @@ class WallboxDevice extends Homey.Device implements Wallbox {
   }
 
   private wallboxScheduleCheckId: NodeJS.Timeout | null = null;
-  private triggeredWallboxSchedules: Map<string, string> = new Map(); // id -> action
+  private triggeredWallboxSchedules: Map<string, string> = new Map();
+  private lastScheduleCheck = 0; // id -> action
   private untilFullLowPowerSince: Map<string, number> = new Map(); // id -> timestamp when power dropped low
   private _lastHasActivePlan: boolean = false;
 
   private startWallboxScheduleChecker() {
     if (this.wallboxScheduleCheckId) clearInterval(this.wallboxScheduleCheckId);
     // Reduced to 60s (like HKW); exact timers + onSettings handle most; lowers load on Homey 2023 during flow editing
+    // Note: uses own interval; could be unified with LiveDataPoller from HPS for consistency
     this.wallboxScheduleCheckId = this.homey.setInterval(() => this.checkWallboxSchedules(), 60 * 1000);
     setTimeout(() => this.checkWallboxSchedules(), 3000);
   }
 
   private async checkWallboxSchedules() {
     const now = Date.now();
+    if (now - (this.lastScheduleCheck || 0) < 5000) return;
+    this.lastScheduleCheck = now;
+
     const json = this.getSetting('schedules') || '[]';
     let schedules: any[] = [];
     try { schedules = JSON.parse(json); } catch (e) { schedules = []; }

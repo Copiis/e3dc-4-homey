@@ -11,17 +11,26 @@ import {readCapabilityNumber} from '../../src/utils/read-capability-number';
 const SYNC_INTERVAL_ENERGY_SUMMARY = 1000 * 20;
 const MAX_ALLOWED_ERROR_BEFORE_UNAVAILABLE = 5;
 
+/**
+ * EnergySummaryDevice - provides aggregated energy data and summaries for the E3DC system.
+ */
 class EnergySummaryDevice extends Homey.Device {
 
   private loopId: NodeJS.Timeout | null = null;
   private syncErrorCount = 0;
+  private lastSyncTime = 0;
 
   async onInit() {
     this.log('EnergySummaryDevice has been initialized');
+    // Note: simple polling; could integrate with central LiveDataPoller for HPS consistency
     setTimeout(() => this.autoSync(), 3000);
   }
 
   private autoSync() {
+    const now = Date.now();
+    if (now - this.lastSyncTime < 5000) return; // debounce like main poller
+    this.lastSyncTime = now;
+
     this.sync()
       .then(() => {
         this.loopId = setTimeout(() => this.autoSync(), SYNC_INTERVAL_ENERGY_SUMMARY);

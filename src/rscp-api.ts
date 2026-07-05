@@ -55,7 +55,10 @@ import {
     WALLBOX_MODE_STOP
 } from './model/wallbox-control';
 import {WallboxEmsSettings} from './model/wallbox-ems-settings';
-import {
+import { RscpTagRegistry } from './model/rscp-tag-registry';
+import {resolveUsableCapacityWh} from './utils/battery-capacity';
+
+const {
     EMS_GET_WALLBOX_ENFORCE_POWER_ASSIGNMENT,
     EMS_GET_WB_DISCHARGE_BAT_UNTIL,
     EMS_REQ_GET_WALLBOX_ENFORCE_POWER_ASSIGNMENT,
@@ -64,13 +67,11 @@ import {
     EMS_REQ_SET_WB_DISCHARGE_BAT_UNTIL,
     EMS_SET_WALLBOX_ENFORCE_POWER_ASSIGNMENT,
     EMS_SET_WB_DISCHARGE_BAT_UNTIL,
-} from './model/ems-wallbox-battery-tags';
-import {EMS_REQ_SET_POWER, EMS_REQ_SET_POWER_MODE, EMS_REQ_SET_POWER_VALUE, EMS_SET_POWER} from './model/ems-power-mode-tags';
-import { RscpTagRegistry } from './model/rscp-tag-registry';
-import {resolveUsableCapacityWh} from './utils/battery-capacity';
-
-// Example usage of central registry (for the missing point "RscpTagRegistry")
-const _exampleTag = RscpTagRegistry.EMS_REQ_SET_POWER;
+    EMS_REQ_SET_POWER,
+    EMS_REQ_SET_POWER_MODE,
+    EMS_REQ_SET_POWER_VALUE,
+    EMS_SET_POWER,
+} = RscpTagRegistry;
 
 const connectionMap: Map<string, HomePowerPlantConnection> = new Map<string, HomePowerPlantConnection>()
 const connectionFactoryMap: Map<string, HomePowerPlantConnectionFactory> = new Map<string, HomePowerPlantConnectionFactory>()

@@ -1,5 +1,6 @@
 import {Data, DataParser, DataType, DefaultDataParser, WBTag} from 'easy-rscp';
-import {WB_GET_CHARGE_PLAN_TEXT} from '../model/wb-extra-tags';
+import { RscpTagRegistry } from '../model/rscp-tag-registry';
+const WB_GET_CHARGE_PLAN_TEXT = RscpTagRegistry.WB_GET_CHARGE_PLAN_TEXT;
 import {findDataByTag} from './rscp-data-utils';
 import {normalizeVehicleSocPercent} from './vehicle-soc';
 
