@@ -7,6 +7,23 @@ export interface WallboxCommandResult {
     skipped: boolean;
 }
 
+/**
+ * Typed representation of a Wallbox Ladeplan (schedule) entry from settings.
+ * Used for parsing and applying time-based charging plans.
+ */
+export interface WallboxSchedule {
+  id?: string;
+  start?: string;
+  startTs?: number;
+  end?: string;
+  endTs?: number;
+  durationMin?: number;
+  action: string;           // 'allow' | 'block' | 'sun_on' | 'sun_off'
+  current?: number;
+  untilFull?: boolean;
+  untilVehicleSoc?: number;
+}
+
 export interface Wallbox extends InternalDevice{
     sync(state: WallboxLiveState): void
 
