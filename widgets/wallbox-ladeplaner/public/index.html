@@ -113,7 +113,7 @@ function onHomeyReady(h) {
     const c = document.getElementById('plans');
     if (c) c.innerHTML = '<div style="color:#f88">Fehler beim Laden. Siehe Logs.</div>';
   });
-  setInterval(() => { loadPlans().catch(() => {}); }, 10000);  // faster refresh
+  setInterval(() => { loadPlans().catch(() => {}); }, 60000);  // reduced from 10s to lower load on Homey (esp. older 2023 models)
 }
 
 async function loadWallboxes() {
@@ -152,7 +152,7 @@ async function loadPlans() {
 
     const res = await Homey.api('GET', `/wallbox-schedules?wallboxId=${wbId}`);
     let plans = res.schedules || [];
-    await Homey.api('POST', '/log', { widget: 'wallbox-ladeplaner', message: `Lade ${plans.length} Wallbox-Pläne` });
+    // periodic log removed (was spamming recordAnalysis on every refresh)
 
     // hide expired fixed plans in display (until* kept until fulfilled on device)
     const now = Date.now();

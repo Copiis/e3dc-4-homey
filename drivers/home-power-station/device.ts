@@ -95,8 +95,8 @@ import {calculatePvSurplusW} from '../../src/utils/pv-surplus';
 import {buildPowerStateFromLiveData, publishPlantPowerStateFromStation, setPlantPowerState} from '../../src/utils/plant-power-cache';
 
 
-const SYNC_INTERVAL = 1000 * 20; // 20 sec
-const POWER_MODE_REFRESH_INTERVAL = 1000 * 10; // 10 sec
+const SYNC_INTERVAL = 1000 * 30; // 30 sec (was 20s; reduces CPU/RSCP/cap churn on older Homeys while flow editor is open)
+const POWER_MODE_REFRESH_INTERVAL = 1000 * 30; // 30 sec (was 10s)
 const MAX_ALLOWED_ERROR_BEFORE_UNAVAILABLE = 5
 const DIAGNOSTIC_ANALYSIS_STORE_KEY = 'diagnosticAnalysisLog'
 class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
@@ -127,6 +127,7 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
   private lastSyncAt?: Date
   private lastSyncResult?: 'ok' | 'error'
   private lastSnapshot: Partial<DiagnosticSnapshot> = {}
+  private lastDiagnosticPublish: number = 0
   private readonly energyMeter = new EnergyMeterIntegrator(this)
   private lastPvSurplusW = 0
 
@@ -364,16 +365,15 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
       clearInterval(this.emsScheduleCheckId)
     }
     this.clearScheduledPlanTimers()
-    // Check every 10 seconds for better reliability with short plans
-    this.emsScheduleCheckId = this.homey.setInterval(() => this.checkEmsSchedules(), 10 * 1000)
+    // Check every 30s (exact start timers + powerMode refresh handle timing; reduces load on older Homeys)
+    this.emsScheduleCheckId = this.homey.setInterval(() => this.checkEmsSchedules(), 30 * 1000)
     // Initial check
     setTimeout(() => this.checkEmsSchedules(), 5000)
   }
 
   private checkEmsSchedules() {
-    // Always refresh from the live setting. Programmatic setSettings() from the
-    // Ladeplaner widgets does not reliably trigger onSettings() for settings
-    // that are not declared in driver.settings.compose.json.
+    // Re-read from setting as safety (emsSchedules declared in compose, onSettings should fire,
+    // but widget saves + timing can race; keep light reparse).
     try {
       const json = this.getSetting('emsSchedules') || '[]';
       const fresh = JSON.parse(json);
@@ -388,9 +388,10 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
     }
 
     const now = Date.now()
-    const nowLocal = new Date().toLocaleString()
-    this.log(`[Ladeplan] checkEmsSchedules @ ${now} (${nowLocal}) | plans in memory: ${this.emsSchedules.length}`)
-    this.diagnostic.recordAnalysis('info', `[Ladeplan] check at ${nowLocal}, ${this.emsSchedules.length} plans`)
+    // reduced logging: only important events are logged/recorded to avoid CPU on Homey 2023
+    // const nowLocal = new Date().toLocaleString()
+    // this.log(`[Ladeplan] checkEmsSchedules @ ${now} ...`) 
+    // this.diagnostic.recordAnalysis(...)  -- moved to key events only
 
     // Auto-remove completed fixed-time plans immediately on expiry
     const beforeLen = this.emsSchedules.length
@@ -405,8 +406,7 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
     })
     if (this.emsSchedules.length < beforeLen) {
       this.log('[Ladeplan] Removed expired plans from storage')
-      this.diagnostic.recordAnalysis('info', '[Ladeplan] Removed expired plans from storage')
-      this.publishDiagnosticReport().catch(() => undefined)
+      // no publish here (expensive format + setSettings of full report); rely on export card or important events
       const remainingIds = new Set(this.emsSchedules.map(s => s.id || (s.start + '_' + (s.mode || ''))))
       this.triggeredEmsSchedules.forEach(id => {
         if (!remainingIds.has(id)) this.triggeredEmsSchedules.delete(id)
@@ -421,7 +421,6 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
       const stillPresent = this.emsSchedules.some(s => (s.id || (s.start + '_' + (s.mode || ''))) === activeId);
       if (!stillPresent) {
         this.log(`[Ladeplan] Manually deleted running schedule ${activeId} during check — reverting to AUTO`);
-        this.diagnostic.recordAnalysis('info', `[Ladeplan] Manually deleted active schedule ${activeId}, reverting to AUTO`);
         this.clearExpireTimer(activeId);
         this.powerModeState = null;
         this.getApi().setPowerMode(POWER_MODE_AUTO, 0, true, this)
@@ -429,6 +428,8 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
         this.triggeredEmsSchedules.delete(activeId);
       }
     }
+
+    if (this.emsSchedules.length === 0) return; // idle with no plans — minimal CPU to keep flow editor responsive
 
     for (const s of this.emsSchedules) {
       if (!s || !s.start || !s.mode) continue
@@ -451,13 +452,11 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
 
       const isInWindow = now >= startTs && (endTs === null || now < endTs)
 
-      this.log(`[Ladeplan] plan=${id} mode=${s.mode} power=${s.powerW} start=${s.start} end=${s.end} startTs=${startTs} endTs=${endTs} now=${now} isInWindow=${isInWindow} triggered=${this.triggeredEmsSchedules.has(id)}`)
-      this.diagnostic.recordAnalysis('info', `[Ladeplan] plan ${id} start=${s.start} end=${s.end} isInWindow=${isInWindow} now=${now} startTs=${startTs} endTs=${endTs}`)
+      // logging + recordAnalysis removed from hot loop to reduce CPU load (was firing every 30s * N plans)
+      // only key state changes (trigger, revert, clean) log now.
 
       if (isInWindow && !this.triggeredEmsSchedules.has(id)) {
         this.log(`[Ladeplan] TRIGGERING id=${id} mode=${s.mode} powerW=${s.powerW}`)
-        this.diagnostic.recordAnalysis('info', `[Ladeplan] TRIGGERING ${id} ${s.mode} ${s.powerW}W`)
-        this.publishDiagnosticReport().catch(() => undefined)
 
         const modeNum = this.mapEmsModeToNumber(s.mode)
         const powerW = typeof s.powerW === 'number' ? s.powerW : 0
@@ -476,12 +475,9 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
           const expiresAt = endTs || (Date.now() + 60 * 60 * 1000)
           this.setPowerModeState({ mode: modeNum, powerW, expiresAt, scheduleId })
           this.log(`[Ladeplan] sending setPowerMode mode=${modeNum} power=${powerW} expiresAt=${expiresAt}`)
-        this.diagnostic.recordAnalysis('info', `[Ladeplan] sending setPowerMode ${modeNum} ${powerW}W for ${id}`)
-        this.getApi().setPowerMode(modeNum, powerW, true, this)
+          this.getApi().setPowerMode(modeNum, powerW, true, this)
             .then(result => {
               this.log(`[Ladeplan] setPowerMode result for ${id}: ${result}`)
-              this.diagnostic.recordAnalysis('info', `[Ladeplan] setPowerMode result for ${id}: ${result}`)
-              this.publishDiagnosticReport().catch(() => undefined)
               if (result === false) {
                 // retry once after short delay if rejected
                 setTimeout(() => {
@@ -522,10 +518,8 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
     })
     if (this.emsSchedules.length < before) {
       this.log(`Removing completed EMS schedule ${scheduleId}`)
-      this.diagnostic.recordAnalysis('info', `[Ladeplan] Removing completed schedule ${scheduleId}`)
       this.setSettings({ emsSchedules: JSON.stringify(this.emsSchedules) })
         .catch(e => this.error('Failed to persist removed EMS schedule: ' + formatError(e)))
-      this.publishDiagnosticReport().catch(() => undefined)
     }
   }
 
@@ -543,8 +537,8 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
 
     const isInWindow = now >= startTs && (endTs === null || now < endTs)
     if (!isInWindow) {
-      this.log(`[Ladeplan] timer fired for ${id} but isInWindow=false (now=${now} startTs=${startTs} endTs=${endTs})`)
-      this.diagnostic.recordAnalysis('info', `[Ladeplan] timer fired but isInWindow=false for ${id}`)
+      // reduced: only log on real events, not every timer miss
+      if (Math.random() < 0.05) this.log(`[Ladeplan] timer fired but isInWindow=false for ${id}`);
       return
     }
 
@@ -1018,12 +1012,12 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
               this.updateLinkedGridMeter(result)
               this.handleAvailability();
               this.recordSyncSuccess(result)
-              this.publishDiagnosticReport().catch(() => undefined)
+              // publishDiagnosticReport removed from hot sync path (was causing heavy format+setSettings every 20s)
               this.handleBatteryData(station, result, resolve);
             } catch (e) {
               this.error('Error processing live data: ' + formatError(e))
               this.recordSyncFailure('Verarbeitung Live-Daten / processing live data: ' + formatError(e))
-              this.publishDiagnosticReport().catch(() => undefined)
+              // publishDiagnosticReport removed from hot sync path
               this.syncErrorCount++
               resolve(undefined)
             }
@@ -1031,7 +1025,7 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
           .catch(e => {
             this.error('Error reading live data: ' + formatError(e))
             this.recordSyncFailure('RSCP Live-Daten / live data: ' + formatError(e))
-            this.publishDiagnosticReport().catch(() => undefined)
+            // publishDiagnosticReport removed from hot path
             this.syncErrorCount++
             if (this.syncErrorCount >= MAX_ALLOWED_ERROR_BEFORE_UNAVAILABLE) {
               const unavailableMessage = this.homey.__('messages.hps-not-available')
@@ -1355,7 +1349,7 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
 
 
   async buildDiagnosticReport(): Promise<string> {
-    await this.publishDiagnosticReport()
+    await this.publishDiagnosticReport(true) // force for export card
     return this.diagnostic.formatReport(this.createDiagnosticSnapshot())
   }
 
@@ -1411,7 +1405,12 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
     this.publishDiagnosticReport().catch(() => undefined)
   }
 
-  private async publishDiagnosticReport(): Promise<void> {
+  private async publishDiagnosticReport(force: boolean = false): Promise<void> {
+    const now = Date.now()
+    if (!force && now - this.lastDiagnosticPublish < 60000) {
+      return // throttle heavy format + setSettings (was major source of load after Ladeplan widgets)
+    }
+    this.lastDiagnosticPublish = now
     const report = this.diagnostic.formatReport(this.createDiagnosticSnapshot())
     updateCapabilityValue('diagnostic_report', report, this)
     await this.setSettings({ diagnosticReport: report })

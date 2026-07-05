@@ -152,14 +152,14 @@ async function onHomeyReady(h) {
   startEl.addEventListener('input', autoFillEnd);
 
   loadPlans();
-  setInterval(loadPlans, 10000);  // faster refresh for schedule list
+  setInterval(loadPlans, 60000);  // reduced from 10s to lower load on Homey (esp. older 2023 models); schedules update via actions or manual reopen
 }
 
 async function loadPlans() {
   try {
     const res = await Homey.api('GET', `/hkw-schedules?plantId=${plantId}`);
     let plans = res.schedules || [];
-    await Homey.api('POST', '/log', { widget: 'hkw-ladeplaner', message: `loadPlans: plantId=${plantId}, received ${plans.length} raw plans` });
+    // periodic log removed (was causing recordAnalysis + diagnostic append every minute)
     const now = Date.now();
     const before = plans.length;
     plans = plans.filter(p => {
@@ -170,7 +170,6 @@ async function loadPlans() {
       }
       return true;
     });
-    await Homey.api('POST', '/log', { widget: 'hkw-ladeplaner', message: `loadPlans: after filter ${plans.length} active (was ${before})` });
     const container = document.getElementById('plans');
     container.innerHTML = '';
 

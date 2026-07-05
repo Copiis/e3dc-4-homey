@@ -1,4 +1,8 @@
 {
+  "1.8.27": {
+    "de": "- **Performance für Homey Pro (Early 2023):** Sync- und Schedule-Intervalle verlängert (20s→30s, 10s→30/60s), Diagnostic-Reports gedrosselt (Throttling 60s, nur noch bei Export oder wichtigen Events), Logging aus Hot-Paths entfernt.\n- **Widgets (Ladeplaner):** Refresh-Intervall auf 60 s reduziert (weniger Last).\n- Deutlich weniger CPU-Last und Log-Spam bei laufendem Flow-Editor oder aktiven Plänen.\n- Install-Skript-Kommentare aktualisiert (primäre Ziel-IP).",
+    "en": "- **Performance for Homey Pro (Early 2023):** Sync and schedule check intervals increased (20s→30s, 10s→30/60s), diagnostic reports throttled (60s + only on export/key events), heavy logging removed from hot paths.\n- **Ladeplaner widgets:** refresh interval reduced to 60s (lower load).\n- Significantly less CPU usage and log spam while flow editor is open or plans are active.\n- Install script comments updated (primary target IP)."
+  },
   "1.8.26": {
     "de": "- Weitere Stabilitäts- und Ladeplaner-Fixes (Widget-Loading, manuelles Löschen von Plänen mit sofortigem Revert)\n- Release mit allen Neuerungen seit v1.8.13 (siehe Forum)",
     "en": "- Additional stability and Ladeplaner fixes (widget loading, manual plan deletion with immediate revert)\n- Release with all new features since v1.8.13 (see forum)"
