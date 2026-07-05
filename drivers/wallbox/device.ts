@@ -406,40 +406,28 @@ class WallboxDevice extends Homey.Device implements Wallbox {
 
   private async _applyChargingAllowed(enabled: boolean, maxCurrentA?: number, force = false): Promise<WallboxCommandResult> {
     const live = await this.fetchLiveState();
-
-    if (!force) {
-      if (enabled && isWallboxMixedChargingAllowed(live)) {
-        this.log(`applyChargingAllowed(${enabled}): skip, RSCP already allowed (${this.formatWallboxAlgLog(live)})`);
-        this.refreshCapabilities(live);
-        return { ok: true, skipped: true };
-      }
-      if (!enabled && wallboxChargingBlockSucceeded(live)) {
-        this.log(`applyChargingAllowed(${enabled}): skip, RSCP already blocked (${this.formatWallboxAlgLog(live)})`);
-        this.refreshCapabilities(live);
-        return { ok: true, skipped: true };
-      }
+    if (!force && this.shouldSkipChargingApply(enabled, live)) {
+      this.refreshCapabilities(live);
+      return { ok: true, skipped: true };
     }
-
     this.log(`applyChargingAllowed(${enabled}): sending RSCP (force=${force}) (${this.formatWallboxAlgLog(live)})`);
-    const ok = enabled
-      ? await this.startCharging(maxCurrentA, live.chargingCanceled)
-      : await this.stopCharging(live.chargingCanceled);
-    if (!ok) {
-      return { ok: false, skipped: false };
-    }
-
-    const after = await this.waitForLiveStateMatch(
-      state => enabled ? wallboxChargingAllowSucceeded(live, state) : wallboxChargingBlockSucceeded(state),
-      `applyChargingAllowed(${enabled})`,
-    );
+    const ok = enabled ? await this.startCharging(maxCurrentA, live.chargingCanceled) : await this.stopCharging(live.chargingCanceled);
+    if (!ok) return { ok: false, skipped: false };
+    const after = await this.waitForLiveStateMatch(s => enabled ? wallboxChargingAllowSucceeded(live, s) : wallboxChargingBlockSucceeded(s), `applyChargingAllowed(${enabled})`);
     this.refreshCapabilities(after);
     const success = enabled ? wallboxChargingAllowSucceeded(live, after) : wallboxChargingBlockSucceeded(after);
     if (!success) {
-      this.error(`applyChargingAllowed: RSCP did not ${enabled ? 'allow' : 'block'} charging (${this.formatWallboxAlgLog(after)})`);
+      this.error(`applyChargingAllowed: RSCP did not ${enabled ? 'allow' : 'block'} (${this.formatWallboxAlgLog(after)})`);
       return { ok: false, skipped: false };
     }
-    this.log(`applyChargingAllowed(${enabled}): success (${this.formatWallboxAlgLog(after)})`);
+    this.log(`applyChargingAllowed(${enabled}): success`);
     return { ok: true, skipped: false };
+  }
+
+  private shouldSkipChargingApply(enabled: boolean, live: WallboxLiveState): boolean {
+    if (enabled && isWallboxMixedChargingAllowed(live)) return true;
+    if (!enabled && wallboxChargingBlockSucceeded(live)) return true;
+    return false;
   }
 
   /**
@@ -451,40 +439,21 @@ class WallboxDevice extends Homey.Device implements Wallbox {
 
   private async _applySunMode(enabled: boolean, maxCurrentA?: number, force = false): Promise<WallboxCommandResult> {
     const live = await this.fetchLiveState();
-
-    if (!force) {
-      if (enabled && live.sunModeActive) {
-        this.log(`applySunMode(${enabled}): skip, RSCP sun mode already active (${this.formatWallboxAlgLog(live)})`);
-        this.refreshCapabilities(live);
-        return { ok: true, skipped: true };
-      }
-      if (!enabled && !live.sunModeActive) {
-        this.log(`applySunMode(${enabled}): skip, RSCP sun mode already inactive (${this.formatWallboxAlgLog(live)})`);
-        this.refreshCapabilities(live);
-        return { ok: true, skipped: true };
-      }
+    if (!force && ((enabled && live.sunModeActive) || (!enabled && !live.sunModeActive))) {
+      this.refreshCapabilities(live);
+      return { ok: true, skipped: true };
     }
-
-    this.log(`applySunMode(${enabled}): sending RSCP (force=${force}) (${this.formatWallboxAlgLog(live)})`);
+    this.log(`applySunMode(${enabled}): sending RSCP (force=${force})`);
     const ok = await this.setSunMode(enabled, maxCurrentA);
-    if (!ok) {
-      return { ok: false, skipped: false };
-    }
-
-    const after = await this.waitForLiveStateMatch(
-      state => enabled ? state.sunModeActive : !state.sunModeActive,
-      `applySunMode(${enabled})`,
-    );
+    if (!ok) return { ok: false, skipped: false };
+    const after = await this.waitForLiveStateMatch(s => enabled ? s.sunModeActive : !s.sunModeActive, `applySunMode(${enabled})`);
     this.refreshCapabilities(after);
-    if (enabled && !after.sunModeActive) {
-      this.error(`applySunMode: RSCP did not enable sun mode (${this.formatWallboxAlgLog(after)})`);
+    const success = enabled ? after.sunModeActive : !after.sunModeActive;
+    if (!success) {
+      this.error(`applySunMode: RSCP did not set ${enabled}`);
       return { ok: false, skipped: false };
     }
-    if (!enabled && after.sunModeActive) {
-      this.error(`applySunMode: RSCP did not disable sun mode (${this.formatWallboxAlgLog(after)})`);
-      return { ok: false, skipped: false };
-    }
-    this.log(`applySunMode(${enabled}): success (${this.formatWallboxAlgLog(after)})`);
+    this.log(`applySunMode(${enabled}): success`);
     return { ok: true, skipped: false };
   }
 
