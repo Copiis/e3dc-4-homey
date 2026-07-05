@@ -120,8 +120,8 @@ export class CapabilityManager {
   }
 
   updateLinkedBattery(result: LiveData) {
-    // basic delegation, full logic can be here
-    this.device.updateLinkedBatteryLiveData?.(result);
+    // delegate to the actual implementation (was moved here for monolith reduction)
+    this.updateLinkedBatteryLiveData(result);
   }
 
   updateBatteryDataIfNeeded() {

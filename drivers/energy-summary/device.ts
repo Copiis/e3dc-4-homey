@@ -119,7 +119,7 @@ class EnergySummaryDevice extends Homey.Device {
       updateCapabilityValue('measure_power', pvPower, this);
       updateCapabilityValue('measure_house_consumption', houseConsumption, this);
       updateCapabilityValue('measure_grid_delivery', gridDelivery, this);
-      updateCapabilityValue('measure_battery_delivery', batteryPower, this);
+      updateCapabilityValue('measure_battery_delivery', batteryPower, this, { force: true });
       updateCapabilityValue('measure_wallbox_consumption', wallboxPower, this);
       updateCapabilityValue('measure_pv_surplus', pvSurplus, this);
 
