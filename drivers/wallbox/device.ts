@@ -330,6 +330,10 @@ class WallboxDevice extends Homey.Device implements Wallbox {
     return (args, state) => listener.run({ ...args, device: this }, state);
   }
 
+  /**
+   * Registers all wallbox-specific flow cards (actions + conditions).
+   * Uses bindDevice to ensure the listener receives the correct device instance.
+   */
   private setupFlowCards(): void {
     const conditions: Array<{ id: string, listener: RunListener }> = [
       { id: 'wallbox_sun_mode_is_active', listener: new WallboxSunModeIsActiveConditionCard() },
@@ -366,6 +370,9 @@ class WallboxDevice extends Homey.Device implements Wallbox {
     });
   }
 
+  /**
+   * Registers listeners for tile button presses (charging + sun mode toggle).
+   */
   private registerCapabilityListeners(): void {
     this.registerCapabilityListener('wallbox_charging', this.onWallboxChargingSet.bind(this));
     this.registerCapabilityListener('wallbox_sun_mode', this.onWallboxSunModeSet.bind(this));
@@ -394,6 +401,10 @@ class WallboxDevice extends Homey.Device implements Wallbox {
     this.log(`Wallbox sun mode toggled via button to ${newValue}`);
   }
 
+  /**
+   * Ensures all required capabilities exist and removes legacy ones.
+   * Also sets initial Ladeplan tile visibility.
+   */
   private async migrateCapabilities(): Promise<void> {
     await ensureCapabilities(this, [...WALLBOX_CAPABILITY_ORDER]);
     await reorderCapabilitiesIfNeeded(this, WALLBOX_CAPABILITY_ORDER);
@@ -421,6 +432,10 @@ class WallboxDevice extends Homey.Device implements Wallbox {
     }
   }
 
+  /**
+   * Dynamically hides or shows Ladeplan-related capabilities on the main tile
+   * depending on whether an active plan is running.
+   */
   private async applyLadeplanTileVisibility(): Promise<void> {
     // Remove Ladepläne/EMS from main tile if not important (no active plan)
     const hasActivePlan = this.triggeredWallboxSchedules.size > 0;
@@ -435,6 +450,11 @@ class WallboxDevice extends Homey.Device implements Wallbox {
     this.log('WallboxDevice has been added');
   }
 
+  /**
+   * Called by WallboxManager when new live data arrives from the HKW.
+   * Updates all wallbox-specific capabilities and handles side effects
+   * like the "ready to charge" trigger.
+   */
   sync(state: WallboxLiveState): void {
     if (!this.capabilitiesReady) {
       return;
@@ -572,6 +592,10 @@ class WallboxDevice extends Homey.Device implements Wallbox {
       + `sunMode=${state.sunModeActive}, chargingActive=${state.chargingActive}, algHex=${hex}`;
   }
 
+  /**
+   * Public API to allow or block charging.
+   * Used by flows, tile, and internal schedule logic.
+   */
   async applyChargingAllowed(enabled: boolean, maxCurrentA?: number, force = false): Promise<WallboxCommandResult> {
     return this.serialize(() => this._applyChargingAllowed(enabled, maxCurrentA, force));
   }
@@ -619,6 +643,9 @@ class WallboxDevice extends Homey.Device implements Wallbox {
     return { ok: true, skipped: false };
   }
 
+  /**
+   * Public API to enable/disable sun (PV surplus) mode.
+   */
   async applySunMode(enabled: boolean, maxCurrentA?: number, force = false): Promise<WallboxCommandResult> {
     return this.serialize(() => this._applySunMode(enabled, maxCurrentA, force));
   }
@@ -662,11 +689,17 @@ class WallboxDevice extends Homey.Device implements Wallbox {
     return { ok: true, skipped: false };
   }
 
+  /**
+   * Sets the max charging current (A) without changing the active mode.
+   */
   async setCurrentLimit(maxCurrentA: number): Promise<boolean> {
     const api = await this.getApi();
     return api.setWallboxCurrentLimit(this.getWallboxId(), maxCurrentA, true, this);
   }
 
+  /**
+   * Starts/resumes charging (used for "resume" after abort).
+   */
   async startCharging(maxCurrentA?: number, chargingCanceled = false): Promise<boolean> {
     const api = await this.getApi();
     const wallboxId = this.getWallboxId();
@@ -676,6 +709,9 @@ class WallboxDevice extends Homey.Device implements Wallbox {
     return api.startWallboxCharging(wallboxId, maxCurrentA, chargingCanceled, true, this);
   }
 
+  /**
+   * Stops/pauses charging.
+   */
   async stopCharging(chargingCanceled = false): Promise<boolean> {
     if (chargingCanceled) {
       this.log('stopCharging: already paused, skip toggle');
@@ -685,11 +721,17 @@ class WallboxDevice extends Homey.Device implements Wallbox {
     return api.stopWallboxCharging(this.getWallboxId(), true, this);
   }
 
+  /**
+   * Sets sun mode (PV surplus priority) or switches to mixed mode.
+   */
   async setSunMode(enabled: boolean, maxCurrentA?: number): Promise<boolean> {
     const api = await this.getApi();
     return api.setWallboxSunMode(this.getWallboxId(), enabled, maxCurrentA, true, this);
   }
 
+  /**
+   * System-wide: allow home battery to discharge for car charging.
+   */
   async setBatteryToCar(enabled: boolean): Promise<boolean> {
     const api = await this.getApi();
     const ok = await api.setBatteryToCarMode(enabled, true, this);
@@ -701,6 +743,9 @@ class WallboxDevice extends Homey.Device implements Wallbox {
     return ok;
   }
 
+  /**
+   * System-wide: prioritize car over home battery.
+   */
   async setBatteryBeforeCar(enabled: boolean): Promise<boolean> {
     const api = await this.getApi();
     const ok = await api.setBatteryBeforeCarMode(enabled, true, this);
@@ -712,6 +757,9 @@ class WallboxDevice extends Homey.Device implements Wallbox {
     return ok;
   }
 
+  /**
+   * System-wide: minimum home battery SOC before allowing car charging.
+   */
   async setDischargeBatteryUntil(percent: number): Promise<boolean> {
     const api = await this.getApi();
     const ok = await api.setWbDischargeBatteryUntil(percent, true, this);
@@ -723,6 +771,9 @@ class WallboxDevice extends Homey.Device implements Wallbox {
     return ok;
   }
 
+  /**
+   * System-wide: prevent home battery use in wallbox mixed mode.
+   */
   async setDisableBatteryAtMixMode(enabled: boolean): Promise<boolean> {
     const api = await this.getApi();
     const ok = await api.setWallboxDisableBatteryAtMixMode(enabled, true, this);
@@ -749,36 +800,42 @@ class WallboxDevice extends Homey.Device implements Wallbox {
     changedKeys: string[];
   }): Promise<string | void> {
     this.log('WallboxDevice settings were changed');
+
     if (changedKeys.includes('schedules')) {
-      // Immediately handle manual deletion of a running plan (exactly like HKW Ladeplaner).
-      // When the widget removes a schedule from the list, we must stop the corresponding action right away.
-      try {
-        const schedulesValue = newSettings['schedules'];
-        const json = typeof schedulesValue === 'string' ? schedulesValue : '[]';
-        const freshSchedules: WallboxSchedule[] = JSON.parse(json) || [];
-
-        const newIds = new Set(freshSchedules.map(s =>
-          s.id || (s.start + '_' + (s.action || ''))
-        ));
-
-        for (const [id, action] of this.triggeredWallboxSchedules.entries()) {
-          if (!newIds.has(id)) {
-            this.log(`[WallboxLadeplan] Manually deleted running schedule ${id} (action=${action}) — reverting now (like HKW)`);
-            try {
-              await this.revertScheduleAction(action, true);
-            } catch (e) {
-              this.error('Error reverting manually deleted wallbox schedule (onSettings): ' + formatError(e));
-            }
-            this.triggeredWallboxSchedules.delete(id);
-            this.untilFullLowPowerSince?.delete(id);
-          }
-        }
-      } catch (e) {
-        this.error('Failed to process manual schedule delete in onSettings: ' + formatError(e));
-      }
-
-      // Also run the full checker soon (for new plans etc.)
+      await this.handleManualScheduleDeletion(newSettings);
+      // Re-evaluate schedules shortly (new plans may have been added)
       setTimeout(() => this.checkWallboxSchedules(), 50);
+    }
+  }
+
+  /**
+   * Handles immediate reversion when the user manually deletes a running schedule
+   * in the widget (mirrors HKW Ladeplaner behavior).
+   */
+  private async handleManualScheduleDeletion(newSettings: Record<string, unknown>) {
+    try {
+      const schedulesValue = newSettings['schedules'];
+      const json = typeof schedulesValue === 'string' ? schedulesValue : '[]';
+      const freshSchedules: WallboxSchedule[] = JSON.parse(json) || [];
+
+      const newIds = new Set(freshSchedules.map(s =>
+        s.id || (s.start + '_' + (s.action || ''))
+      ));
+
+      for (const [id, action] of this.triggeredWallboxSchedules.entries()) {
+        if (!newIds.has(id)) {
+          this.log(`[WallboxLadeplan] Manually deleted running schedule ${id} (action=${action}) — reverting now (like HKW)`);
+          try {
+            await this.revertScheduleAction(action, true);
+          } catch (e) {
+            this.error('Error reverting manually deleted wallbox schedule (onSettings): ' + formatError(e));
+          }
+          this.triggeredWallboxSchedules.delete(id);
+          this.untilFullLowPowerSince?.delete(id);
+        }
+      }
+    } catch (e) {
+      this.error('Failed to process manual schedule delete in onSettings: ' + formatError(e));
     }
   }
 
