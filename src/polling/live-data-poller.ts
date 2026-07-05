@@ -1,10 +1,8 @@
 import { LiveData } from '../model/live-data';
 import { RscpApi } from '../rscp-api';
+import { Logger } from '../internal-api/logger';
 
-export interface PollerLogger {
-  log(msg: string): void;
-  error(msg: string): void;
-}
+export interface PollerLogger extends Logger {}  // compatible with RscpApi's Logger expectation
 
 /**
  * Dedicated poller for live data from the E3DC station.
@@ -81,7 +79,7 @@ export class LiveDataPoller {
     try {
       const api = this.apiFactory();
       const readWallboxes = this.shouldReadWallboxes();
-      const data = await api.readLiveData(true, this.logger as any, readWallboxes);
+      const data = await api.readLiveData(true, this.logger, readWallboxes);
 
       this.lastData = data;
       this.lastFetch = now;
