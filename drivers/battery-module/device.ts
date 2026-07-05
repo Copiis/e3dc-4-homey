@@ -57,7 +57,7 @@ class BatterModuleDevice extends Homey.Device implements BatteryModule{
 
   syncLive(rsoc: number, batteryPowerW: number,
       chargingConfiguration: ChargingConfiguration, emergencyPower: EmergencyPowerState) {
-    updateCapabilityValue('measure_power', batteryPowerW, this)
+    updateCapabilityValue('measure_power', batteryPowerW, this, { force: true })
     const meter = this.energyMeter.integrateBattery(batteryPowerW)
     updateCapabilityValue('meter_power.charged', meter.chargedKwh, this)
     updateCapabilityValue('measure_battery_charged_total', meter.chargedKwh, this)
