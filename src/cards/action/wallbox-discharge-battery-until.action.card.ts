@@ -3,10 +3,10 @@ import {RunListener} from '../run-listener';
 import {formatError} from '../../utils/error-utils';
 
 export class WallboxDischargeBatteryUntilActionCard implements RunListener {
-    run(args: any, state: any): Promise<any> {
-        return new Promise<any>(async (resolve, reject) => {
+    run(args: { device: Wallbox; percent?: number; [key: string]: unknown }, state: Record<string, unknown>): Promise<unknown> {
+        return new Promise<unknown>(async (resolve, reject) => {
             const wallbox: Wallbox = args.device;
-            const percent: number = args.percent;
+            const percent: number = args.percent ?? 0;
 
             if (!wallbox || typeof wallbox.setDischargeBatteryUntil !== 'function') {
                 reject('Invalid wallbox device');

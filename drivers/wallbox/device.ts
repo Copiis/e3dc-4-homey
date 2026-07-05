@@ -56,9 +56,22 @@ class WallboxDevice extends Homey.Device implements Wallbox {
   private capabilitiesReady = false;
   private wasReadyToCharge = false;
 
-  // Simple serializer to prevent overlapping RSCP commands from concurrent flows (bugfix for races)
+  /**
+   * Serializer for RSCP commands to prevent races from concurrent flows.
+   */
   private _commandChain: Promise<unknown> = Promise.resolve();
 
+  // Wallbox-specific schedule handling (Ladeplaner)
+  private wallboxScheduleCheckId: NodeJS.Timeout | null = null;
+  private triggeredWallboxSchedules: Map<string, string> = new Map();
+  private lastScheduleCheck = 0;
+  private untilFullLowPowerSince: Map<string, number> = new Map();
+  private _lastHasActivePlan: boolean = false;
+
+  /**
+   * Serializes RSCP commands to avoid overlapping calls from concurrent flows.
+   * This prevents race conditions when multiple flows try to control the wallbox at the same time.
+   */
   private async serialize<T>(fn: () => Promise<T>): Promise<T> {
     const result = this._commandChain.then(fn).catch(err => {
       this.error('Wallbox command chain error: ' + formatError(err));
@@ -68,6 +81,13 @@ class WallboxDevice extends Homey.Device implements Wallbox {
     return result;
   }
 
+  /**
+   * Initializes the WallboxDevice:
+   * - Migrates capabilities if needed
+   * - Sets up all flow cards (actions, conditions, triggers)
+   * - Registers capability listeners for UI changes
+   * - Starts the internal Ladeplan scheduler
+   */
   async onInit() {
     this.log('WallboxDevice has been initialized');
     try {
@@ -81,12 +101,11 @@ class WallboxDevice extends Homey.Device implements Wallbox {
     this.startWallboxScheduleChecker();
   }
 
-  private wallboxScheduleCheckId: NodeJS.Timeout | null = null;
-  private triggeredWallboxSchedules: Map<string, string> = new Map();
-  private lastScheduleCheck = 0; // id -> action
-  private untilFullLowPowerSince: Map<string, number> = new Map(); // id -> timestamp when power dropped low
-  private _lastHasActivePlan: boolean = false;
-
+  /**
+   * Starts the internal scheduler for Wallbox Ladepläne.
+   * Checks every 60s (aligned with HKW) for active plans and applies them.
+   * onSettings handles immediate manual deletes.
+   */
   private startWallboxScheduleChecker() {
     if (this.wallboxScheduleCheckId) clearInterval(this.wallboxScheduleCheckId);
     // Reduced to 60s (like HKW); exact timers + onSettings handle most; lowers load on Homey 2023 during flow editing

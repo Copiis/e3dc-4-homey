@@ -9,8 +9,8 @@ export const POWER_MODE_CHARGE = 3
 export const POWER_MODE_GRID_CHARGE = 4
 
 export class SetPowerModeAutoActionCard implements RunListener {
-    run(args: any, state: any): Promise<any> {
-        return new Promise<any>((resolve, reject) => {
+    run(args: { device: HomePowerStation; duration?: number; power?: number; [key: string]: unknown }, state: Record<string, unknown>): Promise<unknown> {
+        return new Promise<unknown>((resolve, reject) => {
             const hps: HomePowerStation = args.device;
             hps.log('SetPowerModeAutoActionCard: triggered')
             hps.setPowerModeState(null)
@@ -26,10 +26,10 @@ export class SetPowerModeAutoActionCard implements RunListener {
 }
 
 export class SetPowerModeIdleActionCard implements RunListener {
-    run(args: any, state: any): Promise<any> {
-        return new Promise<any>((resolve, reject) => {
+    run(args: { device: HomePowerStation; duration?: number; power?: number; [key: string]: unknown }, state: Record<string, unknown>): Promise<unknown> {
+        return new Promise<unknown>((resolve, reject) => {
             const hps: HomePowerStation = args.device;
-            const durationMinutes: number = args.duration;
+            const durationMinutes: number = args.duration ?? 0;
             hps.log('SetPowerModeIdleActionCard: triggered -> ' + durationMinutes + ' min')
             hps.setPowerModeState({
                 mode: POWER_MODE_IDLE,
@@ -48,11 +48,11 @@ export class SetPowerModeIdleActionCard implements RunListener {
 }
 
 export class SetPowerModeChargeActionCard implements RunListener {
-    run(args: any, state: any): Promise<any> {
-        return new Promise<any>((resolve, reject) => {
+    run(args: { device: HomePowerStation; duration?: number; power?: number; [key: string]: unknown }, state: Record<string, unknown>): Promise<unknown> {
+        return new Promise<unknown>((resolve, reject) => {
             const hps: HomePowerStation = args.device;
-            const powerW: number = args.power;
-            const durationMinutes: number = args.duration;
+            const powerW: number = args.power ?? 0;
+            const durationMinutes: number = args.duration ?? 0;
             hps.log('SetPowerModeChargeActionCard: triggered -> ' + powerW + 'W for ' + durationMinutes + ' min')
             hps.setPowerModeState({
                 mode: POWER_MODE_CHARGE,
@@ -71,11 +71,11 @@ export class SetPowerModeChargeActionCard implements RunListener {
 }
 
 export class SetPowerModeDischargeActionCard implements RunListener {
-    run(args: any, state: any): Promise<any> {
-        return new Promise<any>((resolve, reject) => {
+    run(args: { device: HomePowerStation; duration?: number; power?: number; [key: string]: unknown }, state: Record<string, unknown>): Promise<unknown> {
+        return new Promise<unknown>((resolve, reject) => {
             const hps: HomePowerStation = args.device;
-            const powerW: number = args.power;
-            const durationMinutes: number = args.duration;
+            const powerW: number = args.power ?? 0;
+            const durationMinutes: number = args.duration ?? 0;
             hps.log('SetPowerModeDischargeActionCard: triggered -> ' + powerW + 'W for ' + durationMinutes + ' min')
             hps.setPowerModeState({
                 mode: POWER_MODE_DISCHARGE,
@@ -94,11 +94,11 @@ export class SetPowerModeDischargeActionCard implements RunListener {
 }
 
 export class SetPowerModeGridChargeActionCard implements RunListener {
-    run(args: any, state: any): Promise<any> {
-        return new Promise<any>((resolve, reject) => {
+    run(args: { device: HomePowerStation; duration?: number; power?: number; [key: string]: unknown }, state: Record<string, unknown>): Promise<unknown> {
+        return new Promise<unknown>((resolve, reject) => {
             const hps: HomePowerStation = args.device;
-            const powerW: number = args.power;
-            const durationMinutes: number = args.duration;
+            const powerW: number = args.power ?? 0;
+            const durationMinutes: number = args.duration ?? 0;
             hps.log('SetPowerModeGridChargeActionCard: triggered -> ' + powerW + 'W for ' + durationMinutes + ' min')
             hps.setPowerModeState({
                 mode: POWER_MODE_GRID_CHARGE,

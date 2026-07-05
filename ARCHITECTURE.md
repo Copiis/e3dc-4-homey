@@ -44,13 +44,12 @@ Die App wurde von einem großen Monolithen (`drivers/home-power-station/device.t
 
 Siehe `PROJEKT-REGELN.md` → Abschnitt "Aktueller Fokus: Athom Beauty".
 
-### Fortschritt (Punkte 1-4 Session)
-- ✅ Punkt 1: any 100 → 88 (PowerModeManager, Logger, Wallbox, WallboxManager getypt)
-- ✅ Punkt 2: Wallbox erste Struktur- und Typ-Cleanups + Klassen-JSDoc
-- ✅ Punkt 3: Starkes JSDoc in WallboxManager, DiagnosticManager, PowerModeManager
-- ✅ Punkt 4: Letzte Kommentar-Hacks entfernt
-- Weitere any-Reduktion, saubere Typen, professionelle Docs
-- Build + alle Tests grün + Deploy durchgeführt
+### Fortschritt (Punkte 1-4 Batch)
+- Punkt 1: any weiter auf 88, Action Cards teilweise getypt (Record + spezifische Args)
+- Punkt 2: Wallbox Device mit mehr JSDoc, Struktur-Kommentaren, Duplikat-Felder bereinigt
+- Punkt 3: JSDoc in WallboxDevice (onInit, serialize, startScheduleChecker), Action Cards
+- Punkt 4: Test zu Verhaltens-Test verbessert, letzte Kommentare bereinigt
+- Deploy-Zyklus durchgeführt (Build + Install + Push)
 
 ### Verbleibende Schritte (Priorität)
 1. Weitere `any` auf <80 bringen (rscp-api, action cards, wallbox internals).
