@@ -7,13 +7,16 @@ import { IHpsDevice } from '../types/hps-device';
 /**
  * DiagnosticManager
  *
- * Verantwortlich für:
- * - Aufzeichnen von Diagnose-Events (Analysis Log)
- * - Erstellen und Publizieren von Diagnose-Reports
- * - Automatisches Deaktivieren der detaillierten Diagnose nach Timeout
- * - Zählen verknüpfter Geräte und Sammeln von Sync-Statistiken
+ * Zentrale Stelle für Diagnose und Analyse des HKW.
  *
- * Wird vom HKW-Device genutzt, um Nutzern und Support gute Diagnose-Daten zu liefern.
+ * Aufgaben:
+ * - Record und Persistierung von Analysis-Events (Info/Warn/Error)
+ * - Erzeugen und Veröffentlichen von Diagnose-Reports
+ * - Auto-Off für detailedDiagnostics nach Timeout
+ * - Zählen verknüpfter Geräte (Wallbox, Battery, Grid-Meter)
+ * - Sammeln von Sync-Statistiken und Snapshots
+ *
+ * Entkoppelt über IHpsDevice. Wird für Export, UI und Support verwendet.
  */
 export class DiagnosticManager {
   private readonly diagnostic = new DeviceDiagnostic();
@@ -28,6 +31,10 @@ export class DiagnosticManager {
     private readonly DIAGNOSTIC_ANALYSIS_STORE_KEY: string
   ) {}
 
+  /**
+   * Zeichnet ein Analyse-Event auf (wird nur bei detailedDiagnostics oder Warn/Error gespeichert).
+   * Persistiert bei Bedarf sofort.
+   */
   recordAnalysisEvent(level: 'info' | 'warn' | 'error', message: string): void {
     if (level === 'info' && !this.isDetailedDiagnosticsEnabled()) {
       return;
@@ -85,6 +92,10 @@ export class DiagnosticManager {
     }
   }
 
+  /**
+   * Publiziert den aktuellen Diagnose-Report (als Notification oder für Export).
+   * Bei force wird auch bei deaktivierter detailedDiagnostics geschrieben.
+   */
   async publishDiagnosticReport(force = false): Promise<void> {
     const now = Date.now();
     if (!force && now - this.lastDiagnosticPublish < 60000) return;

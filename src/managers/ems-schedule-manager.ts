@@ -18,16 +18,17 @@ const POWER_MODE_GRID_CHARGE = 4;
 /**
  * EmsScheduleManager
  *
- * Manages E3DC EMS / Ladeplan schedules (time-based power modes).
- * Responsible for:
- * - Loading/parsing schedules from device settings
- * - Scheduling timers for start/end of plans
- * - Triggering power modes (auto/idle/charge/discharge/grid_charge)
- * - Handling untilSoc / untilFull conditions
- * - Cleaning up manually deleted or expired schedules
- * - Providing triggers for surplus / SoC based EMS flows (via handleEmsTriggers)
+ * Verwaltet EMS/Ladeplan-Schedules für zeitgesteuerte Power-Modi.
  *
- * Designed to be unit-testable and decoupled from the HKW device via IHpsDevice.
+ * Kernaufgaben:
+ * - Laden und Parsen von Schedules aus den Device-Settings
+ * - Timer-Scheduling für Start/Ende von Plänen
+ * - Triggern von Power-Modes (AUTO/IDLE/CHARGE/DISCHARGE/GRID_CHARGE)
+ * - Behandlung von untilSoc- und untilFull-Bedingungen
+ * - Aufräumen von manuell gelöschten oder abgelaufenen Plänen
+ * - Bereitstellung von Surplus/SoC-Triggern via handleEmsTriggers()
+ *
+ * Entkoppelt über IHpsDevice und PowerModeManager. Gut testbar.
  */
 export class EmsScheduleManager {
   private emsSchedules: EmsSchedule[] = [];
@@ -50,6 +51,11 @@ export class EmsScheduleManager {
   /**
    * Reloads EMS schedules from device settings (called on init and when settings change).
    * Also prunes expired plans and cleans triggered state for deleted ones.
+   */
+  /**
+   * Lädt und parsed die EMS-Schedules aus den Settings.
+   * Filtert abgelaufene Pläne und räumt triggered-Set auf.
+   * Wird bei Init und bei Settings-Änderung aufgerufen.
    */
   loadEmsSchedules() {
     const json = (this.device.getSetting('emsSchedules') as string) || '[]';
@@ -145,6 +151,10 @@ export class EmsScheduleManager {
     return isNaN(d.getTime()) ? NaN : d.getTime();
   }
 
+  /**
+   * Prüft alle aktiven Schedules und triggert bei Bedarf Power-Modes.
+   * Wird periodisch und bei Events aufgerufen.
+   */
   checkEmsSchedules() {
     try {
       const json = (this.device.getSetting('emsSchedules') as string) || '[]';
@@ -441,11 +451,18 @@ export class EmsScheduleManager {
    * Public API to clear triggered schedule tracking.
    * Called from HKW device when user deletes schedules in the UI/widget.
    */
+  /**
+   * Löscht alle getriggerten Schedules (z.B. bei manuellem Löschen im UI).
+   */
   clearTriggeredSchedules(): void {
     this.triggeredEmsSchedules.clear();
   }
   getPowerModeState() { return this.powerModeManager ? this.powerModeManager.getPowerModeState() : this.powerModeState; }
 
+  /**
+   * Wird von CapabilityManager bei Live-Daten aufgerufen.
+   * Triggern von Surplus- oder SoC-basierten EMS-Flows.
+   */
   handleEmsTriggers(result: LiveData, batteryLevelChange?: ValueChanged<number>) {
     const batteryPowerW = result.batteryDelivery * -1
     const surplus = calculatePvSurplusW(result.pvDelivery, result.houseConsumption, batteryPowerW)

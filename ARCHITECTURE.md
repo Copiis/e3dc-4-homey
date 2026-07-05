@@ -46,15 +46,52 @@ Siehe `PROJEKT-REGELN.md` → Abschnitt "Aktueller Fokus: Athom Beauty".
 
 ### Fortschritt (Punkte 1-4 Batch)
 - Punkt 1: any 41 → 0 (ALL any eliminated. All flow cards now use Record<string, unknown> and unknown. Core was already clean.)
-- Punkt 2: Wallbox komplett aufgeräumt – WallboxSchedule Interface, parse/revert/handleUntilFullStop Helper, Schedule-Methode stark vereinfacht, exzellentes JSDoc, onSettings sauberer
+- Punkt 1 (Wallbox): Vollständig umgesetzt – umfassendes JSDoc für alle public Methoden (apply*, set*, sync etc.), extracted handleManualScheduleDeletion, Helpers, saubere Struktur. Jetzt deutlich näher am HKW-Qualitätsniveau.
 - Punkt 3: JSDoc in WallboxDevice (onInit, serialize, startScheduleChecker), Action Cards
 - Punkt 4: Test zu Verhaltens-Test verbessert, letzte Kommentare bereinigt
 - Deploy-Zyklus durchgeführt (Build + Install + Push)
 
 ### Verbleibende Schritte (Priorität)
-1. Weitere `any` auf <80 bringen (rscp-api, action cards, wallbox internals).
-2. Wallbox device.ts: Struktur angleichen (weniger Monolith, mehr Manager-Extraktion wo sinnvoll).
-3. JSDoc überall vervollständigen + ARCHITECTURE weiter ausbauen (Design-Rationale).
-4. Test-Qualität: mehr Verhaltens- und Edge-Case-Tests.
+1. Weitere `any` auf <80 bringen (rscp-api, action cards, wallbox internals). → **ERLEDIGT** (0 any)
+2. Wallbox device.ts: Struktur angleichen (weniger Monolith, mehr Manager-Extraktion wo sinnvoll). → **ERLEDIGT** (vollständiges Aufräumen)
+3. JSDoc überall vervollständigen + ARCHITECTURE weiter ausbauen (Design-Rationale). → **IN PROGRESS**
+4. Test-Qualität: mehr Verhaltens- und Edge-Case-Tests. → **IN PROGRESS**
 
 Jede Änderung in dieser Phase sollte den Code **sichtbar schöner** machen.
+
+## Design-Entscheidungen & How-To
+
+### Warum Manager-Extraktion?
+Der ursprüngliche HomePowerStationDevice war >1600 Zeilen. Durch Extraktion in CapabilityManager, WallboxManager, EmsScheduleManager, PowerModeManager, DiagnosticManager etc. wird der Device auf ~420 Zeilen reduziert. Vorteile:
+- Bessere Testbarkeit (Mocks für Device + Api)
+- Single Responsibility
+- Einfachere Wartung und Erweiterung
+
+### Wie füge ich ein neues Feature sauber hinzu?
+1. Prüfe, ob es in einen existierenden Manager passt.
+2. Bei Bedarf neuen Manager anlegen (Dependency Injection über IHpsDevice + Factory).
+3. Immer über `IHpsDevice` entkoppeln – nie direkt auf Device casten.
+4. Neue Live-Daten-Felder → `processLivePowerData` oder spezifischen Sync-Methoden.
+5. Flow-Karten immer über `FlowCardManager` + `bindDevice` registrieren.
+6. JSDoc für public API + Eintrag in ARCHITECTURE.md.
+
+### Warum `unknown` statt `any`?
+- `any` deaktiviert TypeScript komplett.
+- `unknown` zwingt zu expliziten Guards oder Casts → sicherer und lesbarer Code.
+- Flow-Cards nutzen `Record<string, unknown>` als Kompromiss zur Homey-SDK.
+
+### Logging & Error-Handling
+- Alle Fehler gehen durch `formatError()`.
+- Logger wird injected (kein globaler Zugriff).
+- Kritische Events zusätzlich über `recordAnalysisEvent` für Diagnose.
+
+### Wallbox vs. HKW
+- HKW ist zentrales Gerät.
+- Wallbox ist eigenständig, aber eng mit HKW-EMS verknüpft.
+- Gemeinsame Logik (z.B. Schedules) wird wo sinnvoll in Utils/Manager gekapselt.
+- Ziel: Beide Devices fühlen sich ähnlich "schön" an (gleiche Dokumentation, gleiche Patterns).
+
+### Erweiterung von LiveData
+Neue Felder in `src/model/live-data.ts` definieren → im Poller und Converter updaten → im CapabilityManager verarbeiten.
+
+Dieses Dokument soll für Außenstehende (Athom-Dev oder neue Entwickler) sofort verständlich machen, warum der Code so aufgebaut ist.

@@ -9,9 +9,16 @@ const POWER_MODE_AUTO = 0;
 /**
  * PowerModeManager
  *
- * Owns the current power mode state (auto/idle/charge/discharge/grid_charge)
- * and handles refresh/expiry timers for manual or scheduled modes.
- * Works closely with EmsScheduleManager for Ladeplan integration.
+ * Verwaltet den aktuellen Power-Mode-Zustand des HKW (AUTO, IDLE, CHARGE, DISCHARGE, GRID_CHARGE).
+ *
+ * Zuständigkeiten:
+ * - Speichern und Abfragen des aktuellen PowerModeState
+ * - Scheduling von Refresh-Timern (alle 30s) für manuelle oder geplante Modi
+ * - Handling von Ablauf-Timern (expiresAt) und untilSoc-Bedingungen
+ * - Revertieren zu AUTO bei Ablauf oder Erreichen von Bedingungen
+ *
+ * Wird eng mit EmsScheduleManager und dem HKW-Device zusammen verwendet.
+ * Alle Befehle an die RSCP-API werden über die apiFactory delegiert.
  */
 export class PowerModeManager {
   private powerModeState: PowerModeState | null = null;
@@ -23,6 +30,12 @@ export class PowerModeManager {
     private readonly logger: { log: (msg: string) => void; error: (msg: string) => void },
   ) {}
 
+  /**
+   * Setzt den aktuellen Power-Mode-State.
+   * Startet bei Bedarf den Refresh-Timer und den Expire-Timer.
+   *
+   * @param state - Neuer State oder null zum Deaktivieren
+   */
   setPowerModeState(state: PowerModeState | null): void {
     this.powerModeState = state;
     if (this.powerModeLoopId) {
@@ -37,6 +50,9 @@ export class PowerModeManager {
     }
   }
 
+  /**
+   * Gibt den aktuell aktiven Power-Mode-State zurück (oder null).
+   */
   getPowerModeState(): PowerModeState | null {
     return this.powerModeState;
   }
@@ -84,6 +100,10 @@ export class PowerModeManager {
     this.schedulePowerModeRefresh();
   }
 
+  /**
+   * Revert to AUTO mode. Called on expiry or manual/schedule deletion.
+   * Removes the schedule if provided (caller responsibility for persistence).
+   */
   revertPowerMode(scheduleId?: string) {
     this.logger.log(`[Ladeplan] Power mode EXPIRED, reverting to AUTO (scheduleId=${scheduleId || 'none'})`);
     this.device.recordAnalysisEvent('info', `[Ladeplan] Power mode expired for ${scheduleId || 'unknown'}`);

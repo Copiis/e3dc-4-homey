@@ -9,14 +9,15 @@ import { calculatePvSurplusW } from '../utils/pv-surplus';
 /**
  * WallboxManager
  *
- * Extrahiert aus dem alten Monolithen im HomePowerStationDevice.
- * Verantwortlichkeiten:
- * - Erkennen verknüpfter Wallbox-Geräte für diese Station
- * - Synchronisieren von Live-Daten auf die einzelnen Wallbox-Devices
- * - Laden und Sync von Wallbox-EMS-Settings
- * - Aufräumen von Legacy-Capabilities am HKW-Gerät
+ * Extrahiert aus dem HKW. Verwaltet alle Wallbox-bezogenen Aspekte für eine Station.
  *
- * Design: Single Responsibility, Dependency Injection über Callbacks/Factory.
+ * Aufgaben:
+ * - Erkennen und Verknüpfen von Wallbox-Geräten zur aktuellen Station
+ * - Weiterleiten von LiveData und EMS-Settings an die einzelnen WallboxDevices
+ * - Aufräumen von Legacy-Capabilities auf dem Hauptgerät
+ * - Koordination von Wallbox-spezifischen States
+ *
+ * Entkoppelt, nutzt Factory und Callbacks.
  */
 interface WallboxDevice {
   getStoreValue(key: string): unknown;
