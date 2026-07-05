@@ -1,11 +1,7 @@
 import {Data, DataParser, DefaultDataParser, WBTag} from 'easy-rscp';
 import {WALLBOX_EXTERN_DATA_ALG_LEN} from '../model/wallbox-control';
 import {
-    WB_ALG_STATUS_CHARGING_ACTIVE,
-    WB_ALG_STATUS_CHARGING_CANCELED,
-    WB_ALG_STATUS_PLUG_LOCKED,
-    WB_ALG_STATUS_PLUGGED,
-    WB_ALG_STATUS_SUN_MODE,
+    parseAlgStatusByte,
 } from '../model/wallbox-extern-alg-status';
 
 export interface WallboxExternAlgParsed {
@@ -40,21 +36,17 @@ export class WallboxExternAlgParser {
         const prechargePercent = buffer.readUInt8(0);
         const statusByte = buffer.readUInt8(2);
         const relayStatusByte = buffer.length >= 5 ? buffer.readUInt8(4) : 0;
-        const chargingCanceled = (statusByte & WB_ALG_STATUS_CHARGING_CANCELED) !== 0;
-        const chargingActive = (statusByte & WB_ALG_STATUS_CHARGING_ACTIVE) !== 0;
-        const sunModeActive = (statusByte & WB_ALG_STATUS_SUN_MODE) !== 0;
+
+        const status = parseAlgStatusByte(statusByte);
+
         return {
             socPercent: prechargePercent,
             activePhases: buffer.readUInt8(1),
             statusByte,
             maxCurrentA: buffer.readUInt8(3),
             schukoOn: (statusByte & 0x04) !== 0 || (relayStatusByte & 0x10) !== 0,
-            sunModeActive,
-            chargingCanceled,
-            chargingActive,
-            plugLocked: (statusByte & WB_ALG_STATUS_PLUG_LOCKED) !== 0,
-            plugged: (statusByte & WB_ALG_STATUS_PLUGGED) !== 0,
-            chargingEnabled: !chargingCanceled,
+            ...status,
+            chargingEnabled: !status.chargingCanceled,
             rawHex: buffer.subarray(0, Math.min(buffer.length, WALLBOX_EXTERN_DATA_ALG_LEN)).toString('hex'),
         };
     }

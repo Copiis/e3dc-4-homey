@@ -13,7 +13,8 @@
     "node": ">=24"
   },
   "scripts": {
-    "build": "tsc"
+    "build": "tsc",
+    "test": "npm run build && node --test .homeybuild/test/**/*.test.js"
   },
   "devDependencies": {
     "@tsconfig/node24": "^24.0.0",

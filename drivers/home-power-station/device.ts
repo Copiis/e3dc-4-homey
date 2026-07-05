@@ -93,6 +93,7 @@ import {
 import {PowerModeState} from '../../src/model/home-power-station';
 import {calculatePvSurplusW} from '../../src/utils/pv-surplus';
 import {buildPowerStateFromLiveData, publishPlantPowerStateFromStation, setPlantPowerState} from '../../src/utils/plant-power-cache';
+import {LiveDataPoller} from '../../src/polling/live-data-poller';
 
 
 const SYNC_INTERVAL = 1000 * 30; // 30 sec (was 20s; reduces CPU/RSCP/cap churn on older Homeys while flow editor is open)
@@ -116,7 +117,6 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
   private currentManualChargeState: ManualChargeState | null = null
   private currentEmergencyPowerState: EmergencyPowerState | null = null
 
-  private loopId: NodeJS.Timeout |null = null
   private powerModeState: PowerModeState | null = null
   private powerModeLoopId: NodeJS.Timeout | null = null
   private api: RscpApi | undefined = undefined
@@ -133,6 +133,10 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
 
   // Auto-disable timer for detailed diagnostics (saves resources when user forgets to turn off)
   private detailedDiagnosticsAutoOffTimer: NodeJS.Timeout | null = null
+
+  private liveDataPoller: LiveDataPoller | null = null
+
+  // Note: loopId removed - polling now handled by LiveDataPoller
 
   // EMS manual schedules (from settings)
   private emsSchedules: any[] = []
@@ -206,9 +210,22 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
     this.loadEmsSchedules()
     this.startEmsScheduleChecker()
 
-    setTimeout(() => {
-      this.autoSync()
-    }, 2000)
+    // New poller (extracted for better cache/debounce and to reduce monolith size)
+    this.liveDataPoller = new LiveDataPoller(
+      () => this.getApi(),
+      this,
+      () => this.hasLinkedWallboxes(),
+    )
+    this.liveDataPoller.onData((data) => this.processLiveData(data))
+    this.liveDataPoller.start(SYNC_INTERVAL)
+  }
+
+  private hasLinkedWallboxes(): boolean {
+    const wallboxDriver = this.homey.drivers.getDriver('wallbox')
+    return wallboxDriver.getDevices().some((d: any) => {
+      const cfg = d.getStoreValue('settings')
+      return cfg && String(cfg.stationId) === this.getId()
+    })
   }
 
   getCurrentSOC(): number {
@@ -864,20 +881,6 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
     return undefined
   }
 
-  private autoSync() {
-    this.log('Auto sync ...')
-    this.sync()
-        .then(() => {
-          this.loopId = setTimeout(() => this.autoSync(), SYNC_INTERVAL)
-        })
-        .catch(reason => {
-          const message = formatError(reason)
-          this.error('Auto sync failed: ' + message)
-          this.recordAnalysisEvent('error', 'Auto-Sync: ' + message)
-          this.loopId = setTimeout(() => this.autoSync(), SYNC_INTERVAL)
-        })
-  }
-
   private publishWidgetPowerCache(result: LiveData): void {
     const stationId = String(this.getData().id);
     let wallboxPower = 0;
@@ -970,78 +973,67 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
   }
 
   async sync() {
-    return new Promise((resolve, reject) => {
-      this.log('Starting sync ...')
-      const station = this.getApi()
+    if (this.liveDataPoller) {
+      const data = await this.liveDataPoller.forceFetch();
+      if (data) {
+        this.processLiveData(data);
+      }
+      return data;
+    }
+    // Fallback (should not be reached after init)
+    const hasWallboxes = this.hasLinkedWallboxes();
+    const data = await this.getApi().readLiveData(true, this, hasWallboxes);
+    this.processLiveData(data);
+    return data;
+  }
 
-      // Only query wallbox states if there are linked wallbox devices for this station (optimization)
-      const wallboxDriver = this.homey.drivers.getDriver('wallbox')
-      const hasWallboxes = wallboxDriver.getDevices().some((d: any) => {
-        const cfg = d.getStoreValue('settings')
-        return cfg && String(cfg.stationId) === this.getId()
-      })
+  /**
+   * Processing extracted from the old monolithic sync path.
+   * Called by the LiveDataPoller when fresh data arrives.
+   */
+  private processLiveData(result: LiveData) {
+    try {
+      updateCapabilityValue('measure_power', result.pvDelivery, this)
+      const generatedKwh = this.energyMeter.integrateGeneration(result.pvDelivery)
+      updateCapabilityValue('meter_power', generatedKwh, this)
+      const gridDeliveryChange = updateCapabilityValue('measure_grid_delivery', result.gridDelivery, this)
+      const batteryDeliveryChange = updateCapabilityValue('measure_battery_delivery', result.batteryDelivery * -1, this)
+      const houseConsumptionChange = updateCapabilityValue('measure_house_consumption', result.houseConsumption, this)
+      this.gridPowerHasChangedTrigger?.runIfChanged(gridDeliveryChange)
+      this.batteryPowerHasChangedTrigger?.runIfChanged(batteryDeliveryChange)
+      this.houseConsumptionHasChangedTrigger?.runIfChanged(houseConsumptionChange)
+      const batteryLevelChange = updateCapabilityValue('measure_battery', result.batteryChargingLevel * 100, this)
+      this.handleEmsTriggers(result, batteryLevelChange)
+      updateCapabilityValue('external_power_delivery_connected', result.externalPowerConnected, this)
+      if (result.externalPowerConnected) {
+        updateCapabilityValue('measure_external_power_delivery', result.externalPowerDelivery, this)
+      } else {
+        if (this.hasCapability('measure_external_power_delivery')) {
+          this.removeCapability('measure_external_power_delivery').then()
+        }
+      }
+      this.handleChargeTimeCapability(result);
+      this.handleFirmwareChange(result);
+      this.handleChargingConfigurationChanges(result);
+      this.handleManualChargeStateChanges(result)
+      this.handleEmergencyPowerStateChanges(result)
+      this.handleWallbox(result)
+      this.publishWidgetPowerCache(result)
+      this.updateLinkedGridMeter(result)
+      this.handleAvailability();
+      this.recordSyncSuccess(result)
+      this.updateLinkedBatteryLiveData(result)
 
-      station
-          .readLiveData(true, this, hasWallboxes)
-          .then(result => {
-            try {
-              updateCapabilityValue('measure_power', result.pvDelivery, this)
-              const generatedKwh = this.energyMeter.integrateGeneration(result.pvDelivery)
-              updateCapabilityValue('meter_power', generatedKwh, this)
-              const gridDeliveryChange = updateCapabilityValue('measure_grid_delivery', result.gridDelivery, this)
-              const batteryDeliveryChange = updateCapabilityValue('measure_battery_delivery', result.batteryDelivery * -1, this)
-              const houseConsumptionChange = updateCapabilityValue('measure_house_consumption', result.houseConsumption, this)
-              this.gridPowerHasChangedTrigger?.runIfChanged(gridDeliveryChange)
-              this.batteryPowerHasChangedTrigger?.runIfChanged(batteryDeliveryChange)
-              this.houseConsumptionHasChangedTrigger?.runIfChanged(houseConsumptionChange)
-              const batteryLevelChange = updateCapabilityValue('measure_battery', result.batteryChargingLevel * 100, this)
-              this.handleEmsTriggers(result, batteryLevelChange)
-              updateCapabilityValue('external_power_delivery_connected', result.externalPowerConnected, this)
-              if (result.externalPowerConnected) {
-                updateCapabilityValue('measure_external_power_delivery', result.externalPowerDelivery, this)
-              }
-              else {
-                if (this.hasCapability('measure_external_power_delivery')) {
-                  this.removeCapability('measure_external_power_delivery').then()
-                }
-              }
-              this.handleChargeTimeCapability(result);
-              this.handleFirmwareChange(result);
-              this.handleChargingConfigurationChanges(result);
-              this.handleManualChargeStateChanges(result)
-              this.handleEmergencyPowerStateChanges(result)
-              this.handleWallbox(result)
-              this.publishWidgetPowerCache(result)
-              this.updateLinkedGridMeter(result)
-              this.handleAvailability();
-              this.recordSyncSuccess(result)
-              // publishDiagnosticReport removed from hot sync path (was causing heavy format+setSettings every 20s)
-              this.handleBatteryData(station, result, resolve);
-            } catch (e) {
-              this.error('Error processing live data: ' + formatError(e))
-              this.recordSyncFailure('Verarbeitung Live-Daten / processing live data: ' + formatError(e))
-              // publishDiagnosticReport removed from hot sync path
-              this.syncErrorCount++
-              resolve(undefined)
-            }
-          })
-          .catch(e => {
-            this.error('Error reading live data: ' + formatError(e))
-            this.recordSyncFailure('RSCP Live-Daten / live data: ' + formatError(e))
-            // publishDiagnosticReport removed from hot path
-            this.syncErrorCount++
-            if (this.syncErrorCount >= MAX_ALLOWED_ERROR_BEFORE_UNAVAILABLE) {
-              const unavailableMessage = this.homey.__('messages.hps-not-available')
-              this.recordAnalysisEvent('warn', 'HKW nicht verfügbar / unavailable: ' + unavailableMessage)
-              if (this.getAvailable()) {
-                this.postTimelineNotification(this.homey.__('timeline.hps-unavailable'))
-              }
-              this.setUnavailable(unavailableMessage).then()
-            }
-            resolve(undefined)
-          })
-    })
-
+      if (this.updateBatteryData) {
+        this.updateBatteryData = false
+        this.getBatteryCapacity().catch(() => {})
+      }
+      // publishDiagnosticReport removed from hot sync path
+    } catch (e) {
+      this.error('Error processing live data: ' + formatError(e))
+      this.recordSyncFailure('Verarbeitung Live-Daten / processing live data: ' + formatError(e))
+      this.syncErrorCount++
+    }
   }
 
   private handleWallbox(data: LiveData) {
@@ -1568,9 +1560,7 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
 
   async onDeleted() {
     this.log('HomePowerStationDevice has been deleted');
-    if (this.loopId) {
-      clearTimeout(this.loopId)
-    }
+    // live data polling now managed by LiveDataPoller (no loopId)
     if (this.powerModeLoopId) {
       clearTimeout(this.powerModeLoopId)
     }
