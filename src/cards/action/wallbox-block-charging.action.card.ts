@@ -13,6 +13,12 @@ export class WallboxBlockChargingActionCard implements RunListener {
                 return;
             }
 
+            if (typeof wallbox.hasActivePlan === 'function' && wallbox.hasActivePlan()) {
+                wallbox.log && wallbox.log('Wallbox block charging blocked by active Ladeplan');
+                resolve({ skipped: true, reason: 'active plan' });
+                return;
+            }
+
             try {
                 const result = await wallbox.applyChargingAllowed(false);
                 resolveWallboxFlowResult(

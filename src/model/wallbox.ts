@@ -59,4 +59,7 @@ export interface Wallbox extends InternalDevice{
 
     /** Block home battery use for EV in wallbox mixed mode. */
     setDisableBatteryAtMixMode(enabled: boolean): Promise<boolean>
+
+    /** Returns true if a user Ladeplan is currently active (plans take precedence over flows). */
+    hasActivePlan(): boolean
 }

@@ -17,6 +17,11 @@ export class WallboxAllowChargingActionCard implements RunListener {
                 throw new Error('Invalid wallbox device');
             }
 
+            if (typeof wallbox.hasActivePlan === 'function' && wallbox.hasActivePlan()) {
+                wallbox.log && wallbox.log('Wallbox allow charging blocked by active Ladeplan');
+                return { skipped: true, reason: 'active plan' };
+            }
+
             try {
                 const result = await wallbox.applyChargingAllowed(true, current);
                 return resolveWallboxFlowResultForAsync(

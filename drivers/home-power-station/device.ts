@@ -232,6 +232,11 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
     this.powerModeManager?.setPowerModeState(state);
     this.emsScheduleManager?.setPowerModeState(state);
   }
+
+  hasActivePlan(): boolean {
+    const state = this.powerModeManager?.getPowerModeState?.() ?? null;
+    return !!state?.scheduleId;
+  }
   asSimple(): SimpleClass {
     return this;
   }

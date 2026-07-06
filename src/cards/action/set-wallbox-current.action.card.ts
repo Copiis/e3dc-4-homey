@@ -13,6 +13,12 @@ export class SetWallboxCurrentActionCard implements RunListener {
                 return;
             }
 
+            if (typeof wallbox.hasActivePlan === 'function' && wallbox.hasActivePlan()) {
+                wallbox.log && wallbox.log('Set wallbox current blocked by active Ladeplan');
+                resolve({ skipped: true, reason: 'active plan' });
+                return;
+            }
+
             wallbox.log && wallbox.log(`Setting wallbox current to ${current}A`);
             try {
                 const ok = await wallbox.setCurrentLimit(current);

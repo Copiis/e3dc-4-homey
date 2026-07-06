@@ -65,4 +65,5 @@ export interface HomePowerStation extends InternalDevice{
     getEmergencyPowerState(): EmergencyPowerState | null
     buildDiagnosticReport(): Promise<string>
     setPowerModeState(state: PowerModeState | null): void
+    hasActivePlan(): boolean
 }

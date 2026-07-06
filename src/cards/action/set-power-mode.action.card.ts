@@ -12,6 +12,11 @@ export class SetPowerModeAutoActionCard implements RunListener {
     run(args: { device: HomePowerStation; duration?: number; power?: number; [key: string]: unknown }, state: Record<string, unknown>): Promise<unknown> {
         return new Promise<unknown>((resolve, reject) => {
             const hps: HomePowerStation = args.device;
+            if (hps.hasActivePlan && hps.hasActivePlan()) {
+                hps.log('SetPowerModeAutoActionCard: blocked by active Ladeplan');
+                resolve({ skipped: true, reason: 'active plan' });
+                return;
+            }
             hps.log('SetPowerModeAutoActionCard: triggered')
             hps.setPowerModeState(null)
             hps.getApi()
@@ -29,6 +34,11 @@ export class SetPowerModeIdleActionCard implements RunListener {
     run(args: { device: HomePowerStation; duration?: number; power?: number; [key: string]: unknown }, state: Record<string, unknown>): Promise<unknown> {
         return new Promise<unknown>((resolve, reject) => {
             const hps: HomePowerStation = args.device;
+            if (hps.hasActivePlan && hps.hasActivePlan()) {
+                hps.log('SetPowerModeIdleActionCard: blocked by active Ladeplan');
+                resolve({ skipped: true, reason: 'active plan' });
+                return;
+            }
             const durationMinutes: number = args.duration ?? 0;
             hps.log('SetPowerModeIdleActionCard: triggered -> ' + durationMinutes + ' min')
             hps.setPowerModeState({
@@ -51,6 +61,11 @@ export class SetPowerModeChargeActionCard implements RunListener {
     run(args: { device: HomePowerStation; duration?: number; power?: number; [key: string]: unknown }, state: Record<string, unknown>): Promise<unknown> {
         return new Promise<unknown>((resolve, reject) => {
             const hps: HomePowerStation = args.device;
+            if (hps.hasActivePlan && hps.hasActivePlan()) {
+                hps.log('SetPowerModeChargeActionCard: blocked by active Ladeplan');
+                resolve({ skipped: true, reason: 'active plan' });
+                return;
+            }
             const powerW: number = args.power ?? 0;
             const durationMinutes: number = args.duration ?? 0;
             hps.log('SetPowerModeChargeActionCard: triggered -> ' + powerW + 'W for ' + durationMinutes + ' min')
@@ -74,6 +89,11 @@ export class SetPowerModeDischargeActionCard implements RunListener {
     run(args: { device: HomePowerStation; duration?: number; power?: number; [key: string]: unknown }, state: Record<string, unknown>): Promise<unknown> {
         return new Promise<unknown>((resolve, reject) => {
             const hps: HomePowerStation = args.device;
+            if (hps.hasActivePlan && hps.hasActivePlan()) {
+                hps.log('SetPowerModeDischargeActionCard: blocked by active Ladeplan');
+                resolve({ skipped: true, reason: 'active plan' });
+                return;
+            }
             const powerW: number = args.power ?? 0;
             const durationMinutes: number = args.duration ?? 0;
             hps.log('SetPowerModeDischargeActionCard: triggered -> ' + powerW + 'W for ' + durationMinutes + ' min')
@@ -97,6 +117,11 @@ export class SetPowerModeGridChargeActionCard implements RunListener {
     run(args: { device: HomePowerStation; duration?: number; power?: number; [key: string]: unknown }, state: Record<string, unknown>): Promise<unknown> {
         return new Promise<unknown>((resolve, reject) => {
             const hps: HomePowerStation = args.device;
+            if (hps.hasActivePlan && hps.hasActivePlan()) {
+                hps.log('SetPowerModeGridChargeActionCard: blocked by active Ladeplan');
+                resolve({ skipped: true, reason: 'active plan' });
+                return;
+            }
             const powerW: number = args.power ?? 0;
             const durationMinutes: number = args.duration ?? 0;
             hps.log('SetPowerModeGridChargeActionCard: triggered -> ' + powerW + 'W for ' + durationMinutes + ' min')

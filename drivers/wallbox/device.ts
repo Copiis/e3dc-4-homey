@@ -410,6 +410,10 @@ class WallboxDevice extends Homey.Device implements Wallbox {
     return this.homey.__(key, tags);
   }
 
+  hasActivePlan(): boolean {
+    return this.scheduleHandler ? this.scheduleHandler.hasActivePlan() : false;
+  }
+
 }
 
 module.exports = WallboxDevice;

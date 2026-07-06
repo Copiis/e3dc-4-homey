@@ -18,6 +18,12 @@ export class WallboxSetSunModeActionCard implements RunListener {
                 return;
             }
 
+            if (typeof wallbox.hasActivePlan === 'function' && wallbox.hasActivePlan()) {
+                wallbox.log && wallbox.log('Wallbox set sun mode blocked by active Ladeplan');
+                resolve({ skipped: true, reason: 'active plan' });
+                return;
+            }
+
             try {
                 const result = await wallbox.applySunMode(enabled, current);
                 resolveWallboxFlowResult(
