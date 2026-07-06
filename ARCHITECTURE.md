@@ -91,7 +91,7 @@ Der Code ist bereit, um Athom-Entwickler zu beeindrucken.
 - Wallbox device.ts von ~24k auf ~13-15k Bytes reduziert (ähnlich HKW-Qualität):
   - Flow-Karten-Registrierung in FlowCardManager zentralisiert (`setupWallboxFlowCards`).
   - Charging-State-Logik + Serialize + Wait/Verify in neuem `WallboxChargingManager` extrahiert.
-- EmsScheduleManager: Helper nach `src/utils/ems-schedule-utils.ts` extrahiert (getScheduleId, prune, parse, mapMode) als Vorbereitung auf ScheduleStore / ScheduleExecutor / ScheduleValidator bei weiterem Wachstum.
+- EmsScheduleManager: Helper nach `src/utils/ems-schedule-utils.ts` extrahiert + **Split umgesetzt** (`src/managers/ems-schedule/{EmsScheduleStore, EmsScheduleValidator, EmsScheduleExecutor}.ts`). Manager jetzt schlanker Koordinator. Duplizierung + powerModeState-Inkonsistenz beseitigt. FlowCard-Imports in device.ts bereinigt.
 - Tests erweitert: vollständiger Ladeplan-Lebenszyklus unter Fehlern, gleichzeitige Flows/Checks, User-Journey "Wallbox + manueller Ladeplan + PV-Überschuss".
 - any bleibt 0; Konventionen weiterhin strikt beachtet.
 
@@ -197,7 +197,7 @@ Dieses Dokument soll für Außenstehende (Athom-Dev oder neue Entwickler) sofort
 
 ## Bekannte Limitationen & Future Work
 
-- Wallbox-Schedule-Handler + ChargingManager sind extrahiert; bei weiterem Wachstum von EmsScheduleManager lohnt ScheduleStore/Executor/Validator.
+- Wallbox-Schedule-Handler + ChargingManager extrahiert. EmsScheduleManager Split (Store/Validator/Executor) vollständig umgesetzt (2026-07).
 - Keine echte Multi-Wallbox-Unterstützung pro Station (aktuell 1:1).
 - Energy-Summary und Grid-Meter haben noch Potenzial für mehr Extraktion.
 - Tests für kritische Journeys erweitert (Lifecycle under error, concurrent, Wallbox+Plan+PV).
