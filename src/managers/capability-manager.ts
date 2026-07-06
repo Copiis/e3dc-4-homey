@@ -77,12 +77,18 @@ export class CapabilityManager {
   handleChargeTime(result: LiveData) {
     this.device.getBatteryCapacity()
         .then((capacityWh: number) => {
+          // Correct remaining time under current conditions:
+          // - charging (batteryDelivery > 0): time to full = capacity * (1 - SoC)
+          // - discharging: time to empty = capacity * SoC
+          // Matches E3DC sign convention (positive batteryDelivery = charging).
           let targetWh = 0;
-          if (result.batteryDelivery > 0) { // positive = charging (E3DC sign)
-            targetWh = Math.abs(capacityWh * result.batteryChargingLevel);
+          const soc = result.batteryChargingLevel || 0;
+          if (result.batteryDelivery > 0) { // positive = charging (E3DC sign) → remaining to full
+            targetWh = capacityWh * (1 - soc);
           } else {
-            targetWh = Math.abs(capacityWh * (1 - result.batteryChargingLevel));
+            targetWh = capacityWh * soc; // discharging (or zero) → remaining to empty
           }
+          targetWh = Math.max(0, targetWh);
 
           const batteryPowerFromCap = Math.abs( Number(this.device.getCapabilityValue('measure_battery_delivery')) || 0 );
           const batteryPowerW = batteryPowerFromCap > 0 ? batteryPowerFromCap : Math.abs(result.batteryDelivery);

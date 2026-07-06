@@ -1,4 +1,8 @@
 {
+  "1.8.34": {
+    "de": "- **Bugfix Rest(ent)ladezeit:** Korrektur der Berechnung für verbleibende Lade-/Entladezeit (HKW-Kachel + Device). Beim Laden jetzt korrekte Zeit bis voll, beim Entladen Zeit bis leer (basiert auf nutzbarer Kapazität + aktueller Leistung).",
+    "en": "- **Bugfix remaining (dis)charge time:** Fixed calculation of remaining charge/discharge time (HKW tile + device capability). When charging: correct time to full; when discharging: time to empty (based on usable capacity + instantaneous power)."
+  },
   "1.8.33": {
     "de": "- **Refactor:** WallboxScheduleHandler in Store/Validator/Executor gesplittet (konsistent zu EmsScheduleManager). handleEmsTriggers nach CapabilityManager verschoben. Repetitive EMS-Settings in WallboxEmsSettingsManager extrahiert. getApi-Cache + weitere Cleanups. WallboxDevice nun schlanker als HKW-Device.",
     "en": "- **Refactor:** WallboxScheduleHandler split into Store/Validator/Executor (consistent with EmsScheduleManager). handleEmsTriggers moved to CapabilityManager. Repetitive EMS settings extracted to WallboxEmsSettingsManager. getApi cache + other cleanups. WallboxDevice now slimmer than HKW device."

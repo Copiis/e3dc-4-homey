@@ -251,4 +251,54 @@ describe('CapabilityManager', () => {
 
     assert.ok(result);
   });
+
+  it('computes correct charge_time for charge vs discharge (behavioral)', async () => {
+    let capturedChargeTime: string | undefined;
+    const mockDevice = {
+      hasCapability: () => true,
+      addCapability: () => Promise.resolve(),
+      removeCapability: () => Promise.resolve(),
+      getCapabilityValue: (id: string) => (id === 'measure_battery_delivery' ? 1500 : undefined),
+      setCapabilityValue: async (id: string, value: any) => {
+        if (id === 'charge_time') capturedChargeTime = value;
+        return Promise.resolve();
+      },
+      getName: () => 'Test HKW',
+      log: () => {},
+      error: () => {},
+      getBatteryCapacity: () => Promise.resolve(10000),
+      gridPowerHasChangedTrigger: { runIfChanged: () => {} },
+      batteryPowerHasChangedTrigger: { runIfChanged: () => {} },
+      houseConsumptionHasChangedTrigger: { runIfChanged: () => {} },
+      syncErrorCount: 0,
+      updateBatteryData: false,
+    } as any;
+    const mockEnergy = { integrateGeneration: (p: number) => p } as any;
+    const manager = new CapabilityManager(mockDevice, mockEnergy);
+
+    // Discharging at ~1500W from 40% SoC → should be ~ 0.4 * 10000 / 1500 *60 = 16min → 00:16
+    manager.handleChargeTime({
+      batteryDelivery: -1500,
+      batteryChargingLevel: 0.4,
+    } as any);
+
+    // Charging at 1500W from 40% → should be 0.6 *10000 /1500 *60 = 24min → 00:24
+    // But we test discharge first; give microtask time
+    await new Promise(r => setTimeout(r, 20));
+    assert.ok(capturedChargeTime, 'charge_time should have been set');
+    // 10kWh * 0.4 remaining @ 1.5kW = 160 min → 02:40
+    const ct1 = capturedChargeTime || '';
+    assert.ok(ct1 === '02:40' || ct1.includes('02:4'), 'discharge calc should yield 02:40 for 4kWh / 1.5kW');
+
+    // Now simulate charging path
+    capturedChargeTime = undefined;
+    manager.handleChargeTime({
+      batteryDelivery: 1500,
+      batteryChargingLevel: 0.4,
+    } as any);
+    await new Promise(r => setTimeout(r, 20));
+    // charging: 10kWh * 0.6 remaining @1.5kW = 240 min → 04:00
+    const ct2 = capturedChargeTime || '';
+    assert.ok(ct2.includes('04:0') || ct2.includes('4:00'), 'charge calc should yield 04:00');
+  });
 });
