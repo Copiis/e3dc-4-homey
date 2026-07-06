@@ -1,4 +1,8 @@
 {
+  "1.8.33": {
+    "de": "- **Refactor:** WallboxScheduleHandler in Store/Validator/Executor gesplittet (konsistent zu EmsScheduleManager). handleEmsTriggers nach CapabilityManager verschoben. Repetitive EMS-Settings in WallboxEmsSettingsManager extrahiert. getApi-Cache + weitere Cleanups. WallboxDevice nun schlanker als HKW-Device.",
+    "en": "- **Refactor:** WallboxScheduleHandler split into Store/Validator/Executor (consistent with EmsScheduleManager). handleEmsTriggers moved to CapabilityManager. Repetitive EMS settings extracted to WallboxEmsSettingsManager. getApi cache + other cleanups. WallboxDevice now slimmer than HKW device."
+  },
   "1.8.32": {
     "de": "- **Wallbox Ladeplan 'Bis voll':** Erkennung jetzt rein über Leistungsabnahme der Wallbox (nicht über Fahrzeug-SOC). Wenn nach Start des Plans >5 Min. Leistung <80W bleibt → Plan beenden und löschen. Passt zu manueller, bewusster Plan-Erstellung.",
     "en": "- **Wallbox Ladeplan 'Bis voll':** Now detects full via wallbox power draw only (not vehicle SOC). If power stays <80W for >5 min after plan start → end and remove the plan. Matches manual, conscious plan creation."
