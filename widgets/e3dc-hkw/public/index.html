@@ -337,7 +337,7 @@
     setWidgetText('pv-value', formatW(d.pvPower));
     setWidgetText('house-value', formatW(d.consumption));
     setWidgetText('grid-value', formatW(Math.abs(d.gridPower)));
-    setWidgetText('battery-value', formatW(Math.abs(d.batteryPower)));
+    setWidgetText('battery-value', formatW(d.batteryPower));
     setWidgetText('battery-soc', Math.round(d.batteryLevel) + '%');
     setWidgetText('battery-charge-time', d.chargeTime || '—');
     setWidgetText('wallbox-value', formatW(d.wallboxPower));
@@ -406,11 +406,11 @@
   }
 
   function formatW(w) {
-    const abs = Math.abs(Math.round(w));
-    if (abs >= 1000) {
-      return (w / 1000).toFixed(1) + ' kW';
+    const rounded = Math.round(w);
+    if (Math.abs(rounded) >= 1000) {
+      return (rounded / 1000).toFixed(1) + ' kW';
     }
-    return abs + ' W';
+    return rounded + ' W';
   }
 
   function splitBatteryChargeW(powerState) {
