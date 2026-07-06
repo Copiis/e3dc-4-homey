@@ -1,4 +1,8 @@
 {
+  "1.8.31": {
+    "de": "- **Ladepläne & Flows:** Flows respektieren jetzt immer aktive Ladepläne (User-Pläne haben Vorrang). Flow-Befehle für Power-Modes und Wallbox (Charging, Sun, Current) werden ignoriert, solange ein Plan läuft.\n- **Widgets:** Warnhinweis in HKW- und Wallbox-Ladeplaner-Widget hinzugefügt: „Aktive Pläne haben Vorrang vor Flows“.",
+    "en": "- **Ladepläne & Flows:** Flows now always respect active charge plans (user plans take precedence). Power mode and wallbox flows (charging, sun, current) are ignored while a plan is active.\n- **Widgets:** Added warning text in HKW and Wallbox Ladeplaner widgets: “Active plans take precedence over flows”."
+  },
   "1.8.30": {
     "de": "- **Batterie-Leistung (Kachel & Widget):** Vorzeichen jetzt exakt wie im E3DC-Portal (positiv bei Ladung der Batterie, negativ bei Entladung). Kachel zeigt korrekte Werte, Widget-Pfeile sind jetzt richtig.",
     "en": "- **Battery power (tile & widget):** Sign now matches E3DC portal exactly (positive when charging the battery, negative when discharging). Tile shows correct values, widget arrows are now correct."
