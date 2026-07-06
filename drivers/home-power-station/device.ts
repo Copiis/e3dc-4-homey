@@ -1,105 +1,61 @@
-import Homey, {FlowCardTriggerDevice, SimpleClass} from 'homey';
-import {PowerStationConfig} from '../../src/model/power-station.config';
+import Homey, { SimpleClass } from 'homey';
+import { PowerStationConfig } from '../../src/model/power-station.config';
 import {
-  BatteryUnit,
   ChargingConfiguration,
   E3dcConnectionData,
   EmergencyPowerState,
   ManualChargeState
 } from 'easy-rscp';
-import {RscpApi} from '../../src/rscp-api';
-import {HomePowerStation} from '../../src/model/home-power-station';
-import {updateCapabilityValue} from '../../src/utils/capability-utils';
-import {SetMaxChargingPowerActionCard} from '../../src/cards/action/set-max-charging-power.action.card';
-import {clearTimeout} from 'node:timers';
-import {
-  RemoveMaxChargingPowerLimitActionCard
-} from '../../src/cards/action/remove-max-charging-power-limit.action.card';
-import {SetPowerLimitsToDefaultActionCard} from '../../src/cards/action/set-power-limits-to-default.action.card';
-import {SetMaxDischargingPowerActionCard} from '../../src/cards/action/set-max-discharging-power.action.card';
-import {
-  RemoveMaxDischargingPowerLimitActionCard
-} from '../../src/cards/action/remove-max-discharging-power-limit.action.card';
-import {
-  ProvideChargingConfigurationActionCard
-} from '../../src/cards/action/provide-charging-configuration.action.card';
-import {
-  IsMaxChargingLimitGreaterThanConditionCard
-} from '../../src/cards/condition/is-max-charging-limit-greater-than.condition.card';
-import {
-  IsMaxDischargingLimitGreaterThanConditionCard
-} from '../../src/cards/condition/is-max-discharging-limit-greater-than.condition.card';
-import {
-  IsMaxChargingLimitActiveConditionCard
-} from '../../src/cards/condition/is-max-charging-limit-active.condition.card';
-import {
-  IsMaxDischargingLimitActiveConditionCard
-} from '../../src/cards/condition/is-max-discharging-limit-active.condition.card';
-import {IsAnyPowerLimitActiveConditionCard} from '../../src/cards/condition/is-any-power-limit-active.condition.card';
-import {SimpleValueChangedTrigger} from '../../src/cards/trigger/simple-value-changed.trigger';
-import {ActivatePowerLimitsActionCard} from '../../src/cards/action/activate-power-limits.action.card';
-import {ValueChanged} from '../../src/model/value-changed';
-import {DeactivatePowerLimitsActionCard} from '../../src/cards/action/deactivate-power-limits.action.card';
-import {BatteryModuleConfig} from '../../src/model/battery-module.config';
-import {BatteryModule} from '../../src/model/battery-module';
-import {TriggerCard} from '../../src/cards/trigger-card';
-import {ManualBatteryChargingStartedTrigger} from '../../src/cards/trigger/manual-battery-charging-started.trigger';
-import {ManualBatteryChargingStoppedTrigger} from '../../src/cards/trigger/manual-battery-charging-stopped.trigger';
-import {IsManualChargeActiveConditionCard} from '../../src/cards/condition/is-manual-charge-active.condition.card';
-import {LiveData} from '../../src/model/live-data';
-import {StopManualBatteryChargeActionCard} from '../../src/cards/action/stop-manual-battery-charge.action.card';
-import {
-  StartManualBatteryChargeActionPercentageCard,
-  StartManualBatteryChargeWhActionCard
-} from '../../src/cards/action/start-manual-battery-charge.action.card';
-import {ConfigureEmergencyReserveActionCard} from '../../src/cards/action/configure-emergency-reserve.action.card';
-import {RemoveEmergencyReserveActionCard} from '../../src/cards/action/remove-emergency-reserve.action.card';
-import {IslandModeStartedTrigger} from '../../src/cards/trigger/island-mode-started.trigger';
-import {IslandModeStoppedTrigger} from '../../src/cards/trigger/island-mode-stopped.trigger';
-import {
-  IsEmergencyPowerReserveGreaterThanConditionCard
-} from '../../src/cards/condition/is-emergency-power-reserve-greater-than.condition.card';
-import {IsIslandModeActiveConditionCard} from '../../src/cards/condition/is-island-mode-active.condition.card';
-import {IsIslandModePossibleConditionCard} from '../../src/cards/condition/is-island-mode-possible.condition.card';
-import {WallboxConfig} from '../../src/model/wallbox.config';
-import {Wallbox} from '../../src/model/wallbox';
-import {GridMeterConfig} from '../../src/model/grid-meter.config';
-import {GridMeter} from '../../src/model/grid-meter';
-import {formatError} from '../../src/utils/error-utils';
-import {formatSohPercent, resolveUsableCapacityWh} from '../../src/utils/battery-capacity';
-import {BatteryData} from '../../src/model/battery-data';
+import { RscpApi } from '../../src/rscp-api';
+import { HomePowerStation, PowerModeState } from '../../src/model/home-power-station';
+import { updateCapabilityValue } from '../../src/utils/capability-utils';
+import { ValueChanged } from '../../src/model/value-changed';
+import { LiveData } from '../../src/model/live-data';
+
+// Trigger types (needed for dynamically attached properties on the device class)
+import { SimpleValueChangedTrigger } from '../../src/cards/trigger/simple-value-changed.trigger';
+import { ManualBatteryChargingStartedTrigger } from '../../src/cards/trigger/manual-battery-charging-started.trigger';
+import { ManualBatteryChargingStoppedTrigger } from '../../src/cards/trigger/manual-battery-charging-stopped.trigger';
+import { IslandModeStartedTrigger } from '../../src/cards/trigger/island-mode-started.trigger';
+import { IslandModeStoppedTrigger } from '../../src/cards/trigger/island-mode-stopped.trigger';
+
+import { BatteryModuleConfig } from '../../src/model/battery-module.config';
+import { BatteryModule } from '../../src/model/battery-module';
+import { WallboxConfig } from '../../src/model/wallbox.config';
+import { Wallbox } from '../../src/model/wallbox';
+import { GridMeterConfig } from '../../src/model/grid-meter.config';
+import { GridMeter } from '../../src/model/grid-meter';
+
+import { formatError } from '../../src/utils/error-utils';
+import { formatSohPercent, resolveUsableCapacityWh } from '../../src/utils/battery-capacity';
+import { BatteryData } from '../../src/model/battery-data';
 import {
   DeviceDiagnostic,
   DiagnosticSnapshot,
   parseAnalysisLogFromStore,
   serializeAnalysisLog,
 } from '../../src/utils/device-diagnostic';
-import {ExportDiagnosticReportActionCard} from '../../src/cards/action/export-diagnostic-report.action.card';
-import {EnergyMeterIntegrator} from '../../src/utils/energy-meter-integrator';
-import {ensureCapabilities} from '../../src/utils/energy-capability-migration';
-import {HKW_CAPABILITY_ORDER, reorderCapabilitiesIfNeeded} from '../../src/utils/capability-order';
+import { EnergyMeterIntegrator } from '../../src/utils/energy-meter-integrator';
+import { ensureCapabilities } from '../../src/utils/energy-capability-migration';
+import { HKW_CAPABILITY_ORDER, reorderCapabilitiesIfNeeded } from '../../src/utils/capability-order';
+
+import { calculatePvSurplusW } from '../../src/utils/pv-surplus';
 import {
-  SetPowerModeAutoActionCard,
-  SetPowerModeChargeActionCard,
-  SetPowerModeDischargeActionCard,
-  SetPowerModeGridChargeActionCard,
-  SetPowerModeIdleActionCard,
-  POWER_MODE_AUTO,
-  POWER_MODE_IDLE,
-  POWER_MODE_DISCHARGE,
-  POWER_MODE_CHARGE,
-  POWER_MODE_GRID_CHARGE,
-} from '../../src/cards/action/set-power-mode.action.card';
-import {PowerModeState} from '../../src/model/home-power-station';
-import {calculatePvSurplusW} from '../../src/utils/pv-surplus';
-import {buildPowerStateFromLiveData, publishPlantPowerStateFromStation, setPlantPowerState} from '../../src/utils/plant-power-cache';
-import {LiveDataPoller} from '../../src/polling/live-data-poller';
-import {FlowCardManager} from '../../src/cards/flow-card-manager';
-import {WallboxManager} from '../../src/managers/wallbox-manager';
-import {CapabilityManager} from '../../src/managers/capability-manager';
-import {EmsScheduleManager} from '../../src/managers/ems-schedule-manager';
-import {PowerModeManager} from '../../src/managers/power-mode-manager';
-import {DiagnosticManager} from '../../src/managers/diagnostic-manager';
+  buildPowerStateFromLiveData,
+  publishPlantPowerStateFromStation,
+  setPlantPowerState
+} from '../../src/utils/plant-power-cache';
+import { LiveDataPoller } from '../../src/polling/live-data-poller';
+
+// Flow cards now fully encapsulated via FlowCardManager
+import { FlowCardManager } from '../../src/cards/flow-card-manager';
+
+// Managers
+import { WallboxManager } from '../../src/managers/wallbox-manager';
+import { CapabilityManager } from '../../src/managers/capability-manager';
+import { EmsScheduleManager } from '../../src/managers/ems-schedule-manager';
+import { PowerModeManager } from '../../src/managers/power-mode-manager';
+import { DiagnosticManager } from '../../src/managers/diagnostic-manager';
 import { IHpsDevice } from '../../src/types/hps-device';
 const SYNC_INTERVAL = 1000 * 30; // 30 sec (was 20s; reduces CPU/RSCP/cap churn on older Homeys while flow editor is open)
 const POWER_MODE_REFRESH_INTERVAL = 1000 * 30; // 30 sec (was 10s)
