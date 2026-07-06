@@ -19,6 +19,7 @@ import {
   WALLBOX_TILE_HIDDEN_CAPABILITIES,
 } from '../../src/utils/capability-order';
 import {ensureCapabilities} from '../../src/utils/energy-capability-migration';
+import { RunListener } from '../../src/cards/run-listener';
 
 /**
  * WallboxDevice
@@ -63,7 +64,7 @@ class WallboxDevice extends Homey.Device implements Wallbox {
       this.error('Wallbox onInit failed: ' + formatError(e));
     }
     // Flow cards centralized (reduces device size)
-    const flowManager = new FlowCardManager(this as any);
+    const flowManager = new FlowCardManager(this as any); // WallboxDevice implements a different interface than IHpsDevice
     flowManager.setupWallboxFlowCards(this.homey, this.bindDevice.bind(this));
 
     this.registerCapabilityListeners();
@@ -76,7 +77,7 @@ class WallboxDevice extends Homey.Device implements Wallbox {
       () => this.getApi(),
       () => this.getWallboxId(),
       (state: WallboxLiveState) => this.refreshCapabilities(state),
-      this.homey as any,
+      this.homey,
     );
   }
 
@@ -96,9 +97,8 @@ class WallboxDevice extends Homey.Device implements Wallbox {
   }
   
 
-  private bindDevice(listener: any): (args: Record<string, unknown>, state: unknown) => Promise<unknown> {
-    // any for RunListener to avoid import after extraction
-    return (args, state) => (listener as any).run({ ...args, device: this }, state);
+  private bindDevice(listener: RunListener): (args: Record<string, unknown>, state: unknown) => Promise<unknown> {
+    return (args, state) => listener.run({ ...args, device: this }, state);
   }
 
   /**

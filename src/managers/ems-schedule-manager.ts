@@ -51,7 +51,6 @@ export class EmsScheduleManager {
 
   private emsScheduleCheckId: NodeJS.Timeout | null = null;
   private scheduledPlanTimers: Map<string, NodeJS.Timeout> = new Map();
-  private scheduledExpireTimers: Map<string, NodeJS.Timeout> = new Map();
 
   lastPvSurplusW = 0;
 
@@ -80,7 +79,7 @@ export class EmsScheduleManager {
       if (needsRevert) {
         this.logger.log(`[Ladeplan] Manually deleted running schedule ${activeState.scheduleId} — reverting power mode to AUTO`);
         this.device.recordAnalysisEvent('info', `[Ladeplan] Manually deleted active schedule ${activeState.scheduleId}, reverting to AUTO`);
-        this.clearExpireTimer(activeState.scheduleId);
+        this.executor.clearExpireTimer(activeState.scheduleId);
         this.executor.setPowerModeState(null);
         this.apiFactory().setPowerMode(POWER_MODE_AUTO_CONST, 0, true, this.device)
           .catch((e: unknown) => this.logger.error('Failed to revert after manual plan delete: ' + formatError(e)));
@@ -132,7 +131,7 @@ export class EmsScheduleManager {
       const needsRevert = this.store.handleDeletedActiveSchedule(activeState.scheduleId);
       if (needsRevert) {
         this.logger.log(`[Ladeplan] Manually deleted running schedule ${activeState.scheduleId} during check — reverting to AUTO`);
-        this.clearExpireTimer(activeState.scheduleId);
+        this.executor.clearExpireTimer(activeState.scheduleId);
         this.executor.setPowerModeState(null);
         this.apiFactory().setPowerMode(POWER_MODE_AUTO_CONST, 0, true, this.device)
           .catch((e: unknown) => this.logger.error('Failed to revert (check): ' + formatError(e)));
@@ -203,57 +202,13 @@ export class EmsScheduleManager {
     return this.executor.getPowerModeState();
   }
 
-  private async refreshPowerMode() {
-    // Delegiere den eigentlichen Refresh an Executor
-    await this.executor.refreshPowerMode(
-      () => this.getPowerModeState(),
-      (id: string) => this.store.removeCompleted(id)
-    );
-
-    // Plane nächsten Refresh nur wenn noch State aktiv ist (Executor macht den Aufruf)
-    const stillActive = this.getPowerModeState();
-    if (stillActive) {
-      // leichte Vereinfachung: wir starten den nächsten Tick über den Executor-Loop nicht hier
-      // (bisheriger Code hatte einen eigenen Loop; PMM übernimmt jetzt primär)
-    }
-  }
-
-  private revertPowerMode(scheduleId?: string) {
-    // Wird über Executor + Store gehandhabt
-    this.executor.revertPowerMode(scheduleId, (id) => this.store.removeCompleted(id)).catch(() => {});
-  }
-
-  // Timer-Management bleibt im Coordinator
-  private scheduleExpireTimer(scheduleId: string, expiresAt: number) {
-    this.clearExpireTimer(scheduleId);
-    const delay = Math.max(0, expiresAt - Date.now());
-    if (delay === 0) {
-      this.revertPowerMode(scheduleId);
-      return;
-    }
-    const timer = setTimeout(() => {
-      this.revertPowerMode(scheduleId);
-      this.scheduledExpireTimers.delete(scheduleId);
-    }, delay);
-    this.scheduledExpireTimers.set(scheduleId, timer);
-  }
-
-  private clearExpireTimer(scheduleId: string) {
-    const t = this.scheduledExpireTimers.get(scheduleId);
-    if (t) {
-      clearTimeout(t);
-      this.scheduledExpireTimers.delete(scheduleId);
-    }
-  }
-
   clearScheduledPlanTimers() {
     this.scheduledPlanTimers.forEach((t: NodeJS.Timeout) => clearTimeout(t));
     this.scheduledPlanTimers.clear();
   }
 
   clearScheduledExpireTimers() {
-    this.scheduledExpireTimers.forEach((t: NodeJS.Timeout) => clearTimeout(t));
-    this.scheduledExpireTimers.clear();
+    this.executor.clearAllExpireTimers();
   }
 
   stop() {

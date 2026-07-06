@@ -14,8 +14,8 @@ const POWER_MODE_AUTO = 0;
  * Zuständigkeiten:
  * - Speichern und Abfragen des aktuellen PowerModeState
  * - Scheduling von Refresh-Timern (alle 30s) für manuelle oder geplante Modi
- * - Handling von Ablauf-Timern (expiresAt) und untilSoc-Bedingungen
- * - Revertieren zu AUTO bei Ablauf oder Erreichen von Bedingungen
+ * - Revertieren zu AUTO bei Ablauf oder Erreichen von Bedingungen (untilSoc/Expiry)
+ * - Expire-Timer für reine Power-Mode-Pläne werden vom EmsScheduleExecutor verwaltet
  *
  * Wird eng mit EmsScheduleManager und dem HKW-Device zusammen verwendet.
  * Alle Befehle an die RSCP-API werden über die apiFactory delegiert.
@@ -44,9 +44,7 @@ export class PowerModeManager {
     }
     if (state !== null) {
       this.schedulePowerModeRefresh();
-      if (state.expiresAt && state.scheduleId) {
-        this.scheduleExpireTimer(state.scheduleId, state.expiresAt);
-      }
+      // Expire timer scheduling for schedule-based plans is handled by EmsScheduleExecutor
     }
   }
 
@@ -75,7 +73,7 @@ export class PowerModeManager {
         if (state.scheduleId) {
           // delegate to caller if needed
         }
-        this.clearExpireTimer(state.scheduleId || '');
+        // expire timer is managed by caller (EmsScheduleExecutor) for schedule plans
         this.powerModeState = null;
         this.apiFactory().setPowerMode(POWER_MODE_AUTO, 0, true, this.device)
           .catch((e: unknown) => this.logger.error('[Ladeplan] untilSoc revert failed: ' + formatError(e)));
@@ -101,28 +99,18 @@ export class PowerModeManager {
   }
 
   /**
-   * Revert to AUTO mode. Called on expiry or manual/schedule deletion.
-   * Removes the schedule if provided (caller responsibility for persistence).
+   * Revert to AUTO mode. Called on expiry or manual deletion.
+   * Schedule removal (if any) is the caller's responsibility (usually EmsScheduleStore).
    */
   revertPowerMode(scheduleId?: string) {
     this.logger.log(`[Ladeplan] Power mode EXPIRED, reverting to AUTO (scheduleId=${scheduleId || 'none'})`);
     this.device.recordAnalysisEvent('info', `[Ladeplan] Power mode expired for ${scheduleId || 'unknown'}`);
     if (scheduleId) {
-      this.clearExpireTimer(scheduleId);
-      // caller should remove schedule if needed
+      // caller (EMS) should clear its expire timer + remove schedule
     }
     this.powerModeState = null;
     this.apiFactory().setPowerMode(POWER_MODE_AUTO, 0, true, this.device)
       .catch((e: unknown) => this.logger.error('[Ladeplan] auto revert failed: ' + formatError(e)));
-  }
-
-  private scheduleExpireTimer(scheduleId: string, expiresAt: number) {
-    // This is now handled in EMS manager for schedules, but keep for general
-    // For now, delegate expire to caller via revert
-  }
-
-  private clearExpireTimer(scheduleId: string) {
-    // no-op here, managed by caller
   }
 
   stop() {

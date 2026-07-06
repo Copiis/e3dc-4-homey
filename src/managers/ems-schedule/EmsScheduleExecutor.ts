@@ -17,6 +17,8 @@ import { EmsScheduleValidator } from './EmsScheduleValidator';
  * Enthält die Execution + Teile der Scheduling-Business-Logik für Reverts.
  */
 export class EmsScheduleExecutor {
+  private scheduledExpireTimers: Map<string, NodeJS.Timeout> = new Map();
+
   constructor(
     private readonly device: IHpsDevice,
     private readonly apiFactory: () => RscpApi,
@@ -32,6 +34,13 @@ export class EmsScheduleExecutor {
     } else {
       // Fallback nur für sehr alte Test-Szenarien – in Produktion immer PMM
       (this as any)._fallbackPowerModeState = state;
+    }
+
+    // Schedule expire timer for scheduled plans (when we have an ID + expiresAt)
+    if (state?.expiresAt && state?.scheduleId) {
+      this.scheduleExpireTimer(state.scheduleId, state.expiresAt, (id) => {
+        this.revertPowerMode(id).catch(() => {});
+      });
     }
   }
 
@@ -153,5 +162,34 @@ export class EmsScheduleExecutor {
     } catch (e) {
       this.logger.error('[Ladeplan] force revert failed: ' + formatError(e));
     }
+  }
+
+  // --- Expire Timer Management (moved here to slim the coordinator) ---
+
+  scheduleExpireTimer(scheduleId: string, expiresAt: number, onExpire: (id: string) => void) {
+    this.clearExpireTimer(scheduleId);
+    const delay = Math.max(0, expiresAt - Date.now());
+    if (delay === 0) {
+      onExpire(scheduleId);
+      return;
+    }
+    const timer = setTimeout(() => {
+      onExpire(scheduleId);
+      this.scheduledExpireTimers.delete(scheduleId);
+    }, delay);
+    this.scheduledExpireTimers.set(scheduleId, timer);
+  }
+
+  clearExpireTimer(scheduleId: string) {
+    const t = this.scheduledExpireTimers.get(scheduleId);
+    if (t) {
+      clearTimeout(t);
+      this.scheduledExpireTimers.delete(scheduleId);
+    }
+  }
+
+  clearAllExpireTimers() {
+    this.scheduledExpireTimers.forEach((t) => clearTimeout(t));
+    this.scheduledExpireTimers.clear();
   }
 }

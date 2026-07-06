@@ -1,7 +1,10 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert';
 import { EmsScheduleManager } from '../src/managers/ems-schedule-manager';
-import { PowerModeState } from '../src/model/home-power-station';
+import { PowerModeState, EmsSchedule } from '../src/model/home-power-station';
+import { EmsScheduleStore } from '../src/managers/ems-schedule/EmsScheduleStore';
+import { EmsScheduleValidator } from '../src/managers/ems-schedule/EmsScheduleValidator';
+import { EmsScheduleExecutor } from '../src/managers/ems-schedule/EmsScheduleExecutor';
 
 function createMockDevice(overrides: any = {}) {
   return {
@@ -177,5 +180,76 @@ describe('EmsScheduleManager', () => {
     manager.handleEmsTriggers(live);
     // lastPvSurplus updated internally; no crash = pass for journey
     assert.ok(typeof manager.lastPvSurplusW === 'number');
+  });
+});
+
+describe('EmsScheduleValidator (new split class)', () => {
+  const validator = new EmsScheduleValidator();
+
+  it('correctly detects isInWindow for normal schedule', () => {
+    const now = Date.now();
+    const s: EmsSchedule = { start: new Date(now - 1000).toISOString(), end: new Date(now + 60000).toISOString(), mode: 'charge' };
+    assert.strictEqual(validator.isInWindow(s, now), true);
+  });
+
+  it('returns false for schedule before start', () => {
+    const now = Date.now();
+    const s: EmsSchedule = { start: new Date(now + 60000).toISOString(), mode: 'charge' };
+    assert.strictEqual(validator.isInWindow(s, now), false);
+  });
+
+  it('builds correct power state for untilSoc plan', () => {
+    const s: EmsSchedule = { id: 'u1', start: '10:00', mode: 'charge', untilSoc: 85, powerW: 3000 };
+    const state: any = validator.buildPowerStateForSchedule(s, 'u1');
+    assert.strictEqual(state.untilSoc, 85);
+    assert.strictEqual(state.mode, 3); // charge
+  });
+});
+
+describe('EmsScheduleStore (new split class)', () => {
+  function createStore(overrides: any = {}) {
+    const device = createMockDevice({
+      getSetting: () => JSON.stringify([{ id: 'p1', start: '08:00', mode: 'charge', powerW: 2000 }]),
+      ...overrides,
+    });
+    return new EmsScheduleStore(device, device);
+  }
+
+  it('loads and prunes schedules', () => {
+    const store = createStore();
+    const plans = store.loadFromSettings();
+    assert.strictEqual(plans.length, 1);
+  });
+
+  it('handles triggered set correctly and cleans deleted active', () => {
+    const store = createStore();
+    store.loadFromSettings();
+    store.addTriggered('p1');
+    assert.strictEqual(store.hasTriggered('p1'), true);
+
+    const needsRevert = store.handleDeletedActiveSchedule('p1'); // simulate plan still there
+    assert.strictEqual(needsRevert, false);
+  });
+
+  it('clears triggered on demand', () => {
+    const store = createStore();
+    store.addTriggered('x');
+    store.clearTriggered();
+    assert.strictEqual(store.hasTriggered('x'), false);
+  });
+});
+
+describe('EmsScheduleExecutor basic behavior (new split class)', () => {
+  it('delegates setPowerModeState and can revert', async () => {
+    let lastMode: number | null = null;
+    const mockDevice = createMockDevice();
+    const mockApi = () => ({
+      setPowerMode: (mode: number) => { lastMode = mode; return Promise.resolve(true); },
+    } as any);
+
+    const exec = new EmsScheduleExecutor(mockDevice, mockApi, mockDevice);
+    exec.setPowerModeState({ mode: 3, powerW: 1000, expiresAt: Date.now() + 10000, scheduleId: 'e1' });
+    await exec.forceRevertToAuto();
+    assert.strictEqual(lastMode, 0); // should have sent AUTO
   });
 });
