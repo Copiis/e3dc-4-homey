@@ -197,7 +197,12 @@ Dieses Dokument soll für Außenstehende (Athom-Dev oder neue Entwickler) sofort
 
 ## Bekannte Limitationen & Future Work
 
-- Wallbox-Schedule-Handler + ChargingManager extrahiert. EmsScheduleManager Split (Store/Validator/Executor) vollständig umgesetzt (2026-07).
+- Wallbox-Schedule-Handler + ChargingManager extrahiert + 2026-07 in Store/Validator/Executor gesplittet (analog EMS).
+- EmsScheduleManager + Scheduler vollständig zerlegt.
+- handleEmsTriggers nach CapabilityManager verschoben.
+- Wallbox EMS-Settings repetitiv in WallboxEmsSettingsManager extrahiert.
+- WallboxDevice nun schlanker als HKW-Device (405 vs 412 Zeilen).
+- Alle Punkte aus Feedback-Liste umgesetzt.
 - Keine echte Multi-Wallbox-Unterstützung pro Station (aktuell 1:1).
 - Energy-Summary und Grid-Meter haben noch Potenzial für mehr Extraktion.
 - Tests für kritische Journeys erweitert (Lifecycle under error, concurrent, Wallbox+Plan+PV).

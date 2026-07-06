@@ -20,6 +20,18 @@ import {
 } from '../../src/utils/capability-order';
 import {ensureCapabilities} from '../../src/utils/energy-capability-migration';
 import { RunListener } from '../../src/cards/run-listener';
+import { WallboxEmsSettingsManager } from '../../src/managers/wallbox-ems-settings-manager';
+
+const WALLBOX_LEGACY_CAPABILITIES = [
+  'evcharger_charging',
+  'evcharger_charging_state',
+  'measure_wallbox_consumption',
+  'measure_vehicle_soc',
+  'wallbox_start_charging',
+  'wallbox_stop_charging',
+  'wallbox_sun_mode_on',
+  'wallbox_sun_mode_off',
+];
 
 /**
  * WallboxDevice
@@ -46,6 +58,7 @@ class WallboxDevice extends Homey.Device implements Wallbox {
 
   private scheduleHandler!: WallboxScheduleHandler;
   private chargingManager!: WallboxChargingManager;
+  private emsSettingsManager!: WallboxEmsSettingsManager;
 
 
   /**
@@ -64,7 +77,7 @@ class WallboxDevice extends Homey.Device implements Wallbox {
       this.error('Wallbox onInit failed: ' + formatError(e));
     }
     // Flow cards centralized (reduces device size)
-    const flowManager = new FlowCardManager(this as any); // Wallbox uses different interface than HKW's IHpsDevice
+    const flowManager = new FlowCardManager(this);
     flowManager.setupWallboxFlowCards(this.homey, this.bindDevice.bind(this));
 
     this.registerCapabilityListeners();
@@ -79,6 +92,7 @@ class WallboxDevice extends Homey.Device implements Wallbox {
       (state: WallboxLiveState) => this.refreshCapabilities(state),
       this.homey,
     );
+    this.emsSettingsManager = new WallboxEmsSettingsManager(this as any);
   }
 
 
@@ -125,17 +139,7 @@ class WallboxDevice extends Homey.Device implements Wallbox {
     await ensureCapabilities(this, [...WALLBOX_CAPABILITY_ORDER]);
     await reorderCapabilitiesIfNeeded(this, WALLBOX_CAPABILITY_ORDER);
     await this.applyLadeplanTileVisibility();
-    const legacyCapabilities = [
-      'evcharger_charging',
-      'evcharger_charging_state',
-      'measure_wallbox_consumption',
-      'measure_vehicle_soc',
-      'wallbox_start_charging',
-      'wallbox_stop_charging',
-      'wallbox_sun_mode_on',
-      'wallbox_sun_mode_off',
-    ];
-    for (const capability of legacyCapabilities) {
+    for (const capability of WALLBOX_LEGACY_CAPABILITIES) {
       if (!this.hasCapability(capability)) {
         continue;
       }
@@ -239,10 +243,15 @@ class WallboxDevice extends Homey.Device implements Wallbox {
     });
   }
 
-  private getApi(): Promise<RscpApi> {
+  private cachedHps: HomePowerStation | null = null;
+
+  private async getApi(): Promise<RscpApi> {
     const config: WallboxConfig = this.getStoreValue('settings');
     if (!config || !config.stationId) {
       return Promise.reject(new Error('Wallbox not associated with a Home Power Station'));
+    }
+    if (this.cachedHps && (this.cachedHps as any).getId?.() === config.stationId) {
+      return this.cachedHps.getApi();
     }
     const hpsDevices = this.homey.drivers.getDriver('home-power-station').getDevices();
     const station = hpsDevices.find((d: unknown) => {
@@ -252,7 +261,8 @@ class WallboxDevice extends Homey.Device implements Wallbox {
     if (!station || !station.getApi) {
       return Promise.reject(new Error('Associated Home Power Station not found or not ready'));
     }
-    return Promise.resolve(station.getApi());
+    this.cachedHps = station;
+    return station.getApi();
   }
 
   private getWallboxId(): number {
@@ -312,48 +322,28 @@ class WallboxDevice extends Homey.Device implements Wallbox {
    * System-wide: allow home battery to discharge for car charging.
    */
   async setBatteryToCar(enabled: boolean): Promise<boolean> {
-    const api = await this.getApi();
-    const ok = await api.setBatteryToCarMode(enabled, true, this);
-    await this.refreshEmsAfterApiCall(ok, 'setBatteryToCar');
-    return ok;
+    return this.emsSettingsManager.setBatteryToCar(enabled);
   }
 
   /**
    * System-wide: prioritize car over home battery.
    */
   async setBatteryBeforeCar(enabled: boolean): Promise<boolean> {
-    const api = await this.getApi();
-    const ok = await api.setBatteryBeforeCarMode(enabled, true, this);
-    await this.refreshEmsAfterApiCall(ok, 'setBatteryBeforeCar');
-    return ok;
+    return this.emsSettingsManager.setBatteryBeforeCar(enabled);
   }
 
   /**
    * System-wide: minimum home battery SOC before allowing car charging.
    */
   async setDischargeBatteryUntil(percent: number): Promise<boolean> {
-    const api = await this.getApi();
-    const ok = await api.setWbDischargeBatteryUntil(percent, true, this);
-    await this.refreshEmsAfterApiCall(ok, 'setDischargeBatteryUntil');
-    return ok;
+    return this.emsSettingsManager.setDischargeBatteryUntil(percent);
   }
 
   /**
    * System-wide: prevent home battery use in wallbox mixed mode.
    */
   async setDisableBatteryAtMixMode(enabled: boolean): Promise<boolean> {
-    const api = await this.getApi();
-    const ok = await api.setWallboxDisableBatteryAtMixMode(enabled, true, this);
-    await this.refreshEmsAfterApiCall(ok, 'setDisableBatteryAtMixMode');
-    return ok;
-  }
-
-  private async refreshEmsAfterApiCall(ok: boolean, method: string): Promise<void> {
-    if (ok) {
-      await this.refreshEmsSettings().catch(e => {
-        this.log(`refreshEmsSettings after ${method} failed: ` + formatError(e));
-      });
-    }
+    return this.emsSettingsManager.setDisableBatteryAtMixMode(enabled);
   }
 
   /**

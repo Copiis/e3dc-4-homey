@@ -163,7 +163,6 @@ describe('EmsScheduleManager', () => {
   it('pv surplus trigger + schedule interaction (critical user journey: wallbox + plan + pv)', () => {
     const mockDevice = createMockDevice({
       getSetting: () => '[]',
-      lastPvSurplusW: 1200,
       homey: {
         setInterval: () => 0,
         setTimeout: () => 123,
@@ -173,13 +172,27 @@ describe('EmsScheduleManager', () => {
         },
       },
     });
-    const mockApi = createMockApi();
-    const manager = new EmsScheduleManager(mockDevice, mockApi, mockDevice);
-    // simulate trigger handling (pv surplus path)
+    const energyMeter = { integrateGeneration: () => 0 } as any;
+    const capManager = new (require('../src/managers/capability-manager').CapabilityManager)(mockDevice, energyMeter);
+    // simulate trigger handling (pv surplus path) - logic now in CapabilityManager
     const live: any = { pvDelivery: 5000, houseConsumption: 2000, batteryDelivery: -1000 };
-    manager.handleEmsTriggers(live);
+    capManager.handleEmsTriggers(live);
     // lastPvSurplus updated internally; no crash = pass for journey
-    assert.ok(typeof manager.lastPvSurplusW === 'number');
+    assert.ok(typeof capManager.lastPvSurplusW === 'number');
+  });
+
+  it('concurrent schedule checks without duplicate (edge case)', () => {
+    const schedulesJson = JSON.stringify([
+      { id: 'c1', start: '08:00', mode: 'charge', powerW: 3000, endTs: Date.now() + 3600000 }
+    ]);
+    const mockDevice = createMockDevice({ getSetting: () => schedulesJson });
+    const calls: number[] = [];
+    const mockApi = () => ({ setPowerMode: (mode: number) => { calls.push(mode); return Promise.resolve(true); } } as any);
+    const manager = new EmsScheduleManager(mockDevice, mockApi, mockDevice);
+    manager.loadEmsSchedules();
+    manager.checkEmsSchedules();
+    manager.checkEmsSchedules();
+    assert.ok(calls.length <= 1);
   });
 });
 

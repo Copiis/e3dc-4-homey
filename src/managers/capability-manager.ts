@@ -5,6 +5,7 @@ import { formatError } from '../utils/error-utils';
 import { IHpsDevice } from '../types/hps-device';
 import type { ChargingConfiguration, EmergencyPowerState, ManualChargeState } from 'easy-rscp';
 import { ValueChanged } from '../model/value-changed';
+import { calculatePvSurplusW } from '../utils/pv-surplus';
 
 /**
  * Result of processing live power data (used by HKW device for EMS triggers).
@@ -34,6 +35,7 @@ export class CapabilityManager {
   currentChargingConfig: ChargingConfiguration | null = null;
   currentManualChargeState: ManualChargeState | null = null;
   currentEmergencyPowerState: EmergencyPowerState | null = null;
+  lastPvSurplusW = 0;
 
   constructor(private readonly device: IHpsDevice, private readonly energyMeter: EnergyMeterIntegrator) {}
 
@@ -225,5 +227,36 @@ export class CapabilityManager {
           result.emergencyPowerState);
       }
     });
+  }
+
+  /**
+   * Handles PV surplus and battery SoC triggers.
+   * Moved here from EmsScheduleManager as it is general trigger logic, not schedule specific.
+   */
+  handleEmsTriggers(result: LiveData, batteryLevelChange?: ValueChanged<number>) {
+    const batteryPowerW = result.batteryDelivery;
+    const surplus = calculatePvSurplusW(result.pvDelivery, result.houseConsumption, batteryPowerW);
+    const previousSurplus = this.lastPvSurplusW || 0;
+    this.lastPvSurplusW = surplus;
+
+    try {
+      const pvSurplusCard = this.device.homey.flow.getDeviceTriggerCard('pv_surplus_exceeds');
+      pvSurplusCard.trigger(this.device, { surplus }, { surplus, previousSurplus })
+        .catch((reason: unknown) => this.device.error('PV surplus trigger failed: ' + formatError(reason)));
+    } catch (e) {
+      this.device.error('PV surplus trigger card unavailable: ' + formatError(e));
+    }
+
+    if (batteryLevelChange?.oldValue != null && batteryLevelChange.newValue != null) {
+      try {
+        const socCard = this.device.homey.flow.getDeviceTriggerCard('battery_soc_below');
+        socCard.trigger(this.device, { soc: batteryLevelChange.newValue }, {
+          soc: batteryLevelChange.newValue,
+          previousSoc: batteryLevelChange.oldValue,
+        }).catch((reason: unknown) => this.device.error('Battery SoC trigger failed: ' + formatError(reason)));
+      } catch (e) {
+        this.device.error('Battery SoC trigger card unavailable: ' + formatError(e));
+      }
+    }
   }
 }
