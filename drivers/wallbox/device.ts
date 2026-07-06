@@ -64,7 +64,7 @@ class WallboxDevice extends Homey.Device implements Wallbox {
       this.error('Wallbox onInit failed: ' + formatError(e));
     }
     // Flow cards centralized (reduces device size)
-    const flowManager = new FlowCardManager(this as any); // WallboxDevice implements a different interface than IHpsDevice
+    const flowManager = new FlowCardManager(this as any); // Wallbox uses different interface than HKW's IHpsDevice
     flowManager.setupWallboxFlowCards(this.homey, this.bindDevice.bind(this));
 
     this.registerCapabilityListeners();
@@ -82,20 +82,6 @@ class WallboxDevice extends Homey.Device implements Wallbox {
   }
 
 
-
-  /**
-   * Core logic for Wallbox Ladepläne.
-   * - Parses schedules from settings
-   * - Reverts actions for manually deleted plans
-   * - Applies active plans (with force for Ladeplan)
-   * - Handles untilFull / vehicle SOC conditions
-   * - Auto-cleans expired plans
-   * - Updates tile visibility only on state change
-   */
-  private async checkWallboxSchedules() {
-    await this.scheduleHandler.check();
-  }
-  
 
   private bindDevice(listener: RunListener): (args: Record<string, unknown>, state: unknown) => Promise<unknown> {
     return (args, state) => listener.run({ ...args, device: this }, state);

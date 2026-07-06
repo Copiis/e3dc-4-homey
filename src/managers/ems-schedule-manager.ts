@@ -19,6 +19,7 @@ import {
 import { EmsScheduleStore } from './ems-schedule/EmsScheduleStore';
 import { EmsScheduleValidator } from './ems-schedule/EmsScheduleValidator';
 import { EmsScheduleExecutor } from './ems-schedule/EmsScheduleExecutor';
+import { EmsScheduleScheduler } from './ems-schedule/EmsScheduleScheduler';
 
 const POWER_MODE_AUTO_CONST = POWER_MODE_AUTO; // lokale Konstante für Kompatibilität
 
@@ -35,22 +36,20 @@ export { POWER_MODE_AUTO, POWER_MODE_IDLE, POWER_MODE_DISCHARGE, POWER_MODE_CHAR
 /**
  * EmsScheduleManager (Koordinator)
  *
- * Nach dem Split deutlich schlanker:
- * - Koordination + Timer (geplante Starts, Interval-Checker, Expire-Timer)
- * - Delegiert Store-Logik → EmsScheduleStore
+ * Nach vollständigem Split sehr schlank:
+ * - Reine Koordination
+ * - Delegiert Store → EmsScheduleStore
  * - Delegiert Business-Regeln → EmsScheduleValidator
- * - Delegiert Execution + Revert → EmsScheduleExecutor (nutzt PowerModeManager)
+ * - Delegiert Execution/Revert → EmsScheduleExecutor
+ * - Delegiert Timer → EmsScheduleScheduler
  *
- * Keine Duplizierung mehr zwischen load und check.
- * Kein direktes Halten von powerModeState (außer minimaler Fallback).
+ * Keine Duplizierung, keine direkte State-Haltung.
  */
 export class EmsScheduleManager {
   private store: EmsScheduleStore;
   private validator: EmsScheduleValidator;
   private executor: EmsScheduleExecutor;
-
-  private emsScheduleCheckId: NodeJS.Timeout | null = null;
-  private scheduledPlanTimers: Map<string, NodeJS.Timeout> = new Map();
+  private scheduler: EmsScheduleScheduler;
 
   lastPvSurplusW = 0;
 
@@ -63,11 +62,17 @@ export class EmsScheduleManager {
     this.validator = new EmsScheduleValidator();
     this.store = new EmsScheduleStore(device, logger);
     this.executor = new EmsScheduleExecutor(device, apiFactory, logger, powerModeManager, this.validator);
+    this.scheduler = new EmsScheduleScheduler(
+      device,
+      logger,
+      () => this.checkEmsSchedules(),
+      (s, id) => this.activateScheduledPlanIfNeeded(s, id)
+    );
   }
 
   /**
    * Lädt Schedules (delegiert komplett an Store).
-   * Räumt Timer auf und plant neue zukünftige Starts.
+   * Plant zukünftige Starts über Scheduler.
    */
   loadEmsSchedules() {
     const schedules = this.store.loadFromSettings();
@@ -86,36 +91,13 @@ export class EmsScheduleManager {
       }
     }
 
-    // Alte Timer löschen + neue zukünftige Starts planen
-    this.clearScheduledPlanTimers();
-    this.clearScheduledExpireTimers();
-
-    const nowTs = Date.now();
-    for (const s of schedules) {
-      if (!s.start || !s.mode) continue;
-      const startTs = (typeof s.startTs === 'number') ? s.startTs : parseDateTime(s.start);
-      if (isNaN(startTs) || startTs <= nowTs) continue;
-
-      const id = getScheduleId(s);
-      const delay = startTs - nowTs;
-      this.logger.log(`[Ladeplan] scheduling timer for plan ${id} in ${delay}ms`);
-      this.device.recordAnalysisEvent('info', `[Ladeplan] scheduling timer for ${id} delay=${delay}ms`);
-
-      const timer = setTimeout(() => {
-        this.activateScheduledPlanIfNeeded(s, id);
-        this.scheduledPlanTimers.delete(id);
-      }, delay);
-      this.scheduledPlanTimers.set(id, timer);
-    }
+    // Timer-Management über Scheduler
+    this.scheduler.clearAllTimers();
+    this.scheduler.scheduleFutureStarts(schedules);
   }
 
   startEmsScheduleChecker() {
-    if (this.emsScheduleCheckId) {
-      clearInterval(this.emsScheduleCheckId);
-    }
-    this.clearScheduledPlanTimers();
-    this.emsScheduleCheckId = this.device.homey.setInterval(() => this.checkEmsSchedules(), 30 * 1000);
-    setTimeout(() => this.checkEmsSchedules(), 5000);
+    this.scheduler.startChecker();
   }
 
   /**
@@ -202,19 +184,9 @@ export class EmsScheduleManager {
     return this.executor.getPowerModeState();
   }
 
-  clearScheduledPlanTimers() {
-    this.scheduledPlanTimers.forEach((t: NodeJS.Timeout) => clearTimeout(t));
-    this.scheduledPlanTimers.clear();
-  }
-
-  clearScheduledExpireTimers() {
-    this.executor.clearAllExpireTimers();
-  }
-
   stop() {
-    if (this.emsScheduleCheckId) clearInterval(this.emsScheduleCheckId);
-    this.clearScheduledPlanTimers();
-    this.clearScheduledExpireTimers();
+    this.scheduler.stop();
+    this.executor.clearAllExpireTimers();
   }
 
   getEmsSchedules() {

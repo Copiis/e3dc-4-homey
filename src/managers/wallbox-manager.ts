@@ -4,7 +4,6 @@ import { Wallbox } from '../model/wallbox';
 import { WallboxEmsSettings } from '../model/wallbox-ems-settings';
 import { RscpApi } from '../rscp-api';
 import { formatError } from '../utils/error-utils';
-import { calculatePvSurplusW } from '../utils/pv-surplus';
 
 /**
  * WallboxManager
@@ -134,24 +133,4 @@ export class WallboxManager {
     return { wallboxPower, wallboxSolarShare, hasWallbox };
   }
 
-  /**
-   * Updates the widget power cache on the HPS device.
-   * Extracted from device.ts to reduce monolith.
-   */
-  updateWidgetPowerCache(result: LiveData, agg: { wallboxPower: number; wallboxSolarShare: number; hasWallbox: boolean }) {
-    const pvSurplus = calculatePvSurplusW(result.pvDelivery, result.houseConsumption, result.batteryDelivery);
-    const widgetPower = {
-      pv: result.pvDelivery,
-      house: result.houseConsumption,
-      grid: result.gridDelivery,
-      battery: result.batteryDelivery,
-      wallbox: agg.wallboxPower,
-      wallboxSolarShare: agg.wallboxSolarShare,
-      hasWallbox: agg.hasWallbox,
-      pvSurplus: pvSurplus,
-    };
-    // Note: caller (device) should provide the device instance or we can pass a setter
-    // For now, this is a helper; actual store is still in device for simplicity
-    return widgetPower;
-  }
 }
