@@ -70,13 +70,19 @@ describe('WallboxScheduleHandler', () => {
     assert.strictEqual(handler.hasActivePlan(), true);
   });
 
-  it('handles untilFull logic stub (SOC case)', async () => {
+  it('handles untilFull logic (power drop case, no vehicle SOC)', async () => {
+    const now = Date.now();
     const mockDevice = createMockDevice({
-      getCapabilityValue: (key: string) => key === 'measure_vehicle_soc' ? 96 : 0,
+      getCapabilityValue: (key: string) => {
+        if (key === 'measure_power') return 30; // low power
+        return 0;
+      },
     });
     const handler = new WallboxScheduleHandler(mockDevice);
     (handler as any).triggeredWallboxSchedules.set('p-until', 'allow');
-    await (handler as any).handleUntilFull([{ id: 'p-until', start: '08:00', action: 'allow', untilFull: true, untilVehicleSoc: 95 }], Date.now());
+    // Simulate low power for >5 min
+    (handler as any).untilFullLowPowerSince['p-until'] = now - (6 * 60 * 1000);
+    await (handler as any).handleUntilFull([{ id: 'p-until', start: '08:00', action: 'allow', untilFull: true }], now);
     assert.strictEqual((handler as any).triggeredWallboxSchedules.size, 0);
   });
 

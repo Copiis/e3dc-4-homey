@@ -168,15 +168,56 @@ export class WallboxScheduleHandler {
   }
 
   private async handleUntilFull(schedules: WallboxSchedule[], now: number) {
-    // Until full logic (temporarily stubbed to complete the extraction for Punkt 1)
-    // Full implementation can be restored after type stabilization
+    // Until full for Wallbox: we do NOT use vehicle SOC (not reliably available like house battery).
+    // Instead we monitor the wallbox power draw. If after the plan has started,
+    // the power stays very low for a longer period, we consider the car full,
+    // stop charging and remove the plan.
+    let currentPower = 0;
+    try {
+      currentPower = Number(this.device.getCapabilityValue('measure_power')) || 0;
+    } catch (e) {
+      // ignore, use 0
+    }
+    const absPower = Math.abs(currentPower);
+
+    const LOW_POWER_THRESHOLD = 80;      // W
+    const LOW_POWER_DURATION_MS = 5 * 60 * 1000; // 5 minutes of low power
+
+    const plansToRemove: string[] = [];
+
     for (const s of schedules) {
       const id = s.id || (s.start + '_' + s.action);
-      if (s.untilFull && this.triggeredWallboxSchedules.has(id)) {
-        // Simplified: always stop for now in stub
-        await this.device.applyChargingAllowed(false, undefined, true).catch(() => {});
-        this.triggeredWallboxSchedules.delete(id);
+      if (!s.untilFull || !this.triggeredWallboxSchedules.has(id)) continue;
+
+      const action = this.triggeredWallboxSchedules.get(id);
+      if (action !== 'allow') continue; // "bis voll" typically applies to allow charging
+
+      if (absPower < LOW_POWER_THRESHOLD) {
+        if (!this.untilFullLowPowerSince[id]) {
+          this.untilFullLowPowerSince[id] = now;
+          this.device.log(`[WallboxLadeplan] Low power draw (${absPower}W) detected for untilFull plan ${id} — starting low-power timer`);
+        } else if (now - this.untilFullLowPowerSince[id] >= LOW_POWER_DURATION_MS) {
+          this.device.log(`[WallboxLadeplan] untilFull reached for ${id} (low power for >5 min after start). Stopping and removing plan.`);
+          await this.device.applyChargingAllowed(false, undefined, true).catch(() => {});
+          this.triggeredWallboxSchedules.delete(id);
+          delete this.untilFullLowPowerSince[id];
+          plansToRemove.push(id);
+        }
+      } else {
+        // power is flowing again → reset the low-power timer
+        if (this.untilFullLowPowerSince[id]) {
+          delete this.untilFullLowPowerSince[id];
+          this.device.log(`[WallboxLadeplan] Power draw resumed for untilFull plan ${id}, timer reset`);
+        }
       }
+    }
+
+    if (plansToRemove.length > 0) {
+      const remaining = schedules.filter(s => {
+        const sid = s.id || (s.start + '_' + (s.action || ''));
+        return !plansToRemove.includes(sid);
+      });
+      await this.device.setSettings({ schedules: JSON.stringify(remaining) }).catch(() => {});
     }
   }
 

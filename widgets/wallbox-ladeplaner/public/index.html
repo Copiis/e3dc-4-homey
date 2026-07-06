@@ -43,7 +43,7 @@
     </div>
   </div>
   <div class="checkbox" style="margin-top:2px; margin-bottom:4px; white-space: nowrap;">
-    <input type="checkbox" id="until-full"> <span style="white-space: nowrap;">Bis voll (Fahrzeug SOC)</span>
+    <input type="checkbox" id="until-full"> <span style="white-space: nowrap;">Bis voll (bei längerer Leistungsabnahme)</span>
   </div>
 
   <div class="row">
@@ -179,7 +179,7 @@ async function loadPlans() {
     plans.forEach((p, i) => {
       const d = document.createElement('div');
       d.className = 'plan';
-      const end = p.untilFull ? 'bis voll' : (p.end ? new Date(p.end).toLocaleString() : '');
+      const end = p.untilFull ? 'bis voll (Leistung)' : (p.end ? new Date(p.end).toLocaleString() : '');
       const displayAction = p.action === 'allow' ? 'Laden' : p.action;
       d.innerHTML = `
         <div class="plan-header">
