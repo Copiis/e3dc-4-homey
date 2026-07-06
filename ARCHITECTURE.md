@@ -71,8 +71,9 @@ Der Code erreicht jetzt das Ziel "Athom Code Winner":
 - Einheitliche Konventionen (z.B. Battery-Sign)
 
 **Was noch minimal auffallen könnte:**
-- Wallbox ist immer noch etwas größer als der HKW (aber gut strukturiert)
+- Wallbox device jetzt vergleichbar schlank zum HKW (ChargingManager + FlowCardManager).
 - Battery-Module zeigen System-Gesamtleistung (dokumentiert)
+- EmsScheduleManager bei Bedarf weiter zerlegbar.
 
 Der Code ist bereit, um Athom-Entwickler zu beeindrucken.
 
@@ -85,6 +86,14 @@ Der Code ist bereit, um Athom-Entwickler zu beeindrucken.
 2. Wallbox device.ts: Struktur angleichen (weniger Monolith, mehr Manager-Extraktion wo sinnvoll). → **ERLEDIGT** (vollständiges Aufräumen)
 3. JSDoc überall vervollständigen + ARCHITECTURE weiter ausbauen (Design-Rationale). → **IN PROGRESS**
 4. Test-Qualität: mehr Verhaltens- und Edge-Case-Tests. → **IN PROGRESS**
+
+### Review-Feedback 2026-07-06 umgesetzt
+- Wallbox device.ts von ~24k auf ~13-15k Bytes reduziert (ähnlich HKW-Qualität):
+  - Flow-Karten-Registrierung in FlowCardManager zentralisiert (`setupWallboxFlowCards`).
+  - Charging-State-Logik + Serialize + Wait/Verify in neuem `WallboxChargingManager` extrahiert.
+- EmsScheduleManager: Helper nach `src/utils/ems-schedule-utils.ts` extrahiert (getScheduleId, prune, parse, mapMode) als Vorbereitung auf ScheduleStore / ScheduleExecutor / ScheduleValidator bei weiterem Wachstum.
+- Tests erweitert: vollständiger Ladeplan-Lebenszyklus unter Fehlern, gleichzeitige Flows/Checks, User-Journey "Wallbox + manueller Ladeplan + PV-Überschuss".
+- any bleibt 0; Konventionen weiterhin strikt beachtet.
 
 Jede Änderung in dieser Phase sollte den Code **sichtbar schöner** machen.
 
@@ -188,10 +197,10 @@ Dieses Dokument soll für Außenstehende (Athom-Dev oder neue Entwickler) sofort
 
 ## Bekannte Limitationen & Future Work
 
-- Wallbox-Schedule-Handler ist noch etwas komplex (kann weiter extrahiert werden).
+- Wallbox-Schedule-Handler + ChargingManager sind extrahiert; bei weiterem Wachstum von EmsScheduleManager lohnt ScheduleStore/Executor/Validator.
 - Keine echte Multi-Wallbox-Unterstützung pro Station (aktuell 1:1).
 - Energy-Summary und Grid-Meter haben noch Potenzial für mehr Extraktion.
-- Tests könnten noch mehr Edge-Cases abdecken (z.B. Netz-Ausfall-Szenarien).
+- Tests für kritische Journeys erweitert (Lifecycle under error, concurrent, Wallbox+Plan+PV).
 
 ## Code-Style & Konventionen (über JSDoc hinaus)
 

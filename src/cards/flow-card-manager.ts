@@ -40,6 +40,23 @@ import { IsMaxDischargingLimitActiveConditionCard } from './condition/is-max-dis
 import { IsAnyPowerLimitActiveConditionCard } from './condition/is-any-power-limit-active.condition.card';
 import { IHpsDevice } from '../types/hps-device';
 
+// Wallbox flow cards (for setupWallboxFlowCards)
+import {WallboxSunModeIsActiveConditionCard} from './condition/wallbox-sun-mode-is-active.condition.card';
+import {WallboxSunModeIsOffConditionCard} from './condition/wallbox-sun-mode-is-off.condition.card';
+import {WallboxChargingIsAllowedConditionCard} from './condition/wallbox-charging-is-allowed.condition.card';
+import {WallboxChargingIsBlockedConditionCard} from './condition/wallbox-charging-is-blocked.condition.card';
+import {SetWallboxCurrentActionCard} from './action/set-wallbox-current.action.card';
+import {WallboxSetSunModeActionCard} from './action/wallbox-set-sun-mode.action.card';
+import {WallboxAllowChargingActionCard} from './action/wallbox-allow-charging.action.card';
+import {WallboxBlockChargingActionCard} from './action/wallbox-block-charging.action.card';
+import {WallboxSunModeOnActionCard} from './action/wallbox-sun-mode-on.action.card';
+import {WallboxSunModeOffActionCard} from './action/wallbox-sun-mode-off.action.card';
+import {WallboxBatteryToCarActionCard} from './action/wallbox-battery-to-car.action.card';
+import {WallboxBatteryBeforeCarActionCard} from './action/wallbox-battery-before-car.action.card';
+import {WallboxDischargeBatteryUntilActionCard} from './action/wallbox-discharge-battery-until.action.card';
+import {WallboxDisableBatteryMixModeActionCard} from './action/wallbox-disable-battery-mix-mode.action.card';
+import {RunListener} from './run-listener';
+
 /**
  * FlowCardManager
  *
@@ -293,5 +310,52 @@ export class FlowCardManager {
   private setupReadChargingConfiguration() {
     const card = this.homey.flow.getActionCard('provide_charging_configuration');
     card.registerRunListener(new ProvideChargingConfigurationActionCard().run);
+  }
+
+  /**
+   * Registers all wallbox-specific flow cards (actions + conditions) for a WallboxDevice.
+   * Caller must provide a bindDevice wrapper (to inject `device` into args) because
+   * wallbox cards rely on `args.device` for the concrete Wallbox instance.
+   *
+   * This centralizes card registration (like HKW cards) and reduces WallboxDevice size.
+   */
+  setupWallboxFlowCards(
+    homey: any,
+    bindDevice: (listener: RunListener) => (args: Record<string, unknown>, state: unknown) => Promise<unknown>
+  ): void {
+    const conditions: Array<{ id: string, listener: RunListener }> = [
+      { id: 'wallbox_sun_mode_is_active', listener: new WallboxSunModeIsActiveConditionCard() },
+      { id: 'wallbox_sun_mode_is_off', listener: new WallboxSunModeIsOffConditionCard() },
+      { id: 'wallbox_charging_is_allowed', listener: new WallboxChargingIsAllowedConditionCard() },
+      { id: 'wallbox_charging_is_blocked', listener: new WallboxChargingIsBlockedConditionCard() },
+    ];
+    conditions.forEach(({ id, listener }) => {
+      try {
+        homey.flow.getConditionCard(id).registerRunListener(bindDevice(listener));
+      } catch (e) {
+        // device will log via its error if needed; here swallow to not break other setups
+        // (original pattern logged in device)
+      }
+    });
+
+    const actions: Array<{ id: string, listener: RunListener }> = [
+      { id: 'wallbox_allow_charging', listener: new WallboxAllowChargingActionCard() },
+      { id: 'wallbox_block_charging', listener: new WallboxBlockChargingActionCard() },
+      { id: 'wallbox_sun_mode_on', listener: new WallboxSunModeOnActionCard() },
+      { id: 'wallbox_sun_mode_off', listener: new WallboxSunModeOffActionCard() },
+      { id: 'set_wallbox_current', listener: new SetWallboxCurrentActionCard() },
+      { id: 'wallbox_set_sun_mode', listener: new WallboxSetSunModeActionCard() },
+      { id: 'wallbox_battery_to_car', listener: new WallboxBatteryToCarActionCard() },
+      { id: 'wallbox_battery_before_car', listener: new WallboxBatteryBeforeCarActionCard() },
+      { id: 'wallbox_discharge_battery_until', listener: new WallboxDischargeBatteryUntilActionCard() },
+      { id: 'wallbox_disable_battery_mix_mode', listener: new WallboxDisableBatteryMixModeActionCard() },
+    ];
+    actions.forEach(({ id, listener }) => {
+      try {
+        homey.flow.getActionCard(id).registerRunListener(bindDevice(listener));
+      } catch (e) {
+        // logged by caller if desired
+      }
+    });
   }
 }

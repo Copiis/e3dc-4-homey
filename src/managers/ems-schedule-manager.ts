@@ -6,6 +6,7 @@ import { calculatePvSurplusW } from '../utils/pv-surplus';
 import { IHpsDevice } from '../types/hps-device';
 import { LiveData } from '../model/live-data';
 import { ValueChanged } from '../model/value-changed';
+import { getScheduleId, parseDateTime, pruneExpiredSchedules, mapEmsModeToNumber } from '../utils/ems-schedule-utils';
 
 
 
@@ -14,6 +15,9 @@ const POWER_MODE_IDLE = 1;
 const POWER_MODE_DISCHARGE = 2;
 const POWER_MODE_CHARGE = 3;
 const POWER_MODE_GRID_CHARGE = 4;
+
+// Re-exported helpers for external use / tests (store/validator split prep)
+export { getScheduleId, parseDateTime, pruneExpiredSchedules, mapEmsModeToNumber } from '../utils/ems-schedule-utils';
 
 /**
  * EmsScheduleManager
@@ -67,17 +71,7 @@ export class EmsScheduleManager {
 
       const now = Date.now();
       const before = this.emsSchedules.length;
-      this.emsSchedules = this.emsSchedules.filter((s: EmsSchedule) => {
-        if (s.untilSoc || s.untilFull) return true;
-        const eTs = (typeof s.endTs === 'number') ? s.endTs : (s.end ? this.parseDateTime(s.end) : null);
-        if (eTs != null) {
-          if (!isNaN(eTs) && now >= eTs) {
-            return false;
-          }
-          return true;
-        }
-        return true;
-      });
+      this.emsSchedules = pruneExpiredSchedules(this.emsSchedules, now);
       if (this.emsSchedules.length < before) {
         this.logger.log('Cleaned expired EMS schedules on load');
         this.device.setSettings({ emsSchedules: JSON.stringify(this.emsSchedules) })
@@ -86,10 +80,7 @@ export class EmsScheduleManager {
 
       if (this.powerModeState && this.powerModeState.scheduleId) {
         const activeId = this.powerModeState.scheduleId;
-        const stillPresent = this.emsSchedules.some((p: EmsSchedule) => {
-          const pId = p.id || (p.start + '_' + (p.mode || ''));
-          return pId === activeId;
-        });
+        const stillPresent = this.emsSchedules.some((p: EmsSchedule) => getScheduleId(p) === activeId);
         if (!stillPresent) {
           this.logger.log(`[Ladeplan] Manually deleted running schedule ${activeId} — reverting power mode to AUTO`);
           this.device.recordAnalysisEvent('info', `[Ladeplan] Manually deleted active schedule ${activeId}, reverting to AUTO`);
@@ -101,13 +92,13 @@ export class EmsScheduleManager {
         }
       }
 
-      const currentIds = new Set(this.emsSchedules.map((s: EmsSchedule) => s.id || (s.start + '_' + (s.mode || ''))));
+      const currentIds = new Set(this.emsSchedules.map((s: EmsSchedule) => getScheduleId(s)));
       this.triggeredEmsSchedules.forEach(id => {
         if (!currentIds.has(id)) this.triggeredEmsSchedules.delete(id);
       });
 
       for (const id of Array.from(this.scheduledExpireTimers.keys())) {
-        const stillPresent = this.emsSchedules.some((s: EmsSchedule) => (s.id || (s.start + '_' + (s.mode || ''))) === id);
+        const stillPresent = this.emsSchedules.some((s: EmsSchedule) => getScheduleId(s) === id);
         if (!stillPresent) {
           this.clearExpireTimer(id);
         }
@@ -118,9 +109,9 @@ export class EmsScheduleManager {
       const nowTs = Date.now();
       for (const s of this.emsSchedules) {
         if (!s.start || !s.mode) continue;
-        const startTs = (typeof s.startTs === 'number') ? s.startTs : this.parseDateTime(s.start);
+        const startTs = (typeof s.startTs === 'number') ? s.startTs : parseDateTime(s.start);
         if (isNaN(startTs) || startTs <= nowTs) continue;
-        const id = s.id || (s.start + '_' + (s.mode || ''));
+        const id = getScheduleId(s);
         const delay = startTs - nowTs;
         this.logger.log(`[Ladeplan] scheduling timer for plan ${id} in ${delay}ms (start=${s.start} startTs=${startTs} now=${nowTs})`);
         this.device.recordAnalysisEvent('info', `[Ladeplan] scheduling timer for ${id} delay=${delay}ms start=${s.start}`);
@@ -145,11 +136,7 @@ export class EmsScheduleManager {
     setTimeout(() => this.checkEmsSchedules(), 5000);
   }
 
-  private parseDateTime(str: string): number {
-    if (!str || typeof str !== 'string') return NaN;
-    const d = new Date(str);
-    return isNaN(d.getTime()) ? NaN : d.getTime();
-  }
+  // parseDateTime, getScheduleId etc. now from ems-schedule-utils (prep for ScheduleStore/Validator split)
 
   /**
    * Prüft alle aktiven Schedules und triggert bei Bedarf Power-Modes.
@@ -170,17 +157,10 @@ export class EmsScheduleManager {
     const now = Date.now();
 
     const beforeLen = this.emsSchedules.length;
-    this.emsSchedules = this.emsSchedules.filter((s: EmsSchedule) => {
-      if (s.untilSoc || s.untilFull) return true;
-      const endTs = (typeof s.endTs === 'number') ? s.endTs : (s.end ? this.parseDateTime(s.end) : NaN);
-      if (!isNaN(endTs) && now >= endTs) {
-        return false;
-      }
-      return true;
-    });
+    this.emsSchedules = pruneExpiredSchedules(this.emsSchedules, now);
     if (this.emsSchedules.length < beforeLen) {
       this.logger.log('[Ladeplan] Removed expired plans from storage');
-      const remainingIds = new Set(this.emsSchedules.map((s: EmsSchedule) => s.id || (s.start + '_' + (s.mode || ''))));
+      const remainingIds = new Set(this.emsSchedules.map((s: EmsSchedule) => getScheduleId(s)));
       this.triggeredEmsSchedules.forEach(id => {
         if (!remainingIds.has(id)) this.triggeredEmsSchedules.delete(id);
       });
@@ -190,7 +170,7 @@ export class EmsScheduleManager {
 
     if (this.powerModeState && this.powerModeState.scheduleId) {
       const activeId = this.powerModeState.scheduleId;
-      const stillPresent = this.emsSchedules.some((s: EmsSchedule) => (s.id || (s.start + '_' + (s.mode || ''))) === activeId);
+      const stillPresent = this.emsSchedules.some((s: EmsSchedule) => getScheduleId(s) === activeId);
       if (!stillPresent) {
         this.logger.log(`[Ladeplan] Manually deleted running schedule ${activeId} during check — reverting to AUTO`);
         this.clearExpireTimer(activeId);
@@ -207,7 +187,7 @@ export class EmsScheduleManager {
       if (!s || !s.start || !s.mode) continue;
 
       const id = s.id || (s.start + '_' + (s.mode || ''));
-      let startTs = (typeof s.startTs === 'number') ? s.startTs : (s.start ? this.parseDateTime(s.start) : NaN);
+      let startTs = (typeof s.startTs === 'number') ? s.startTs : (s.start ? parseDateTime(s.start) : NaN);
       if (isNaN(startTs)) continue;
 
       let endTs: number | null = null;
@@ -216,7 +196,7 @@ export class EmsScheduleManager {
       } else if (typeof s.endTs === 'number') {
         endTs = s.endTs;
       } else if (s.end) {
-        endTs = this.parseDateTime(s.end);
+        endTs = parseDateTime(s.end);
       } else if (s.durationMin) {
         endTs = startTs + s.durationMin * 60 * 1000;
       }
@@ -226,7 +206,7 @@ export class EmsScheduleManager {
       if (isInWindow && !this.triggeredEmsSchedules.has(id)) {
         this.logger.log(`[Ladeplan] TRIGGERING id=${id} mode=${s.mode} powerW=${s.powerW}`);
 
-        const modeNum = this.mapEmsModeToNumber(s.mode);
+        const modeNum = mapEmsModeToNumber(s.mode);
         const powerW = typeof s.powerW === 'number' ? s.powerW : 0;
         const scheduleId = id;
 
@@ -265,22 +245,11 @@ export class EmsScheduleManager {
     }
   }
 
-  private mapEmsModeToNumber(mode: string): number {
-    const m = (mode || '').toLowerCase().trim();
-    if (m === 'auto' || m === '0') return POWER_MODE_AUTO;
-    if (m === 'idle' || m === 'pause' || m === '1') return POWER_MODE_IDLE;
-    if (m === 'discharge' || m === 'entladen' || m === '2') return POWER_MODE_DISCHARGE;
-    if (m === 'charge' || m === 'laden' || m === '3') return POWER_MODE_CHARGE;
-    if (m === 'grid_charge' || m === 'netz_laden' || m === 'grid' || m === '4') return POWER_MODE_GRID_CHARGE;
-    return POWER_MODE_AUTO;
-  }
+  // mapEmsModeToNumber extracted to ems-schedule-utils (supports ScheduleValidator split)
 
   private removeCompletedEmsSchedule(scheduleId: string) {
     const before = this.emsSchedules.length;
-    this.emsSchedules = this.emsSchedules.filter((s: EmsSchedule) => {
-      const sId = s.id || (s.start + '_' + (s.mode || ''));
-      return sId !== scheduleId;
-    });
+    this.emsSchedules = this.emsSchedules.filter((s: EmsSchedule) => getScheduleId(s) !== scheduleId);
     if (this.emsSchedules.length < before) {
       this.logger.log(`Removing completed EMS schedule ${scheduleId}`);
       this.device.setSettings({ emsSchedules: JSON.stringify(this.emsSchedules) })
@@ -289,14 +258,14 @@ export class EmsScheduleManager {
   }
 
   private activateScheduledPlanIfNeeded(s: EmsSchedule, id: string) {
-    const stillPresent = this.emsSchedules.some((p: EmsSchedule) => (p.id || (p.start + '_' + (p.mode || ''))) === id);
+    const stillPresent = this.emsSchedules.some((p: EmsSchedule) => getScheduleId(p) === id);
     if (!stillPresent || this.triggeredEmsSchedules.has(id)) return;
 
     const now = Date.now();
-    let startTs = (typeof s.startTs === 'number') ? s.startTs : (s.start ? this.parseDateTime(s.start) : NaN);
+    let startTs = (typeof s.startTs === 'number') ? s.startTs : (s.start ? parseDateTime(s.start) : NaN);
     let endTs: number | null = null;
     if (typeof s.endTs === 'number') endTs = s.endTs;
-    else if (s.end) endTs = this.parseDateTime(s.end);
+    else if (s.end) endTs = parseDateTime(s.end);
     else if (s.durationMin) endTs = startTs + s.durationMin * 60 * 1000;
 
     const isInWindow = now >= startTs && (endTs === null || now < endTs);
@@ -307,7 +276,7 @@ export class EmsScheduleManager {
 
     this.logger.log(`EMS schedule triggered (timer): ${s.mode} ${s.powerW || 0}W`);
 
-    const modeNum = this.mapEmsModeToNumber(s.mode);
+    const modeNum = mapEmsModeToNumber(s.mode);
     const powerW = typeof s.powerW === 'number' ? s.powerW : 0;
     const scheduleId = id;
 

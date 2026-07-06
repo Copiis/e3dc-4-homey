@@ -1,6 +1,8 @@
 import Homey, {SimpleClass} from 'homey';
 import {Wallbox, WallboxCommandResult} from '../../src/model/wallbox';
 import { WallboxScheduleHandler } from '../../src/managers/wallbox-schedule-handler';
+import { FlowCardManager } from '../../src/cards/flow-card-manager';
+import { WallboxChargingManager } from '../../src/managers/wallbox-charging-manager';
 import {WallboxEmsSettings} from '../../src/model/wallbox-ems-settings';
 import {WallboxLiveState} from '../../src/model/wallbox-live-state';
 import {updateCapabilityValue} from '../../src/utils/capability-utils';
@@ -8,21 +10,6 @@ import {WallboxConfig} from '../../src/model/wallbox.config';
 import {HomePowerStation} from '../../src/model/home-power-station';
 import {RscpApi} from '../../src/rscp-api';
 import {formatError} from '../../src/utils/error-utils';
-import {RunListener} from '../../src/cards/run-listener';
-import {SetWallboxCurrentActionCard} from '../../src/cards/action/set-wallbox-current.action.card';
-import {WallboxSetSunModeActionCard} from '../../src/cards/action/wallbox-set-sun-mode.action.card';
-import {WallboxAllowChargingActionCard} from '../../src/cards/action/wallbox-allow-charging.action.card';
-import {WallboxBlockChargingActionCard} from '../../src/cards/action/wallbox-block-charging.action.card';
-import {WallboxSunModeOnActionCard} from '../../src/cards/action/wallbox-sun-mode-on.action.card';
-import {WallboxSunModeOffActionCard} from '../../src/cards/action/wallbox-sun-mode-off.action.card';
-import {WallboxBatteryToCarActionCard} from '../../src/cards/action/wallbox-battery-to-car.action.card';
-import {WallboxBatteryBeforeCarActionCard} from '../../src/cards/action/wallbox-battery-before-car.action.card';
-import {WallboxDischargeBatteryUntilActionCard} from '../../src/cards/action/wallbox-discharge-battery-until.action.card';
-import {WallboxDisableBatteryMixModeActionCard} from '../../src/cards/action/wallbox-disable-battery-mix-mode.action.card';
-import {WallboxSunModeIsActiveConditionCard} from '../../src/cards/condition/wallbox-sun-mode-is-active.condition.card';
-import {WallboxSunModeIsOffConditionCard} from '../../src/cards/condition/wallbox-sun-mode-is-off.condition.card';
-import {WallboxChargingIsAllowedConditionCard} from '../../src/cards/condition/wallbox-charging-is-allowed.condition.card';
-import {WallboxChargingIsBlockedConditionCard} from '../../src/cards/condition/wallbox-charging-is-blocked.condition.card';
 import {wallboxTotalEnergyKwh} from '../../src/utils/energy-meter-integrator';
 import {resolveWallboxPowerW} from '../../src/utils/wallbox-power';
 import {
@@ -32,11 +19,6 @@ import {
   WALLBOX_TILE_HIDDEN_CAPABILITIES,
 } from '../../src/utils/capability-order';
 import {ensureCapabilities} from '../../src/utils/energy-capability-migration';
-import {
-  isWallboxMixedChargingAllowed,
-  wallboxChargingAllowSucceeded,
-  wallboxChargingBlockSucceeded,
-} from '../../src/utils/wallbox-charging-state';
 
 /**
  * WallboxDevice
@@ -61,25 +43,9 @@ class WallboxDevice extends Homey.Device implements Wallbox {
   private capabilitiesReady = false;
   private wasReadyToCharge = false;
 
-  /**
-   * Serializer for RSCP commands to prevent races from concurrent flows.
-   */
-  private _commandChain: Promise<unknown> = Promise.resolve();
-
   private scheduleHandler!: WallboxScheduleHandler;
+  private chargingManager!: WallboxChargingManager;
 
-  /**
-   * Serializes RSCP commands to avoid overlapping calls from concurrent flows.
-   * This prevents race conditions when multiple flows try to control the wallbox at the same time.
-   */
-  private async serialize<T>(fn: () => Promise<T>): Promise<T> {
-    const result = this._commandChain.then(fn).catch(err => {
-      this.error('Wallbox command chain error: ' + formatError(err));
-      throw err;
-    });
-    this._commandChain = result.catch(() => undefined);
-    return result;
-  }
 
   /**
    * Initializes the WallboxDevice:
@@ -96,11 +62,22 @@ class WallboxDevice extends Homey.Device implements Wallbox {
     } catch (e) {
       this.error('Wallbox onInit failed: ' + formatError(e));
     }
-    this.setupFlowCards();
+    // Flow cards centralized (reduces device size)
+    const flowManager = new FlowCardManager(this as any);
+    flowManager.setupWallboxFlowCards(this.homey, this.bindDevice.bind(this));
+
     this.registerCapabilityListeners();
 
     this.scheduleHandler = new WallboxScheduleHandler(this);
     this.scheduleHandler.start();
+
+    this.chargingManager = new WallboxChargingManager(
+      { log: (m: string) => this.log(m), error: (m: string) => this.error(m) },
+      () => this.getApi(),
+      () => this.getWallboxId(),
+      (state: WallboxLiveState) => this.refreshCapabilities(state),
+      this.homey as any,
+    );
   }
 
 
@@ -119,48 +96,9 @@ class WallboxDevice extends Homey.Device implements Wallbox {
   }
   
 
-  private bindDevice(listener: RunListener): (args: Record<string, unknown>, state: unknown) => Promise<unknown> {
-    return (args, state) => listener.run({ ...args, device: this }, state);
-  }
-
-  /**
-   * Registers all wallbox-specific flow cards (actions + conditions).
-   * Uses bindDevice to ensure the listener receives the correct device instance.
-   */
-  private setupFlowCards(): void {
-    const conditions: Array<{ id: string, listener: RunListener }> = [
-      { id: 'wallbox_sun_mode_is_active', listener: new WallboxSunModeIsActiveConditionCard() },
-      { id: 'wallbox_sun_mode_is_off', listener: new WallboxSunModeIsOffConditionCard() },
-      { id: 'wallbox_charging_is_allowed', listener: new WallboxChargingIsAllowedConditionCard() },
-      { id: 'wallbox_charging_is_blocked', listener: new WallboxChargingIsBlockedConditionCard() },
-    ];
-    conditions.forEach(({ id, listener }) => {
-      try {
-        this.homey.flow.getConditionCard(id).registerRunListener(this.bindDevice(listener));
-      } catch (e) {
-        this.error(`Condition card ${id} not registered: ` + formatError(e));
-      }
-    });
-
-    const actions: Array<{ id: string, listener: RunListener }> = [
-      { id: 'wallbox_allow_charging', listener: new WallboxAllowChargingActionCard() },
-      { id: 'wallbox_block_charging', listener: new WallboxBlockChargingActionCard() },
-      { id: 'wallbox_sun_mode_on', listener: new WallboxSunModeOnActionCard() },
-      { id: 'wallbox_sun_mode_off', listener: new WallboxSunModeOffActionCard() },
-      { id: 'set_wallbox_current', listener: new SetWallboxCurrentActionCard() },
-      { id: 'wallbox_set_sun_mode', listener: new WallboxSetSunModeActionCard() },
-      { id: 'wallbox_battery_to_car', listener: new WallboxBatteryToCarActionCard() },
-      { id: 'wallbox_battery_before_car', listener: new WallboxBatteryBeforeCarActionCard() },
-      { id: 'wallbox_discharge_battery_until', listener: new WallboxDischargeBatteryUntilActionCard() },
-      { id: 'wallbox_disable_battery_mix_mode', listener: new WallboxDisableBatteryMixModeActionCard() },
-    ];
-    actions.forEach(({ id, listener }) => {
-      try {
-        this.homey.flow.getActionCard(id).registerRunListener(this.bindDevice(listener));
-      } catch (e) {
-        this.error(`Action card ${id} not registered: ` + formatError(e));
-      }
-    });
+  private bindDevice(listener: any): (args: Record<string, unknown>, state: unknown) => Promise<unknown> {
+    // any for RunListener to avoid import after extraction
+    return (args, state) => (listener as any).run({ ...args, device: this }, state);
   }
 
   /**
@@ -339,12 +277,10 @@ class WallboxDevice extends Homey.Device implements Wallbox {
     return Number(config.id);
   }
 
-  private async fetchLiveState(): Promise<WallboxLiveState> {
+  private async refreshEmsSettings(): Promise<void> {
     const api = await this.getApi();
-    const state = await api.readWallboxLiveStateById(this.getWallboxId(), true, this);
-    this.lastSyncedState = state;
-    this.lastSyncedAt = Date.now();
-    return state;
+    const settings = await api.readWallboxEmsSettings(true, this);
+    this.syncEmsSettings(settings);
   }
 
   private refreshCapabilities(state: WallboxLiveState): void {
@@ -352,150 +288,38 @@ class WallboxDevice extends Homey.Device implements Wallbox {
     updateCapabilityValue('wallbox_sun_mode', state.sunModeActive, this);
   }
 
-  private async refreshEmsSettings(): Promise<void> {
-    const api = await this.getApi();
-    const settings = await api.readWallboxEmsSettings(true, this);
-    this.syncEmsSettings(settings);
-  }
-
-  private static readonly LIVE_STATE_VERIFY_DELAYS_MS = [1000, 2500, 5000];
-
   /**
-   * Warte auf Live-State-Änderung mit Retries.
-   */
-  private async waitForLiveStateMatch(
-    matches: (state: WallboxLiveState) => boolean,
-    label: string,
-  ): Promise<WallboxLiveState> {
-    let last = await this.fetchLiveState();
-    if (matches(last)) {
-      this.log(`${label}: verified immediately (${this.formatWallboxAlgLog(last)})`);
-      return last;
-    }
-
-    for (const delayMs of WallboxDevice.LIVE_STATE_VERIFY_DELAYS_MS) {
-      await new Promise(resolve => this.homey.setTimeout(resolve, delayMs));
-      last = await this.fetchLiveState();
-      if (matches(last)) {
-        this.log(`${label}: verified after ${delayMs}ms (${this.formatWallboxAlgLog(last)})`);
-        return last;
-      }
-    }
-
-    this.log(`${label}: state unchanged after retries (${this.formatWallboxAlgLog(last)})`);
-    return last;
-  }
-
-  /**
-   * Formatiert ALG-Log für Debug.
-   */
-  private formatWallboxAlgLog(state: WallboxLiveState): string {
-    const hex = state.socDiagnostics?.algHex ?? 'n/a';
-    return `chargingEnabled=${state.chargingEnabled}, chargingCanceled=${state.chargingCanceled}, `
-      + `sunMode=${state.sunModeActive}, chargingActive=${state.chargingActive}, algHex=${hex}`;
-  }
-
-  /**
-   * Public API to allow or block charging.
-   * Used by flows, tile, and internal schedule logic.
+   * Public API to allow or block charging. Delegates to ChargingManager.
    */
   async applyChargingAllowed(enabled: boolean, maxCurrentA?: number, force = false): Promise<WallboxCommandResult> {
-    return this.serialize(() => this._applyChargingAllowed(enabled, maxCurrentA, force));
-  }
-
-  // Weitere Apply-Methoden folgen (SunMode, CurrentLimit, EMS-Settings) 
-
-  private async _applyChargingAllowed(enabled: boolean, maxCurrentA?: number, force = false): Promise<WallboxCommandResult> {
-    const live = await this.fetchLiveState();
-    if (!force && this.shouldSkipChargingApply(enabled, live)) {
-      this.refreshCapabilities(live);
-      return { ok: true, skipped: true };
-    }
-    this.log(`applyChargingAllowed(${enabled}): sending RSCP (force=${force}) (${this.formatWallboxAlgLog(live)})`);
-    const ok = enabled ? await this.startCharging(maxCurrentA, live.chargingCanceled) : await this.stopCharging(live.chargingCanceled);
-    if (!ok) return { ok: false, skipped: false };
-    const after = await this.waitForLiveStateMatch(s => enabled ? wallboxChargingAllowSucceeded(live, s) : wallboxChargingBlockSucceeded(s), `applyChargingAllowed(${enabled})`);
-    this.refreshCapabilities(after);
-    const success = enabled ? wallboxChargingAllowSucceeded(live, after) : wallboxChargingBlockSucceeded(after);
-    if (!success) {
-      this.error(`applyChargingAllowed: RSCP did not ${enabled ? 'allow' : 'block'} (${this.formatWallboxAlgLog(after)})`);
-      return { ok: false, skipped: false };
-    }
-    this.log(`applyChargingAllowed(${enabled}): success`);
-    return { ok: true, skipped: false };
-  }
-
-  private shouldSkipChargingApply(enabled: boolean, live: WallboxLiveState): boolean {
-    if (enabled && isWallboxMixedChargingAllowed(live)) return true;
-    if (!enabled && wallboxChargingBlockSucceeded(live)) return true;
-    return false;
+    return this.chargingManager.applyChargingAllowed(enabled, maxCurrentA, force);
   }
 
   /**
-   * Public API to enable/disable sun (PV surplus) mode.
+   * Public API to enable/disable sun (PV surplus) mode. Delegates to ChargingManager.
    */
   async applySunMode(enabled: boolean, maxCurrentA?: number, force = false): Promise<WallboxCommandResult> {
-    return this.serialize(() => this._applySunMode(enabled, maxCurrentA, force));
-  }
-
-  private async _applySunMode(enabled: boolean, maxCurrentA?: number, force = false): Promise<WallboxCommandResult> {
-    const live = await this.fetchLiveState();
-    if (!force && ((enabled && live.sunModeActive) || (!enabled && !live.sunModeActive))) {
-      this.refreshCapabilities(live);
-      return { ok: true, skipped: true };
-    }
-    this.log(`applySunMode(${enabled}): sending RSCP (force=${force})`);
-    const ok = await this.setSunMode(enabled, maxCurrentA);
-    if (!ok) return { ok: false, skipped: false };
-    const after = await this.waitForLiveStateMatch(s => enabled ? s.sunModeActive : !s.sunModeActive, `applySunMode(${enabled})`);
-    this.refreshCapabilities(after);
-    const success = enabled ? after.sunModeActive : !after.sunModeActive;
-    if (!success) {
-      this.error(`applySunMode: RSCP did not set ${enabled}`);
-      return { ok: false, skipped: false };
-    }
-    this.log(`applySunMode(${enabled}): success`);
-    return { ok: true, skipped: false };
+    return this.chargingManager.applySunMode(enabled, maxCurrentA, force);
   }
 
   /**
-   * Sets the max charging current (A) without changing the active mode.
+   * Sets the max charging current (A) without changing the active mode. Delegates.
    */
   async setCurrentLimit(maxCurrentA: number): Promise<boolean> {
-    const api = await this.getApi();
-    return api.setWallboxCurrentLimit(this.getWallboxId(), maxCurrentA, true, this);
+    return this.chargingManager.setCurrentLimit(maxCurrentA);
   }
 
-  /**
-   * Starts/resumes charging (used for "resume" after abort).
-   */
+  // Interface compliance (Wallbox): delegate to manager (even if not called by external code)
   async startCharging(maxCurrentA?: number, chargingCanceled = false): Promise<boolean> {
-    const api = await this.getApi();
-    const wallboxId = this.getWallboxId();
-    if (chargingCanceled) {
-      this.log('startCharging: toggling charging pause before mixed mode');
-    }
-    return api.startWallboxCharging(wallboxId, maxCurrentA, chargingCanceled, true, this);
+    return this.chargingManager.startCharging(maxCurrentA, chargingCanceled);
   }
 
-  /**
-   * Stops/pauses charging.
-   */
   async stopCharging(chargingCanceled = false): Promise<boolean> {
-    if (chargingCanceled) {
-      this.log('stopCharging: already paused, skip toggle');
-      return true;
-    }
-    const api = await this.getApi();
-    return api.stopWallboxCharging(this.getWallboxId(), true, this);
+    return this.chargingManager.stopCharging(chargingCanceled);
   }
 
-  /**
-   * Sets sun mode (PV surplus priority) or switches to mixed mode.
-   */
   async setSunMode(enabled: boolean, maxCurrentA?: number): Promise<boolean> {
-    const api = await this.getApi();
-    return api.setWallboxSunMode(this.getWallboxId(), enabled, maxCurrentA, true, this);
+    return this.chargingManager.setSunMode(enabled, maxCurrentA);
   }
 
   /**
