@@ -1,4 +1,8 @@
 {
+  "1.8.30": {
+    "de": "- **Batterie-Leistung (Kachel & Widget):** Vorzeichen jetzt exakt wie im E3DC-Portal (positiv bei Ladung der Batterie, negativ bei Entladung). Kachel zeigt korrekte Werte, Widget-Pfeile sind jetzt richtig.",
+    "en": "- **Battery power (tile & widget):** Sign now matches E3DC portal exactly (positive when charging the battery, negative when discharging). Tile shows correct values, widget arrows are now correct."
+  },
   "1.8.29": {
     "de": "- **Batterie-Leistung (Kachel):** Vorzeichen-Konvention vereinheitlicht (positiv = Laden, negativ = Entladen) → korrekte Anzeige auf der Batterie-Kachel.\n- **Kritischer Bugfix:** Delegation-Fehler in CapabilityManager behoben (updateLinkedBatteryLiveData) → Live-Daten-Updates (inkl. Batterie-Werte) funktionieren wieder zuverlässig.\n- **Tile-Refresh:** Force-Update für measure_battery_delivery (auch nach Löschen/Hinzufügen der Kachel).\n- Battery-Module und Energy-Summary profitieren von den Fixes.",
     "en": "- **Battery power (tile):** Standardized sign convention (positive = charging, negative = discharging) → correct display on the battery tile.\n- **Critical bugfix:** Fixed delegation error in CapabilityManager (updateLinkedBatteryLiveData) → live data updates (incl. battery values) now work reliably again.\n- **Tile refresh:** Force update for measure_battery_delivery (even after removing/re-adding the capability to the tile).\n- Battery modules and Energy-Summary benefit from the fixes."
