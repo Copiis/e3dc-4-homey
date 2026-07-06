@@ -1,4 +1,8 @@
 {
+  "1.8.32": {
+    "de": "- **Wallbox Ladeplan 'Bis voll':** Erkennung jetzt rein über Leistungsabnahme der Wallbox (nicht über Fahrzeug-SOC). Wenn nach Start des Plans >5 Min. Leistung <80W bleibt → Plan beenden und löschen. Passt zu manueller, bewusster Plan-Erstellung.",
+    "en": "- **Wallbox Ladeplan 'Bis voll':** Now detects full via wallbox power draw only (not vehicle SOC). If power stays <80W for >5 min after plan start → end and remove the plan. Matches manual, conscious plan creation."
+  },
   "1.8.31": {
     "de": "- **Ladepläne & Flows:** Flows respektieren jetzt immer aktive Ladepläne (User-Pläne haben Vorrang). Flow-Befehle für Power-Modes und Wallbox (Charging, Sun, Current) werden ignoriert, solange ein Plan läuft.\n- **Widgets:** Warnhinweis in HKW- und Wallbox-Ladeplaner-Widget hinzugefügt: „Aktive Pläne haben Vorrang vor Flows“.",
     "en": "- **Ladepläne & Flows:** Flows now always respect active charge plans (user plans take precedence). Power mode and wallbox flows (charging, sun, current) are ignored while a plan is active.\n- **Widgets:** Added warning text in HKW and Wallbox Ladeplaner widgets: “Active plans take precedence over flows”."
