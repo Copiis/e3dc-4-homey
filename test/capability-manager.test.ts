@@ -41,7 +41,7 @@ describe('CapabilityManager', () => {
     const result = manager.processLivePowerData({
       pvDelivery: 100,
       gridDelivery: 50,
-      batteryDelivery: -30,  // negative = discharging (app convention)
+      batteryDelivery: -30,  // negative = discharging (E3DC native sign, positive when charging)
       houseConsumption: 80,
       batteryChargingLevel: 0.5,
     } as any);
@@ -77,7 +77,7 @@ describe('CapabilityManager', () => {
     const result = manager.processLivePowerData({
       pvDelivery: 3000,
       gridDelivery: 0,
-      batteryDelivery: 500, // charging
+      batteryDelivery: 500, // charging (positive per E3DC)
       houseConsumption: 1500,
       batteryChargingLevel: 0.6,
       wallboxPowerState: [{ powerW: 800, solarPowerW: 600 } as any],

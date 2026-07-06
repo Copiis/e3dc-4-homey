@@ -76,7 +76,7 @@ export class CapabilityManager {
     this.device.getBatteryCapacity()
         .then((capacityWh: number) => {
           let targetWh = 0;
-          if (result.batteryDelivery > 0) {
+          if (result.batteryDelivery > 0) { // positive = charging (E3DC sign)
             targetWh = Math.abs(capacityWh * result.batteryChargingLevel);
           } else {
             targetWh = Math.abs(capacityWh * (1 - result.batteryChargingLevel));
