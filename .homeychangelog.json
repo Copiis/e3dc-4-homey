@@ -1,4 +1,8 @@
 {
+  "1.8.35": {
+    "de": "- **Bugfix EMS Steuerung / Ladeplaner (Akkunetzladen):** Geplantes Netzladen (Grid-Charge) über den Ladeplaner startete, wurde aber alle ~20 Sekunden unterbrochen. Ursache: Refresh-Intervall für EMS-Power-Modes war auf 30 s erhöht. Jetzt wieder stabiles 10-Sekunden-Keep-Alive für aktive Modi (Haupt-Poll bleibt bei 30 s für weniger Last). Danke an RobertHerter für den präzisen Bericht und den Hinweis!",
+    "en": "- **Bugfix EMS control / charging planner (grid charge):** Scheduled grid charging (Akkunetzladen) via the Ladeplaner would start but interrupt every ~20 seconds. Cause: EMS power mode refresh interval had been raised to 30s. Restored stable 10-second keep-alive for active modes (main poll stays at 30s to reduce load). Thanks to RobertHerter for the detailed report and the 10s hint!"
+  },
   "1.8.34": {
     "de": "- **Bugfix Rest(ent)ladezeit:** Korrektur der Berechnung für verbleibende Lade-/Entladezeit (HKW-Kachel + Device). Beim Laden jetzt korrekte Zeit bis voll, beim Entladen Zeit bis leer (basiert auf nutzbarer Kapazität + aktueller Leistung).",
     "en": "- **Bugfix remaining (dis)charge time:** Fixed calculation of remaining charge/discharge time (HKW tile + device capability). When charging: correct time to full; when discharging: time to empty (based on usable capacity + instantaneous power)."
