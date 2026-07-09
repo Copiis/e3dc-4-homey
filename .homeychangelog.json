@@ -1,4 +1,8 @@
 {
+  "1.8.37": {
+    "de": "- **AI360-Modus / Entladesperre:** Bessere Behandlung abgelehnter Power-Mode- und manueller Ladebefehle. Warnungen im Diagnosebericht, Timeline-Benachrichtigungen bei Fehlschlägen, Keep-Alive wird bei wiederholten Ablehnungen gedrosselt (60s Pause).",
+    "en": "- **AI360 mode / discharge lock:** Improved handling when power mode and manual charge commands are rejected by the HPS. Warnings in the diagnostic report, timeline notifications on failure, keep-alive is throttled on repeated rejections (60s pause)."
+  },
   "1.8.36": {
     "de": "- **Bugfix Diagnosebericht:** Die Flow-Karte „Diagnosebericht erstellen“ liefert jetzt den tatsächlichen Bericht als Token zurück (vorher war der Token immer leer). Der Bericht wird weiterhin in die HKW-Einstellungen geschrieben.",
     "en": "- **Bugfix diagnostic report:** The 'Create diagnostic report' Flow card now correctly returns the actual report as a token (previously the token was always empty). The report is still written to the HPS device settings."

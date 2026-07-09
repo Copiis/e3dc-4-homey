@@ -59,6 +59,7 @@ export class EmsScheduleExecutor {
       const result = await this.apiFactory().setPowerMode(mode, powerW, true, this.device);
       this.logger.log(`[Ladeplan] setPowerMode result for ${scheduleId || 'manual'}: ${result}`);
       if (result === false) {
+        this.device.recordAnalysisEvent('warn', `Power Mode abgelehnt durch HKW (AI360-Modus / Entladesperre / interne Optimierung möglich). Mode=${mode} schedule=${scheduleId || 'manual'}`);
         setTimeout(() => {
           this.apiFactory().setPowerMode(mode, powerW, true, this.device)
             .then((r: unknown) => this.logger.log(`[Ladeplan] setPowerMode retry result: ${r}`))
@@ -145,7 +146,7 @@ export class EmsScheduleExecutor {
       const result = await this.apiFactory().setPowerMode(state.mode, state.powerW, true, this.device);
       if (result === false) {
         this.logger.log(`[Ladeplan] refreshPowerMode result for ${state.scheduleId || 'unknown'}: false`);
-        this.device.recordAnalysisEvent('info', `[Ladeplan] refresh setPowerMode result: false (schedule ${state.scheduleId || 'unknown'})`);
+        this.device.recordAnalysisEvent('warn', `Power Mode abgelehnt durch HKW (AI360-Modus / Entladesperre / interne Optimierung möglich). Mode=${state.mode} schedule=${state.scheduleId || 'unknown'}`);
       }
     } catch (e) {
       this.logger.error('[Ladeplan] Power mode refresh failed: ' + formatError(e));

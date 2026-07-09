@@ -66,4 +66,6 @@ export interface HomePowerStation extends InternalDevice{
     buildDiagnosticReport(): Promise<string>
     setPowerModeState(state: PowerModeState | null): void
     hasActivePlan(): boolean
+    recordAnalysisEvent(level: 'info' | 'warn' | 'error', message: string): void
+    postTimelineNotification(excerpt: string): void
 }

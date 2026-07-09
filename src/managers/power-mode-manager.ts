@@ -31,6 +31,7 @@ const POWER_MODE_REFRESH_MS = 10 * 1000;
 export class PowerModeManager {
   private powerModeState: PowerModeState | null = null;
   private powerModeLoopId: NodeJS.Timeout | null = null;
+  private consecutiveFailures = 0;
 
   constructor(
     private readonly device: IHpsDevice,
@@ -46,6 +47,7 @@ export class PowerModeManager {
    */
   setPowerModeState(state: PowerModeState | null): void {
     this.powerModeState = state;
+    this.consecutiveFailures = 0; // reset on new command / state change
     if (this.powerModeLoopId) {
       clearTimeout(this.powerModeLoopId);
       this.powerModeLoopId = null;
@@ -94,16 +96,35 @@ export class PowerModeManager {
       return;
     }
     this.logger.log(`[Ladeplan] refreshPowerMode: sending mode=${state.mode} power=${state.powerW} (scheduleId=${state.scheduleId || 'none'})`);
-    this.apiFactory()
-      .setPowerMode(state.mode, state.powerW, true, this.device)
-      .then((result: unknown) => {
-        if (result === false) {
-          this.logger.log(`[Ladeplan] refreshPowerMode result for ${state.scheduleId || 'unknown'}: false`);
-          this.device.recordAnalysisEvent('info', `[Ladeplan] refresh setPowerMode result: false (schedule ${state.scheduleId || 'unknown'})`);
-        }
-      })
-      .catch((e: unknown) => this.logger.error('[Ladeplan] Power mode refresh failed: ' + formatError(e)));
-    this.schedulePowerModeRefresh();
+
+    const sendAndScheduleNext = () => {
+      this.apiFactory()
+        .setPowerMode(state.mode, state.powerW, true, this.device)
+        .then((result: unknown) => {
+          if (result === false) {
+            this.consecutiveFailures++;
+            this.logger.log(`[Ladeplan] refreshPowerMode result for ${state.scheduleId || 'unknown'}: false (failures=${this.consecutiveFailures})`);
+            this.device.recordAnalysisEvent('warn', `Power Mode abgelehnt durch HKW (möglicherweise AI360-Modus, Entladesperre oder interne Optimierung aktiv). Mode=${state.mode} schedule=${state.scheduleId || 'unknown'}`);
+
+            // Throttle on repeated failures (point 2)
+            if (this.consecutiveFailures >= 3) {
+              this.logger.log(`[Ladeplan] Too many consecutive Power Mode rejections (${this.consecutiveFailures}), pausing refresh for 60s`);
+              this.powerModeLoopId = this.device.homey.setTimeout(() => this.refreshPowerMode(), 60 * 1000);
+              return;
+            }
+          } else {
+            this.consecutiveFailures = 0;
+          }
+          this.schedulePowerModeRefresh();
+        })
+        .catch((e: unknown) => {
+          this.consecutiveFailures++;
+          this.logger.error('[Ladeplan] Power mode refresh failed: ' + formatError(e));
+          this.schedulePowerModeRefresh();
+        });
+    };
+
+    sendAndScheduleNext();
   }
 
   /**

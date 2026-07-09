@@ -18,6 +18,9 @@ function startCharge(amount: number,
                     resolve(undefined)
                 }
                 else {
+                    const msg = 'Manuelle Speicherladung abgelehnt durch E3DC (AI360-Modus oder Entladesperre aktiv?)';
+                    hps.recordAnalysisEvent('warn', msg);
+                    hps.postTimelineNotification(msg);
                     reject(hps.translate('messages.manual-charge-rejected-by-hps'))
                 }
             })
