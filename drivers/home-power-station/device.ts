@@ -57,8 +57,8 @@ import { EmsScheduleManager } from '../../src/managers/ems-schedule-manager';
 import { PowerModeManager } from '../../src/managers/power-mode-manager';
 import { DiagnosticManager } from '../../src/managers/diagnostic-manager';
 import { IHpsDevice } from '../../src/types/hps-device';
-const SYNC_INTERVAL = 1000 * 30; // 30 sec (was 20s; reduces CPU/RSCP/cap churn on older Homeys while flow editor is open)
-const POWER_MODE_REFRESH_INTERVAL = 1000 * 30; // 30 sec (was 10s)
+const SYNC_INTERVAL = 1000 * 30; // 30 sec (reads/polling only; was 20s). Power mode keep-alive (EMS setPowerMode for Ladeplaner/grid charge) is 10s inside PowerModeManager.
+const POWER_MODE_REFRESH_INTERVAL = 1000 * 10; // 10s keep-alive for active EMS power modes (grid_charge etc.). Actual value used in PowerModeManager.
 const MAX_ALLOWED_ERROR_BEFORE_UNAVAILABLE = 5
 const DIAGNOSTIC_ANALYSIS_STORE_KEY = 'diagnosticAnalysisLog'
 

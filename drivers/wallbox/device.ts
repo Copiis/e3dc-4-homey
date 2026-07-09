@@ -77,7 +77,7 @@ class WallboxDevice extends Homey.Device implements Wallbox {
       this.error('Wallbox onInit failed: ' + formatError(e));
     }
     // Flow cards centralized (reduces device size)
-    const flowManager = new FlowCardManager(this);
+    const flowManager = new FlowCardManager(this as any as import('../../src/types/hps-device').IHpsDevice);
     flowManager.setupWallboxFlowCards(this.homey, this.bindDevice.bind(this));
 
     this.registerCapabilityListeners();

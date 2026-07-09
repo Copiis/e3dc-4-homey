@@ -7,13 +7,21 @@ import { IHpsDevice } from '../types/hps-device';
 const POWER_MODE_AUTO = 0;
 
 /**
+ * Keep-alive interval for active EMS power modes.
+ * Must be short (~10s) so that E3DC keeps overrides like GRID_CHARGE (Akkunetzladen)
+ * active. The Ladeplaner and manual power mode flows rely on repeated setPowerMode calls.
+ * The main live data poll (SYNC_INTERVAL) is intentionally longer (30s) to reduce read load.
+ */
+const POWER_MODE_REFRESH_MS = 10 * 1000;
+
+/**
  * PowerModeManager
  *
  * Verwaltet den aktuellen Power-Mode-Zustand des HKW (AUTO, IDLE, CHARGE, DISCHARGE, GRID_CHARGE).
  *
  * Zuständigkeiten:
  * - Speichern und Abfragen des aktuellen PowerModeState
- * - Scheduling von Refresh-Timern (alle 30s) für manuelle oder geplante Modi
+ * - Scheduling von Refresh-Timern (alle 10s) für manuelle oder geplante Modi (EMS keep-alive)
  * - Revertieren zu AUTO bei Ablauf oder Erreichen von Bedingungen (untilSoc/Expiry)
  * - Expire-Timer für reine Power-Mode-Pläne werden vom EmsScheduleExecutor verwaltet
  *
@@ -56,7 +64,7 @@ export class PowerModeManager {
   }
 
   private schedulePowerModeRefresh() {
-    this.powerModeLoopId = this.device.homey.setTimeout(() => this.refreshPowerMode(), 30 * 1000);
+    this.powerModeLoopId = this.device.homey.setTimeout(() => this.refreshPowerMode(), POWER_MODE_REFRESH_MS);
   }
 
   private refreshPowerMode() {
