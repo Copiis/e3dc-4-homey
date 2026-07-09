@@ -1,4 +1,8 @@
 {
+  "1.8.38": {
+    "de": "- **Bugfix Batterie-Kachel:** „Kapazität“ (sowie Modulanzahl, Spannung und Temperaturwerte) wurde auf der Batteriemonitor-Kachel nicht mehr angezeigt. Die vollständige Battery-Daten-Sync wurde nach dem Refactor nicht mehr an die verknüpften Batterie-Module verteilt. Jetzt wird die nutzbare Kapazität (in kWh) wieder korrekt befüllt. Zusätzlich werden die Batteriedaten-Labels (Nenn-/Nutz-Kapazität, SOH) im HKW-Gerät wieder automatisch aktualisiert.",
+    "en": "- **Bugfix battery tile:** \"Capacity\" (plus number of modules, voltage and temperature values) was no longer shown on the battery monitor tile. Full battery data sync was not distributed to linked battery modules after the refactor. Usable capacity (in kWh) is now populated correctly again. Additionally the battery data labels (specified/usable capacity, SOH) in the HPS device are updated automatically again."
+  },
   "1.8.37": {
     "de": "- **AI360-Modus / Entladesperre:** Bessere Behandlung abgelehnter Power-Mode- und manueller Ladebefehle. Warnungen im Diagnosebericht, Timeline-Benachrichtigungen bei Fehlschlägen, Keep-Alive wird bei wiederholten Ablehnungen gedrosselt (60s Pause).",
     "en": "- **AI360 mode / discharge lock:** Improved handling when power mode and manual charge commands are rejected by the HPS. Warnings in the diagnostic report, timeline notifications on failure, keep-alive is throttled on repeated rejections (60s pause)."
@@ -7,7 +11,7 @@
     "de": "- **Bugfix Diagnosebericht:** Die Flow-Karte „Diagnosebericht erstellen“ liefert jetzt den tatsächlichen Bericht als Token zurück (vorher war der Token immer leer). Der Bericht wird weiterhin in die HKW-Einstellungen geschrieben.",
     "en": "- **Bugfix diagnostic report:** The 'Create diagnostic report' Flow card now correctly returns the actual report as a token (previously the token was always empty). The report is still written to the HPS device settings."
   },
-  "1.8.35": {
+"1.8.35": {
     "de": "- **Bugfix EMS Steuerung / Ladeplaner (Akkunetzladen):** Geplantes Netzladen (Grid-Charge) über den Ladeplaner startete, wurde aber alle ~20 Sekunden unterbrochen. Ursache: Refresh-Intervall für EMS-Power-Modes war auf 30 s erhöht. Jetzt wieder stabiles 10-Sekunden-Keep-Alive für aktive Modi (Haupt-Poll bleibt bei 30 s für weniger Last). Danke an RobertHerter für den präzisen Bericht und den Hinweis!",
     "en": "- **Bugfix EMS control / charging planner (grid charge):** Scheduled grid charging (Akkunetzladen) via the Ladeplaner would start but interrupt every ~20 seconds. Cause: EMS power mode refresh interval had been raised to 30s. Restored stable 10-second keep-alive for active modes (main poll stays at 30s to reduce load). Thanks to RobertHerter for the detailed report and the 10s hint!"
   },

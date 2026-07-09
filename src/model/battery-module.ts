@@ -18,4 +18,9 @@ export interface BatteryModule extends InternalDevice{
         batteryPowerW: number,
         chargingConfiguration: ChargingConfiguration,
         emergencyPower: EmergencyPowerState): void
+
+    /**
+     * Update spec/monitoring fields (capacity, temps, etc.) from full battery data readout.
+     */
+    updateBatteryInfo(batteryData: BatteryData, capacityKwh: number): void
 }

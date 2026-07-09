@@ -208,22 +208,101 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
   getId(): string {
     return this.getData().id;
   }
+  private lastBatteryReadTime = 0;
+  private lastBatteryUsable = 0;
+  private lastBatteryData: BatteryData | null = null;
+
   public getBatteryCapacity(): Promise<number> {
+    const now = Date.now();
+    const CACHE_TTL_MS = 30000; // throttle full RSCP battery reads (capacity changes slowly)
+    if (now - this.lastBatteryReadTime < CACHE_TTL_MS && this.lastBatteryUsable > 0) {
+      return Promise.resolve(this.lastBatteryUsable);
+    }
+
     return new Promise((resolve, reject) => {
       this.getApi()
           .readBatteryData(true, this)
           .then(value => {
-            const usable = resolveUsableCapacityWh(value[0])
-            resolve(usable)
+            if (value && value.length > 0) {
+              const batteryData = value[0];
+              const usable = resolveUsableCapacityWh(batteryData);
+              this.lastBatteryReadTime = Date.now();
+              this.lastBatteryUsable = usable;
+              this.lastBatteryData = batteryData;
+
+              this.updateBatteryCapacitySettings(batteryData);
+              this.updateLinkedBatteryModules(batteryData, usable);
+
+              resolve(usable);
+            } else {
+              this.error('getBatteryCapacity: empty battery data');
+              this.resolveFallbackCapacity(resolve);
+            }
           })
           .catch(reason => {
-            this.error('getBatteryCapacity: Error reading battery data: ' + formatError(reason))
-            const settings = this.getSettings() as Record<string, unknown>
-            const fromSettings = (settings.rscpAsoc as number) || (settings.capacity as number) || 0
-            resolve(fromSettings > 0 ? fromSettings : 0)
+            this.error('getBatteryCapacity: Error reading battery data: ' + formatError(reason));
+            this.resolveFallbackCapacity(resolve);
           })
     })
   }
+
+  private resolveFallbackCapacity(resolve: (value: number) => void) {
+    const settings = this.getSettings() as Record<string, unknown>;
+    const fromSettings = (settings.rscpAsoc as number) || (settings.capacity as number) || 0;
+    const fallback = fromSettings > 0 ? fromSettings : (this.lastBatteryUsable || 0);
+    resolve(fallback);
+  }
+
+  /**
+   * Persist detected battery capacities/SOH into the HKW device settings (shown as labels
+   * under "Batteriedaten"). Restored from refactor; used for fallback + visibility.
+   */
+  private updateBatteryCapacitySettings(battery: BatteryData): void {
+    try {
+      const storedSettings: PowerStationConfig = this.getSettings();
+      const usableWh = resolveUsableCapacityWh(battery);
+      const updated: PowerStationConfig = {
+        ...storedSettings,
+        rscpCapacity: Math.round(battery.capacity).toString(),
+        rscpAsoc: Math.round(usableWh).toString(),
+        rscpSoh: formatSohPercent(usableWh, battery.capacity),
+      };
+      this.setSettings(updated).catch(reason => {
+        this.log('Failed to store battery capacity settings: ' + formatError(reason));
+      });
+    } catch (e) {
+      this.error('updateBatteryCapacitySettings failed: ' + formatError(e));
+    }
+  }
+
+  /**
+   * Push full battery readout (usable capacity in kWh, dcb details, temps, voltage, name)
+   * to all linked Batteriemonitor devices for this station.
+   * This populates the "Kapazität" (and related) fields on the battery module tile.
+   */
+  private updateLinkedBatteryModules(batteryData: BatteryData, usableWh: number) {
+    try {
+      const batteryDevices = this.homey.drivers.getDriver('battery-module').getDevices();
+      const stationId = this.getId();
+      const capacityKwh = usableWh / 1000.0;
+
+      batteryDevices.forEach((currentDevice: unknown) => {
+        const batteryConfig = (currentDevice as { getStoreValue: (k: string) => unknown }).getStoreValue('settings') as { stationId?: string } | undefined;
+        if (!batteryConfig?.stationId) {
+          return;
+        }
+        if (batteryConfig.stationId == stationId) {
+          const linked = currentDevice as { updateBatteryInfo?: (d: BatteryData, c: number) => void };
+          if (linked.updateBatteryInfo) {
+            linked.updateBatteryInfo(batteryData, capacityKwh);
+          }
+        }
+      });
+    } catch (e) {
+      this.error('updateLinkedBatteryModules: ' + formatError(e));
+    }
+  }
+
   public getApi(): RscpApi {
     const api = new RscpApi()
     const storedSettings: PowerStationConfig = this.getSettings();

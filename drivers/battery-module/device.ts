@@ -49,8 +49,36 @@ class BatterModuleDevice extends Homey.Device implements BatteryModule{
         await this.setStoreValue(BATTERY_MODULE_ORDER_VERSION_KEY, BATTERY_MODULE_ORDER_VERSION);
         this.log(`Capability order version set to v${BATTERY_MODULE_ORDER_VERSION}`);
       }
+
+      // Trigger initial population of capacity (and dcb/voltage/temp info) on the tile.
+      // getBatteryCapacity on the linked HPS now also distributes to battery modules.
+      setTimeout(() => {
+        this.triggerBatteryDataRefresh().catch(() => {});
+      }, 2500);
     } catch (e) {
       this.error('Battery module onInit failed: ' + formatError(e));
+    }
+  }
+
+  private async triggerBatteryDataRefresh(): Promise<void> {
+    try {
+      const hpsDriver = this.homey.drivers.getDriver('home-power-station');
+      const hpsDevices = hpsDriver.getDevices();
+      const myConfig = this.getStoreValue('settings') as { stationId?: string } | undefined;
+      if (!myConfig?.stationId) return;
+
+      for (const hps of hpsDevices) {
+        const hpsData = (hps as any).getData?.() || {};
+        const hpsId = (hps as any).getId?.() || hpsData.id;
+        if (hpsId == myConfig.stationId) {
+          if (typeof (hps as any).getBatteryCapacity === 'function') {
+            await (hps as any).getBatteryCapacity().catch(() => {});
+          }
+          break;
+        }
+      }
+    } catch (e) {
+      this.error('triggerBatteryDataRefresh: ' + formatError(e));
     }
   }
 
@@ -80,10 +108,22 @@ class BatterModuleDevice extends Homey.Device implements BatteryModule{
   sync(batteryData: BatteryData, rsoc: number, capacity: number, batteryPowerW: number,
       chargingConfiguration: ChargingConfiguration, emergencyPower: EmergencyPowerState) {
     this.syncLive(rsoc, batteryPowerW, chargingConfiguration, emergencyPower)
+    this.updateBatteryInfo(batteryData, capacity)
+  }
+
+  /**
+   * Update fields that come from the full battery specification + monitoring readout (RSCP).
+   * These are relatively static or slower changing: name, module count, usable capacity,
+   * voltage and per-DCB temperatures.
+   *
+   * Dynamic values (SoC, power, limits) are updated via syncLive on every poll.
+   */
+  updateBatteryInfo(batteryData: BatteryData, capacityKwh: number) {
     updateCapabilityValue('device_name', batteryData.name, this)
     updateCapabilityValue('measure_dcbcount', batteryData.dcbs.length, this)
-    updateCapabilityValue('measure_capacity', capacity, this)
+    updateCapabilityValue('measure_capacity', capacityKwh, this)
     updateCapabilityValue('measure_voltage', batteryData.voltage, this)
+
     let minTemp = Infinity
     let maxTemp = -Infinity
     let sumTemp = 0
