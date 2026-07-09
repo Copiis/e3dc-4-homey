@@ -73,8 +73,8 @@ import {RunListener} from './run-listener';
  * Wird im HKW-Device und Wallbox-Device verwendet.
  */
 export class FlowCardManager {
-  constructor(private readonly device: IHpsDevice) {
-    // Strongly typed via IHpsDevice (which declares the optional trigger properties).
+  constructor(private readonly device: IHpsDevice | any) {
+    // Accepts IHpsDevice (HKW) or WallboxDevice (different interface)
   }
 
   /**

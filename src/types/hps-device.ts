@@ -63,7 +63,7 @@ export interface IHpsDevice extends SimpleClass, Homey.Device {
 
   getBatteryCapacity(): Promise<number>;
   postTimelineNotification(excerpt: string): void;
-  publishDiagnosticReport(force?: boolean): Promise<void>;
+  publishDiagnosticReport(force?: boolean): Promise<string>;
   recordAnalysisEvent(level: 'info' | 'warn' | 'error', message: string): void;
   countLinkedDevices(type: string): number;
   getAppVersion(): string;

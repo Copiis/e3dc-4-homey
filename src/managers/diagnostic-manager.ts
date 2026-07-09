@@ -95,18 +95,25 @@ export class DiagnosticManager {
   /**
    * Publiziert den aktuellen Diagnose-Report (als Notification oder für Export).
    * Bei force wird auch bei deaktivierter detailedDiagnostics geschrieben.
+   * Gibt den Report-Text zurück (auch bei Throttling den letzten bekannten Wert).
    */
-  async publishDiagnosticReport(force = false): Promise<void> {
+  async publishDiagnosticReport(force = false): Promise<string> {
     const now = Date.now();
-    if (!force && now - this.lastDiagnosticPublish < 60000) return;
+    if (!force && now - this.lastDiagnosticPublish < 60000) {
+      const existing = this.device.getSetting('diagnosticReport');
+      return typeof existing === 'string' ? existing : '';
+    }
     this.lastDiagnosticPublish = now;
 
     try {
       const report = this.diagnostic.formatReport(this.createSnapshot());
       updateCapabilityValue('diagnostic_report', report, this.device);
       await this.device.setSettings({ diagnosticReport: report });
+      return report;
     } catch (e) {
       this.device.error('publishDiagnosticReport failed: ' + formatError(e));
+      const existing = this.device.getSetting('diagnosticReport');
+      return typeof existing === 'string' ? existing : '';
     }
   }
 

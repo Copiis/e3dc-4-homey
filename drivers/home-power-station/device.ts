@@ -266,7 +266,7 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
     try {
       const capChanges = this.capabilityManager?.processLivePowerData(result) ?? { batteryLevelChange: undefined };
       const batteryLevelChange = capChanges.batteryLevelChange;
-      this.emsScheduleManager?.handleEmsTriggers(result, batteryLevelChange)
+      this.capabilityManager?.handleEmsTriggers(result, batteryLevelChange)
       this.capabilityManager?.updateExternalPower(result)
       this.capabilityManager?.handleChargeTime(result);
       this.capabilityManager?.handleFirmwareChange(result);
@@ -312,8 +312,8 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
   }
   async buildDiagnosticReport(): Promise<string> {
     const wasEnabled = this.getSetting('detailedDiagnostics') === true;
-    await this.diagnosticManager?.publishDiagnosticReport(true) // force for export card
-    const report = '';
+    // Force publish and actually return the generated report so Flow cards can use the token
+    const report = await this.diagnosticManager?.publishDiagnosticReport(true) ?? '';
     if (wasEnabled) {
       this.diagnosticManager?.scheduleDetailedDiagnosticsAutoOff(10 * 60 * 1000, 'after-export');
     }
@@ -328,8 +328,8 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
       });
   }
 
-  publishDiagnosticReport(force = false): Promise<void> {
-    return this.diagnosticManager?.publishDiagnosticReport(force) ?? Promise.resolve();
+  publishDiagnosticReport(force = false): Promise<string> {
+    return this.diagnosticManager?.publishDiagnosticReport(force) ?? Promise.resolve('');
   }
 
   recordAnalysisEvent(level: 'info' | 'warn' | 'error', message: string): void {

@@ -1,4 +1,8 @@
 {
+  "1.8.36": {
+    "de": "- **Bugfix Diagnosebericht:** Die Flow-Karte „Diagnosebericht erstellen“ liefert jetzt den tatsächlichen Bericht als Token zurück (vorher war der Token immer leer). Der Bericht wird weiterhin in die HKW-Einstellungen geschrieben.",
+    "en": "- **Bugfix diagnostic report:** The 'Create diagnostic report' Flow card now correctly returns the actual report as a token (previously the token was always empty). The report is still written to the HPS device settings."
+  },
   "1.8.34": {
     "de": "- **Bugfix Rest(ent)ladezeit:** Korrektur der Berechnung für verbleibende Lade-/Entladezeit (HKW-Kachel + Device). Beim Laden jetzt korrekte Zeit bis voll, beim Entladen Zeit bis leer (basiert auf nutzbarer Kapazität + aktueller Leistung).",
     "en": "- **Bugfix remaining (dis)charge time:** Fixed calculation of remaining charge/discharge time (HKW tile + device capability). When charging: correct time to full; when discharging: time to empty (based on usable capacity + instantaneous power)."
