@@ -39,8 +39,9 @@ describe('WallboxScheduleHandler', () => {
     ]);
     const mockDevice = createMockDevice({ getSetting: () => schedulesJson });
     const handler = new WallboxScheduleHandler(mockDevice);
-    // Access private for test via any (acceptable in test)
-    const parsed = (handler as any).parseSchedules(schedulesJson);
+    // Access via store after split into Store/Validator/Executor
+    const store = (handler as any).store;
+    const parsed = store.parseSchedules(schedulesJson);
     assert.strictEqual(parsed.length, 2);
     assert.strictEqual(parsed[0].action, 'allow');
   });
@@ -56,8 +57,8 @@ describe('WallboxScheduleHandler', () => {
       },
     });
     const handler = new WallboxScheduleHandler(mockDevice);
-    // Simulate triggered
-    (handler as any).triggeredWallboxSchedules.set('p1', 'allow');
+    // Simulate triggered (now via store after refactor)
+    (handler as any).store.addTriggered('p1', 'allow');
     await handler.handleManualDeletion({ schedules: '[]' });
     assert.ok(deleted);
   });
@@ -66,7 +67,7 @@ describe('WallboxScheduleHandler', () => {
     const mockDevice = createMockDevice();
     const handler = new WallboxScheduleHandler(mockDevice);
     assert.strictEqual(handler.hasActivePlan(), false);
-    (handler as any).triggeredWallboxSchedules.set('p1', 'allow');
+    (handler as any).store.addTriggered('p1', 'allow');
     assert.strictEqual(handler.hasActivePlan(), true);
   });
 
@@ -79,11 +80,12 @@ describe('WallboxScheduleHandler', () => {
       },
     });
     const handler = new WallboxScheduleHandler(mockDevice);
-    (handler as any).triggeredWallboxSchedules.set('p-until', 'allow');
-    // Simulate low power for >5 min
-    (handler as any).untilFullLowPowerSince['p-until'] = now - (6 * 60 * 1000);
+    const store = (handler as any).store;
+    store.addTriggered('p-until', 'allow');
+    // Simulate low power for >5 min (now via store)
+    store.setLowPowerSince('p-until', now - (6 * 60 * 1000));
     await (handler as any).handleUntilFull([{ id: 'p-until', start: '08:00', action: 'allow', untilFull: true }], now);
-    assert.strictEqual((handler as any).triggeredWallboxSchedules.size, 0);
+    assert.strictEqual(store.getTriggered().size, 0);
   });
 
   // Critical: concurrent flows + user journey simulation (Wallbox + manueller Ladeplan + PV-Überschuss)
