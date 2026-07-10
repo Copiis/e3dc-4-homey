@@ -37,7 +37,33 @@ export class CapabilityManager {
   currentEmergencyPowerState: EmergencyPowerState | null = null;
   lastPvSurplusW = 0;
 
+  // Short in-memory caches for linked sub-devices to avoid repeated getDriver().getDevices() + getStoreValue
+  // every 30s poll (addresses repeated device lookups / sync store reads).
+  private gridCache: { timestamp: number; devices: unknown[] } | null = null;
+  private batteryCache: { timestamp: number; devices: unknown[] } | null = null;
+  private static readonly LINKED_CACHE_TTL_MS = 60_000;
+
   constructor(private readonly device: IHpsDevice, private readonly energyMeter: EnergyMeterIntegrator) {}
+
+  private getLinkedGridMeters(): unknown[] {
+    const now = Date.now();
+    if (this.gridCache && now - this.gridCache.timestamp < CapabilityManager.LINKED_CACHE_TTL_MS) {
+      return this.gridCache.devices;
+    }
+    const devices = this.device.homey.drivers.getDriver('grid-meter').getDevices();
+    this.gridCache = { timestamp: now, devices };
+    return devices;
+  }
+
+  private getLinkedBatteryModules(): unknown[] {
+    const now = Date.now();
+    if (this.batteryCache && now - this.batteryCache.timestamp < CapabilityManager.LINKED_CACHE_TTL_MS) {
+      return this.batteryCache.devices;
+    }
+    const devices = this.device.homey.drivers.getDriver('battery-module').getDevices();
+    this.batteryCache = { timestamp: now, devices };
+    return devices;
+  }
 
   /**
    * Haupteinstiegspunkt für Live-Power-Daten.
@@ -197,7 +223,7 @@ export class CapabilityManager {
   }
 
   updateLinkedGridMeter(result: LiveData): void {
-    const gridMeterDevices = this.device.homey.drivers.getDriver('grid-meter').getDevices();
+    const gridMeterDevices = this.getLinkedGridMeters();
     const stationId = this.device.getId();
     gridMeterDevices.forEach((currentDevice: unknown) => {
       // Linked grid-meter devices expose a sync() method (duck-typed)
@@ -212,7 +238,7 @@ export class CapabilityManager {
   }
 
   updateLinkedBatteryLiveData(result: LiveData) {
-    const batteryDevices = this.device.homey.drivers.getDriver('battery-module').getDevices();
+    const batteryDevices = this.getLinkedBatteryModules();
     const stationId = this.device.getId();
     batteryDevices.forEach((currentDevice: unknown) => {
       const batteryConfig = (currentDevice as { getStoreValue: (k: string) => unknown }).getStoreValue('settings') as { stationId?: string } | undefined;

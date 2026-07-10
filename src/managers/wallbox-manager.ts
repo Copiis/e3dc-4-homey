@@ -28,6 +28,14 @@ interface WallboxDevice {
 }
 
 export class WallboxManager {
+  // In-memory cache for linked wallbox devices (addresses repeated getDevices + getStoreValue scans)
+  private linkedCache: { timestamp: number; devices: WallboxDevice[] } | null = null;
+  private static readonly LINKED_CACHE_TTL_MS = 60_000; // 60s — devices don't change often between polls
+
+  // Cache for Wallbox EMS settings (battery priority etc.). Avoids 4 RSCP reads every 30s.
+  private emsSettingsCache: { timestamp: number; settings: Partial<WallboxEmsSettings> } | null = null;
+  private static readonly EMS_SETTINGS_TTL_MS = 5 * 60 * 1000; // 5 minutes — these settings change rarely
+
   constructor(
     private readonly homey: {
       drivers: { getDriver(id: string): { getDevices(): unknown[] } };
@@ -40,11 +48,29 @@ export class WallboxManager {
   ) {}
 
   hasLinkedWallboxes(): boolean {
+    return this.getLinkedWallboxDevices().length > 0;
+  }
+
+  /**
+   * Returns linked wallbox devices for this station.
+   * Uses a short in-memory cache to avoid repeated getDriver().getDevices() + getStoreValue()
+   * on every poll and within the same sync cycle (addresses repeated lookups).
+   */
+  private getLinkedWallboxDevices(): WallboxDevice[] {
+    const now = Date.now();
+    if (this.linkedCache && now - this.linkedCache.timestamp < WallboxManager.LINKED_CACHE_TTL_MS) {
+      return this.linkedCache.devices;
+    }
+
     const wallboxDriver = this.homey.drivers.getDriver('wallbox');
-    return wallboxDriver.getDevices().some((d: unknown) => {
+    const allDevices = wallboxDriver.getDevices();
+    const linked = allDevices.filter((d: unknown) => {
       const cfg = (d as WallboxDevice).getStoreValue('settings') as { stationId?: string } | undefined;
       return cfg && String(cfg.stationId) === this.stationId;
-    });
+    }) as WallboxDevice[];
+
+    this.linkedCache = { timestamp: now, devices: linked };
+    return linked;
   }
 
   /**
@@ -64,19 +90,20 @@ export class WallboxManager {
       return;
     }
 
-    const wallboxDevices = this.homey.drivers.getDriver('wallbox').getDevices();
+    // Single filtered list via cache (no repeated full scans + getStoreValue)
+    const linkedDevices = this.getLinkedWallboxDevices();
     const linkedWallboxes: Wallbox[] = [];
 
-    wallboxDevices.forEach((currentDevice: unknown) => {
-      const d = currentDevice as WallboxDevice;
+    linkedDevices.forEach((d: WallboxDevice) => {
       const wallboxConfig: WallboxConfig | undefined = d.getStoreValue('settings') as WallboxConfig | undefined;
       if (!wallboxConfig?.stationId) {
         this.logger.log('Skipping wallbox device without store settings: ' + d.getName());
         return;
       }
+      // stationId already filtered by getLinkedWallboxDevices, but double-check for safety
       if (wallboxConfig.stationId == this.stationId) {
         this.logger.log('Updating wallbox device: ' + d.getName());
-        const wallboxDevice = currentDevice as unknown as Wallbox;
+        const wallboxDevice = d as unknown as Wallbox;
         const relevantData = data.wallboxPowerState.find(value => value.id == wallboxConfig.id);
 
         if (relevantData != undefined) {
@@ -89,15 +116,31 @@ export class WallboxManager {
     });
 
     if (linkedWallboxes.length > 0) {
-      this.apiFactory()
-        .readWallboxEmsSettings(true, this.logger)
-        .then(emsSettings => {
-          linkedWallboxes.forEach(wallboxDevice => wallboxDevice.syncEmsSettings(emsSettings));
-        })
-        .catch(e => {
-          this.logger.log('Wallbox EMS settings read failed: ' + formatError(e));
-        });
+      this.syncEmsSettingsToWallboxes(linkedWallboxes);
     }
+  }
+
+  /**
+   * Sync EMS settings (battery priority etc.) to linked wallboxes.
+   * Uses 5-minute in-memory cache to avoid calling readWallboxEmsSettings (4 RSCP reads)
+   * on every single live data poll.
+   */
+  private syncEmsSettingsToWallboxes(linkedWallboxes: Wallbox[]): void {
+    const now = Date.now();
+    if (this.emsSettingsCache && (now - this.emsSettingsCache.timestamp) < WallboxManager.EMS_SETTINGS_TTL_MS) {
+      linkedWallboxes.forEach(w => w.syncEmsSettings(this.emsSettingsCache!.settings));
+      return;
+    }
+
+    this.apiFactory()
+      .readWallboxEmsSettings(true, this.logger)
+      .then(emsSettings => {
+        this.emsSettingsCache = { timestamp: Date.now(), settings: emsSettings };
+        linkedWallboxes.forEach(wallboxDevice => wallboxDevice.syncEmsSettings(emsSettings));
+      })
+      .catch(e => {
+        this.logger.log('Wallbox EMS settings read failed: ' + formatError(e));
+      });
   }
 
   /**
@@ -107,27 +150,18 @@ export class WallboxManager {
   getWallboxAggregation(): { wallboxPower: number; wallboxSolarShare: number; hasWallbox: boolean } {
     let wallboxPower = 0;
     let wallboxSolarShare = 0;
-    const wallboxDevices = this.homey.drivers.getDriver('wallbox').getDevices();
-    const stationId = this.stationId;
+    let hasWallbox = false;
 
-    wallboxDevices.forEach((device: unknown) => {
-      const d = device as WallboxDevice;
-      const config = d.getStoreValue('settings') as { stationId?: string } | undefined;
-      if (String(config?.stationId) !== stationId) {
-        return;
-      }
+    // Single pass over cached linked devices (no double iteration, no repeated full getDevices)
+    const linkedDevices = this.getLinkedWallboxDevices();
+    linkedDevices.forEach((d: WallboxDevice) => {
+      hasWallbox = true;
       if (d.hasCapability('measure_power')) {
         wallboxPower += Number(d.getCapabilityValue('measure_power')) || 0;
       }
       if (d.hasCapability('measure_wallbox_solarshare')) {
         wallboxSolarShare += Number(d.getCapabilityValue('measure_wallbox_solarshare')) || 0;
       }
-    });
-
-    const hasWallbox = wallboxDevices.some((device: unknown) => {
-      const d = device as WallboxDevice;
-      const config = d.getStoreValue('settings') as { stationId?: string } | undefined;
-      return String(config?.stationId) === stationId;
     });
 
     return { wallboxPower, wallboxSolarShare, hasWallbox };

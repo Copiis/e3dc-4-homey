@@ -220,9 +220,13 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
   private lastBatteryUsable = 0;
   private lastBatteryData: BatteryData | null = null;
 
+  // Short cache for linked battery modules (reduces repeated scans on capacity reads)
+  private linkedBatteryModulesCache: { timestamp: number; devices: unknown[] } | null = null;
+  private static readonly LINKED_BATTERY_CACHE_TTL_MS = 60_000;
+
   public getBatteryCapacity(): Promise<number> {
     const now = Date.now();
-    const CACHE_TTL_MS = 30000; // throttle full RSCP battery reads (capacity changes slowly)
+    const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes — battery capacity changes very rarely (only on hardware swap or strong degradation)
     if (now - this.lastBatteryReadTime < CACHE_TTL_MS && this.lastBatteryUsable > 0) {
       return Promise.resolve(this.lastBatteryUsable);
     }
@@ -290,7 +294,15 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
    */
   private updateLinkedBatteryModules(batteryData: BatteryData, usableWh: number) {
     try {
-      const batteryDevices = this.homey.drivers.getDriver('battery-module').getDevices();
+      const now = Date.now();
+      let batteryDevices: unknown[];
+      if (this.linkedBatteryModulesCache && now - this.linkedBatteryModulesCache.timestamp < HomePowerStationDevice.LINKED_BATTERY_CACHE_TTL_MS) {
+        batteryDevices = this.linkedBatteryModulesCache.devices;
+      } else {
+        batteryDevices = this.homey.drivers.getDriver('battery-module').getDevices();
+        this.linkedBatteryModulesCache = { timestamp: now, devices: batteryDevices };
+      }
+
       const stationId = this.getId();
       const capacityKwh = usableWh / 1000.0;
 
