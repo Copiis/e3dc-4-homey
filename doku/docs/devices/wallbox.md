@@ -5,16 +5,17 @@ of the respective wallbox.
 
 **Current capabilities (per wallbox device):**
 - `measure_power` (W) – charging power; standard for `evcharger` and Homey Energy
-- `meter_power` (kWh) – total energy charged
 - `measure_wallbox_solarshare` (W) – solar portion of the charging power
+- `measure_vehicle_soc` (%) – vehicle state of charge (SOC). Always shows the last known good value. When no current data is available, the title shows "(letzter bekannter Wert)" as hint.
+- `wallbox_plugged` – charging cable plugged in
+- `measure_wallbox_max_current` (A) – max charge current
+- `measure_wallbox_phases` – active phases (1–3)
+- `meter_power` (kWh) – total energy charged
 - `wallbox_charging` (sensor) – charging allowed / stopped; mapped from RSCP `EXTERN_DATA_ALG` (read-only on device tile)
 - `wallbox_sun_mode` (sensor) – PV surplus mode; state from `EXTERN_DATA_ALG` status byte bit 7 (read-only on device tile)
 
-**Live sensors (from `EXTERN_DATA_ALG`, each HPS poll):**
-- `measure_vehicle_soc` (%) – vehicle state of charge when plugged in
-- `measure_wallbox_max_current` (A) – max charge current
-- `measure_wallbox_phases` – active phases (1–3)
-- `wallbox_plugged`, `wallbox_plug_locked`, `wallbox_schuko` – plug and Schuko outlet status
+**Additional live sensors (from `EXTERN_DATA_ALG`):**
+- `wallbox_plug_locked`, `wallbox_schuko` – plug and Schuko outlet status (hidden from main tile)
 
 **Ladepriorisierung sensors (system-wide EMS, same on every wallbox device):**
 - `wallbox_priority_battery_first` – sun mode priority: battery first vs wallbox first
@@ -57,6 +58,9 @@ The advanced current card uses `WBTag.REQ_SET_MODE`.
 - Wallbox devices are discovered via the already paired HPS device(s).
 - Test flows with your real wallbox – firmware variants may behave slightly differently.
 - Copy the diagnostic report from HPS device settings (Diagnosis) if a command fails.
+
+**Vehicle SOC from E3DC Cloud (fallback):**
+If your car reports 0% via local RSCP (very common with Tesla etc.), you can enable **"E3DC Cloud für Fallback-Werte nutzen"** in the main HKW device settings. The app then uses your existing portal credentials to query the official E3DC Cloud API and applies a better SOC value when the local one is implausible. This is completely optional and local RSCP always takes priority.
 
 **EXTERN_DATA_ALG (6 bytes, read via `WBTag.REQ_EXTERN_DATA_ALG`):**
 

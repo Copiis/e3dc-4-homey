@@ -100,13 +100,25 @@ export function calculateMultiSegmentPvForecast(
     correctionFactor = Math.max(CORRECTION_MIN, Math.min(CORRECTION_MAX, correctionFactor));
   }
 
-  // Use actual so far + original forecasted remaining (no aggressive scaling).
-  const forecastRemaining = baselineKwh - expectedKwhSoFar;
-  const adjustedKwh = actualKwh + forecastRemaining;
+  const remainingExpected = Math.max(0, baselineKwh - expectedKwhSoFar);
+  const isNearEnd = remainingExpected < MIN_EXPECTED_KWH_FOR_CORRECTION;
+
+  let adjustedKwhValue: number;
+  if (isNearEnd) {
+    adjustedKwhValue = actualKwh;
+  } else if (actualKwh <= expectedKwhSoFar) {
+    // Day not yet overtaken the forecast for the elapsed time -> stay at the original baseline
+    adjustedKwhValue = baselineKwh;
+  } else {
+    // Actual production has overtaken the expected so far -> allow adjusted to rise
+    adjustedKwhValue = actualKwh + remainingExpected;
+  }
+
+  adjustedKwhValue = Math.max(actualKwh, adjustedKwhValue);
 
   return {
     baselineKwh: roundKwh(baselineKwh),
-    adjustedKwh: roundKwh(Math.max(actualKwh, adjustedKwh)),
+    adjustedKwh: roundKwh(adjustedKwhValue),
     expectedKwhSoFar: roundKwh(expectedKwhSoFar),
     correctionFactor: Math.round(correctionFactor * 1000) / 1000,
   };
@@ -128,10 +140,25 @@ export function calculatePvForecast(inputs: PvForecastInputs): PvForecastResult 
     correctionFactor = Math.max(CORRECTION_MIN, Math.min(CORRECTION_MAX, correctionFactor));
   }
 
-  const adjustedKwh = actualKwh + remainingKwh * correctionFactor;
+  const remainingExpected = Math.max(0, baselineKwh - expectedKwhSoFar);
+  const isNearEnd = remainingExpected < MIN_EXPECTED_KWH_FOR_CORRECTION;
+
+  let adjustedKwhValue: number;
+  if (isNearEnd) {
+    adjustedKwhValue = actualKwh;
+  } else if (actualKwh <= expectedKwhSoFar) {
+    // not yet overtaken the forecast for elapsed time -> stay at original baseline
+    adjustedKwhValue = baselineKwh;
+  } else {
+    // actual has overtaken expected so far -> allow the total to rise with actual + remaining (unscaled)
+    adjustedKwhValue = actualKwh + remainingKwh;
+  }
+
+  adjustedKwhValue = Math.max(actualKwh, adjustedKwhValue);
+
   return {
     baselineKwh: roundKwh(baselineKwh),
-    adjustedKwh: roundKwh(Math.max(actualKwh, adjustedKwh)),
+    adjustedKwh: roundKwh(adjustedKwhValue),
     expectedKwhSoFar: roundKwh(expectedKwhSoFar),
     correctionFactor: Math.round(correctionFactor * 1000) / 1000,
   };

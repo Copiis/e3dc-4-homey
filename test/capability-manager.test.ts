@@ -20,7 +20,7 @@ describe('CapabilityManager', () => {
     let capturedGridChange: any = null;
 
     const mockDevice = {
-      hasCapability: () => false,
+      hasCapability: () => true,
       addCapability: () => Promise.resolve(),
       removeCapability: () => Promise.resolve(),
       getCapabilityValue: () => undefined,
@@ -50,7 +50,7 @@ describe('CapabilityManager', () => {
     assert.ok(capturedBatteryChange || capturedGridChange);
     // negative in LiveData (discharge) should result in negative in capability
     if (capturedBatteryChange) {
-      assert.ok(capturedBatteryChange.value < 0);
+      assert.ok(capturedBatteryChange.newValue < 0);
     }
   });
 
@@ -124,7 +124,7 @@ describe('CapabilityManager', () => {
 
   it('handles full live data flow with multiple managers interaction (integration style)', () => {
     const mockDevice = {
-      hasCapability: () => false,
+      hasCapability: () => true,
       addCapability: () => Promise.resolve(),
       removeCapability: () => Promise.resolve(),
       getCapabilityValue: () => undefined,
@@ -189,7 +189,7 @@ describe('CapabilityManager', () => {
 
   it('LiveDataPoller + multiple managers interaction (strong integration test)', () => {
     const mockDevice = {
-      hasCapability: () => false,
+      hasCapability: () => true,
       addCapability: () => Promise.resolve(),
       removeCapability: () => Promise.resolve(),
       getCapabilityValue: () => undefined,

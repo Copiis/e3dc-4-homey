@@ -204,6 +204,8 @@ export class DeviceDiagnostic {
             }
             if (snapshot.wallboxSocPercent === 0 || snapshot.wallboxSocPercent === undefined) {
                 lines.push('  Hinweis: E3/DC-Portal nutzt oft Cloud — lokales RSCP liefert bei Tesla häufig 0.');
+                lines.push('  Aktuell (Stand Juli 2026): E3DC meldet selbst eingeschränkte Fahrzeugintegration im Portal ("Fahrzeug nicht verbunden").');
+                lines.push('  Cloud-Fallback und lokale Werte können daher vorübergehend unzuverlässig sein.');
             }
         }
         lines.push('');

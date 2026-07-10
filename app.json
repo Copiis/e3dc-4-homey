@@ -1,7 +1,7 @@
 {
   "_comment": "This file is generated. Please edit .homeycompose/app.json instead.",
   "id": "de.jnkconsulting.e3dc.v2",
-"version": "1.8.38",
+  "version": "1.8.39",
   "compatibility": ">=12.4.5",
   "sdk": 3,
   "brandColor": "#7AB31B",
@@ -592,6 +592,41 @@
               "uiComponent": null
             }
           ]
+        },
+        {
+          "type": "group",
+          "label": {
+            "en": "E3DC Cloud (optional fallback)",
+            "de": "E3DC Cloud (optionaler Fallback)"
+          },
+          "children": [
+            {
+              "id": "useE3dcCloud",
+              "type": "checkbox",
+              "label": {
+                "en": "Use E3DC Cloud for fallback values (e.g. vehicle SOC)",
+                "de": "E3DC Cloud für Fallback-Werte nutzen (z. B. Fahrzeug-SOC)"
+              },
+              "value": false,
+              "hint": {
+                "en": "When local RSCP does not report vehicle SOC (common with cloud-paired cars), try to fetch via the official E3DC Cloud API. Requires internet. Local RSCP always has priority.",
+                "de": "Falls lokales RSCP keinen Fahrzeug-SOC liefert (häufig bei cloud-verbundenen Autos), über die offizielle E3DC Cloud API versuchen. Internet nötig. Lokales RSCP hat immer Vorrang."
+              }
+            },
+            {
+              "id": "cloudSystemSn",
+              "type": "text",
+              "label": {
+                "en": "System Serial Number (SN) – optional",
+                "de": "System-Seriennummer (SN) – optional"
+              },
+              "value": "",
+              "hint": {
+                "en": "Leave empty for auto-discovery from your portal account. Find the SN in the E3DC portal or on the device.",
+                "de": "Leer lassen für automatische Erkennung aus deinem Portal-Account. Die SN steht im E3DC-Portal oder am Gerät."
+              }
+            }
+          ]
         }
       ]
     },
@@ -1125,13 +1160,14 @@
       "class": "evcharger",
       "capabilities": [
         "measure_power",
-        "wallbox_plugged",
-        "wallbox_charging",
-        "wallbox_sun_mode",
         "measure_wallbox_solarshare",
+        "measure_vehicle_soc",
+        "wallbox_plugged",
         "measure_wallbox_max_current",
         "measure_wallbox_phases",
         "meter_power",
+        "wallbox_charging",
+        "wallbox_sun_mode",
         "wallbox_plug_locked",
         "wallbox_schuko",
         "wallbox_priority_battery_first",
@@ -1182,6 +1218,17 @@
         "wallbox_plugged": {
           "preventInsights": true,
           "preventTag": true
+        },
+        "measure_vehicle_soc": {
+          "title": {
+            "en": "Vehicle SOC",
+            "de": "Fahrzeug-Ladezustand"
+          },
+          "units": {
+            "en": "%",
+            "de": "%"
+          },
+          "decimals": 0
         },
         "meter_power": {
           "title": {

@@ -26,7 +26,6 @@ const WALLBOX_LEGACY_CAPABILITIES = [
   'evcharger_charging',
   'evcharger_charging_state',
   'measure_wallbox_consumption',
-  'measure_vehicle_soc',
   'wallbox_start_charging',
   'wallbox_stop_charging',
   'wallbox_sun_mode_on',
@@ -56,6 +55,41 @@ class WallboxDevice extends Homey.Device implements Wallbox {
   private capabilitiesReady = false;
   private wasReadyToCharge = false;
 
+  // Last known good vehicle SOC (always prefer this when current data is implausible)
+  private lastPlausibleVehicleSoc?: number;
+
+  private async loadLastPlausibleSoc(): Promise<void> {
+    try {
+      const stored = await this.getStoreValue('lastPlausibleVehicleSoc');
+      if (typeof stored === 'number' && stored > 0 && stored <= 100) {
+        this.lastPlausibleVehicleSoc = stored;
+      }
+    } catch {}
+  }
+
+  private async saveLastPlausibleSoc(value: number): Promise<void> {
+    try {
+      await this.setStoreValue('lastPlausibleVehicleSoc', value);
+    } catch {}
+  }
+
+  private async updateVehicleSocTitle(): Promise<void> {
+    try {
+      // Always show the hint in parentheses under the value, as the displayed
+      // value is always the last known good one (or the best available).
+      const title = 'Fahrzeug-Ladezustand (letzter bekannter Wert)';
+      await this.setCapabilityOptions('measure_vehicle_soc', {
+        title,
+        units: { en: '%', de: '%' },
+        decimals: 0,
+        uiComponent: 'sensor'
+      });
+      this.log(`Vehicle SOC title set to: ${title}`);
+    } catch (e) {
+      this.error('Failed to set vehicle SOC title: ' + formatError(e));
+    }
+  }
+
   private scheduleHandler!: WallboxScheduleHandler;
   private chargingManager!: WallboxChargingManager;
   private emsSettingsManager!: WallboxEmsSettingsManager;
@@ -71,7 +105,14 @@ class WallboxDevice extends Homey.Device implements Wallbox {
   async onInit() {
     this.log('WallboxDevice has been initialized');
     try {
+      // Run ghost cleanup as early as possible (before full migrate)
+      await this.cleanupGhostCapabilities().catch(() => {});
+
       await this.migrateCapabilities();
+      await this.loadLastPlausibleSoc();
+
+      // Always set the title with the "last known value" hint
+      await this.updateVehicleSocTitle();
       this.capabilitiesReady = true;
     } catch (e) {
       this.error('Wallbox onInit failed: ' + formatError(e));
@@ -134,11 +175,14 @@ class WallboxDevice extends Homey.Device implements Wallbox {
   /**
    * Ensures all required capabilities exist and removes legacy ones.
    * Also sets initial Ladeplan tile visibility.
+   * This also aggressively cleans up known "ghost" capabilities that can break the tile and repair view.
    */
   private async migrateCapabilities(): Promise<void> {
     await ensureCapabilities(this, [...WALLBOX_CAPABILITY_ORDER]);
     await reorderCapabilitiesIfNeeded(this, WALLBOX_CAPABILITY_ORDER);
     await this.applyLadeplanTileVisibility();
+
+    // Remove legacy capabilities
     for (const capability of WALLBOX_LEGACY_CAPABILITIES) {
       if (!this.hasCapability(capability)) {
         continue;
@@ -148,6 +192,22 @@ class WallboxDevice extends Homey.Device implements Wallbox {
         this.log(`Removed legacy capability ${capability}`);
       } catch (e) {
         this.error(`Failed to remove legacy capability ${capability}: ${formatError(e)}`);
+      }
+    }
+
+    // === AUTOMATIC CLEANUP OF KNOWN BAD CAPABILITIES (even without repair) ===
+    // This fixes cases where temporary capabilities (like vehicle_soc_last_known) were added
+    // and later removed from the manifest, leaving devices in a broken state.
+    const badCapabilities = ['vehicle_soc_last_known', 'evcharger_charging_state'];
+    for (const cap of badCapabilities) {
+      if (this.hasCapability(cap)) {
+        try {
+          await this.removeCapability(cap);
+          this.log(`Auto-removed ghost capability "${cap}" during sync/init (prevents broken tiles and repair errors)`);
+        } catch (e) {
+          // Non-fatal – device might still be partially broken, but we tried
+          this.error(`Could not auto-remove ghost cap ${cap}: ${formatError(e)}`);
+        }
       }
     }
   }
@@ -182,9 +242,30 @@ class WallboxDevice extends Homey.Device implements Wallbox {
     this.lastSyncedState = state;
     this.lastSyncedAt = Date.now();
 
+    // Run ghost-capability cleanup on every sync (automatic, no repair needed)
+    this.cleanupGhostCapabilities().catch(() => {});
+
     const effectivePowerW = resolveWallboxPowerW(state);
     this.updateWallboxCapabilities(state, effectivePowerW);
     this.handleWallboxReadyTrigger(state, effectivePowerW);
+  }
+
+  /**
+   * Safe, non-blocking cleanup for known problematic ghost capabilities.
+   * Called from onInit (via migrate) and from every sync().
+   */
+  private async cleanupGhostCapabilities(): Promise<void> {
+    const bad = ['vehicle_soc_last_known', 'evcharger_charging_state'];
+    for (const cap of bad) {
+      if (this.hasCapability(cap)) {
+        try {
+          await this.removeCapability(cap);
+          this.log(`Auto-removed ghost capability "${cap}" during sync`);
+        } catch (e) {
+          // ignore – might be temporary
+        }
+      }
+    }
   }
 
   /**
@@ -197,6 +278,40 @@ class WallboxDevice extends Homey.Device implements Wallbox {
       updateCapabilityValue('meter_power', meterKwh, this);
     }
     updateCapabilityValue('measure_wallbox_solarshare', state.solarPowerW, this);
+    // Vehicle SOC: always show last known good value (with hint in title)
+    const socVal = state.socPercent;
+    const isPlausible = socVal !== undefined && socVal > 0 && socVal <= 100;
+
+    let valueToSet: number | undefined;
+    let isLastKnown = false;
+
+    if (isPlausible) {
+      // Fresh good value
+      this.lastPlausibleVehicleSoc = socVal;
+      this.saveLastPlausibleSoc(socVal).catch(() => {});
+      valueToSet = socVal;
+      isLastKnown = false;
+    } else if (this.lastPlausibleVehicleSoc !== undefined) {
+      // Use last known
+      valueToSet = this.lastPlausibleVehicleSoc;
+      isLastKnown = true;
+      this.log(`Vehicle SOC: showing last known value ${valueToSet}% (current data implausible)`);
+    } else {
+      // Nothing available
+      valueToSet = 0;
+      isLastKnown = false;
+      this.log('Vehicle SOC: no plausible value available (showing 0)');
+    }
+
+    const socChanged = updateCapabilityValue('measure_vehicle_soc', valueToSet, this, { force: true });
+
+    // Always force the title with the hint so it appears under the value
+    this.updateVehicleSocTitle().catch(() => {});
+
+    if (socChanged || isLastKnown) {
+      const d = state.socDiagnostics;
+      this.log(`Vehicle SOC tile updated to ${valueToSet}% (lastKnown=${isLastKnown}, source=${socVal ?? 'n/a'})`);
+    }
     updateCapabilityValue('wallbox_charging', state.chargingEnabled, this);
     updateCapabilityValue('wallbox_sun_mode', state.sunModeActive, this);
 
@@ -337,6 +452,20 @@ class WallboxDevice extends Homey.Device implements Wallbox {
    */
   async setDischargeBatteryUntil(percent: number): Promise<boolean> {
     return this.emsSettingsManager.setDischargeBatteryUntil(percent);
+  }
+
+  /**
+   * Called by HPS cloud fallback to set a plausible SOC from cloud.
+   * Treats it as current value.
+   */
+  applyCloudVehicleSoc(socPercent: number): void {
+    if (socPercent > 0 && socPercent <= 100) {
+      this.lastPlausibleVehicleSoc = socPercent;
+      this.saveLastPlausibleSoc(socPercent).catch(() => {});
+      updateCapabilityValue('measure_vehicle_soc', socPercent, this, { force: true });
+      this.updateVehicleSocTitle().catch(() => {});
+      this.log(`Applied cloud vehicle SOC ${socPercent}% (current value)`);
+    }
   }
 
   /**

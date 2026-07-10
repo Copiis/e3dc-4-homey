@@ -78,7 +78,7 @@ describe('PowerModeManager', () => {
     assert.strictEqual(setPowerCalls[0].powerW, 2500);
   });
 
-  it('continues scheduling refreshes after a successful keep-alive send', () => {
+  it('continues scheduling refreshes after a successful keep-alive send', async () => {
     const scheduledDelays: number[] = [];
     const callbacks: Array<() => void> = [];
 
@@ -106,8 +106,11 @@ describe('PowerModeManager', () => {
     const manager = new PowerModeManager(mockDevice, mockApi, mockDevice);
     manager.setPowerModeState({ mode: 4, powerW: 3000, expiresAt: Date.now() + 600000 });
 
-    // Fire first scheduled refresh
+    // Fire first scheduled refresh (the .then that re-schedules is async microtask)
     if (callbacks[0]) callbacks[0]();
+
+    // Flush microtask queue so the .then in refresh runs and calls schedulePowerModeRefresh again
+    await new Promise(resolve => setImmediate(resolve));
 
     // Should have scheduled the next one
     assert.ok(scheduledDelays.length >= 2, 'refresh should re-schedule itself');

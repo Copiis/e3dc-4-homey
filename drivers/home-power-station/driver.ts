@@ -40,56 +40,112 @@ class HomePowerStationDriver extends Homey.Driver {
   }
 
   onPair(session: PairSession): Promise<void> {
-    this.registerConnectionHandlers(session, () => this.settings);
-    session.setHandler('list_devices', async () => this.onPairListDevices());
+    try {
+      this.registerConnectionHandlers(session, () => this.settings);
+      session.setHandler('list_devices', async () => {
+        try {
+          return await this.onPairListDevices();
+        } catch (e) {
+          this.error('onPair list_devices failed: ' + formatError(e));
+          // Return empty list instead of crashing the flow
+          return [];
+        }
+      });
+    } catch (e) {
+      this.error('onPair setup failed: ' + formatError(e));
+    }
     return Promise.resolve();
   }
 
   onRepair(session: PairSession, device: Homey.Device): Promise<void> {
-    const repairSettings: PowerStationConfig = {
-      ...(device.getSettings() as PowerStationConfig),
-    };
-    this.registerConnectionHandlers(session, () => repairSettings);
-    session.setHandler('done', async () => {
-      repairSettings.stationPort = parseInt(repairSettings.stationPort.toString());
-      if (repairSettings.timeout == undefined) {
-        repairSettings.timeout = 5;
-      }
-      await device.setSettings(repairSettings);
-      if (!device.getAvailable()) {
-        await device.setAvailable();
-      }
-      return true;
-    });
+    try {
+      const repairSettings: PowerStationConfig = {
+        ...(device.getSettings() as PowerStationConfig),
+      };
+
+      this.registerConnectionHandlers(session, () => repairSettings);
+
+      session.setHandler('done', async () => {
+        try {
+          repairSettings.stationPort = parseInt(repairSettings.stationPort.toString());
+          if (repairSettings.timeout == undefined) {
+            repairSettings.timeout = 5;
+          }
+          await device.setSettings(repairSettings);
+
+          // Try to recover the device even if it was in bad state
+          if (!device.getAvailable()) {
+            await device.setAvailable().catch(() => {});
+          }
+
+          // Force a sync after repair so data comes back quickly
+          if (typeof (device as any).sync === 'function') {
+            (device as any).sync().catch(() => {});
+          }
+
+          this.log('Repair completed successfully for device ' + device.getName());
+          return true;
+        } catch (e) {
+          this.error('Repair "done" handler failed: ' + formatError(e));
+          // Still try to mark available
+          await device.setAvailable().catch(() => {});
+          return true; // don't let the flow crash
+        }
+      });
+    } catch (e) {
+      this.error('onRepair setup failed: ' + formatError(e));
+    }
     return Promise.resolve();
   }
 
   private registerConnectionHandlers(session: PairSession, getSettings: () => PowerStationConfig) {
+    // Wrap every handler so one bad emit doesn't kill the entire pair/repair flow
     session.setHandler('settingsChanged', async (data: PowerStationConfig) => {
-      return await this.onSettingsChanged(data, getSettings);
+      try {
+        return await this.onSettingsChanged(data, getSettings);
+      } catch (e) {
+        this.error('settingsChanged handler error: ' + formatError(e));
+        return true; // don't break the UI
+      }
     });
 
     session.setHandler('checkConnection', async (data: PowerStationConfig) => {
-      return await this.onCheckConnection(data, getSettings);
+      try {
+        return await this.onCheckConnection(data, getSettings);
+      } catch (e) {
+        this.error('checkConnection handler error: ' + formatError(e));
+        return 'Unexpected error during connection check';
+      }
     });
 
-    session.setHandler('getSettings', async () => getSettings());
+    session.setHandler('getSettings', async () => {
+      try {
+        return getSettings();
+      } catch (e) {
+        this.error('getSettings handler error: ' + formatError(e));
+        return {};
+      }
+    });
   }
 
   async onCheckConnection(data: PowerStationConfig, settingsTarget?: { (): PowerStationConfig }) {
-    return new Promise<string>(async (resolve, reject) => {
-      this.settings = data
-      if (settingsTarget) {
-        Object.assign(settingsTarget(), data);
-      }
-      const validationError = this.validateSettings()
-      if (validationError) {
-        resolve(validationError)
-      }
-      else {
-        if (this.settings.timeout == undefined) {
-          this.settings.timeout = 5
+    return new Promise<string>(async (resolve) => {
+      try {
+        this.settings = data;
+        if (settingsTarget) {
+          Object.assign(settingsTarget(), data);
         }
+
+        const validationError = this.validateSettings();
+        if (validationError) {
+          resolve(validationError);
+          return;
+        }
+
+        if (this.settings.timeout == undefined) {
+          this.settings.timeout = 5;
+        }
+
         const easyRscpConnectionData: E3dcConnectionData = {
           address: this.settings.stationAddress,
           port: this.settings.stationPort,
@@ -98,17 +154,23 @@ class HomePowerStationDriver extends Homey.Driver {
           rscpPassword: this.settings.rscpKey,
           connectionTimeoutMillis: this.settings.timeout * 1000,
           readTimeoutMillis: this.settings.timeout * 1000
-        }
+        };
 
-        const api = new RscpApi()
-        api.init(easyRscpConnectionData, this)
-        api.readLiveData(true, this)
-            .then(e => resolve(this.homey.__('setup.connection-test.success')))
-            .catch(e => {
-              resolve(this.homey.__('setup.connection-test.failed-detail', {detail: formatError(e)}))
-            })
+        const api = new RscpApi();
+        api.init(easyRscpConnectionData, this);
+
+        // More defensive: don't let a bad connection crash the whole pair flow
+        try {
+          await api.readLiveData(true, this);
+          resolve(this.homey.__('setup.connection-test.success'));
+        } catch (e) {
+          resolve(this.homey.__('setup.connection-test.failed-detail', { detail: formatError(e) }));
+        }
+      } catch (e) {
+        this.error('onCheckConnection crashed: ' + formatError(e));
+        resolve('Unexpected error during connection test: ' + formatError(e));
       }
-    })
+    });
   }
 
   async onSettingsChanged(data: PowerStationConfig, settingsTarget?: { (): PowerStationConfig }) {
@@ -142,18 +204,24 @@ class HomePowerStationDriver extends Homey.Driver {
   }
 
   async onPairListDevices() {
-    this.settings.stationPort = parseInt(this.settings.stationPort.toString())
-    return [
-      {
-        name: 'HPS - ' + this.settings.stationAddress,
-        data: {
-          id: 'rscp-device-' + this.settings.stationAddress + '-' + Date.now(),
+    try {
+      this.settings.stationPort = parseInt(this.settings.stationPort.toString());
+      return [
+        {
+          name: 'HPS - ' + this.settings.stationAddress,
+          data: {
+            id: 'rscp-device-' + this.settings.stationAddress + '-' + Date.now(),
+          },
+          store: {
+            settings: this.settings
+          },
         },
-        store: {
-          settings: this.settings
-        },
-      },
-    ];
+      ];
+    } catch (e) {
+      this.error('onPairListDevices failed: ' + formatError(e));
+      // Return something so the flow doesn't completely die
+      return [];
+    }
   }
 
 }

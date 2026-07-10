@@ -62,13 +62,14 @@ export const SUMMARY_CAPABILITY_ORDER = [
 /** Tile order for Wallbox — must match drivers/wallbox/driver.compose.json */
 export const WALLBOX_CAPABILITY_ORDER = [
   'measure_power',
-  'wallbox_plugged',
-  'wallbox_charging',
-  'wallbox_sun_mode',
   'measure_wallbox_solarshare',
+  'measure_vehicle_soc',
+  'wallbox_plugged',
   'measure_wallbox_max_current',
   'measure_wallbox_phases',
   'meter_power',
+  'wallbox_charging',
+  'wallbox_sun_mode',
   'wallbox_plug_locked',
   'wallbox_schuko',
   'wallbox_priority_battery_first',
