@@ -244,24 +244,24 @@
     {
       "id": "wallbox_discharge_battery_until",
       "title": {
-        "de": "Batterie Entladegrenze",
-        "en": "Battery discharge limit"
+        "de": "Batterie entladen bis",
+        "en": "Battery discharge until"
       },
       "titleFormatted": {
-        "de": "Batterie Entladegrenze [[percent]] %",
-        "en": "Battery discharge limit [[percent]] %"
+        "de": "Batterie entladen bis [[percent]] %",
+        "en": "Battery discharge until [[percent]] %"
       },
       "hint": {
-        "de": "Legt fest, bis zu welchem Ladezustand (SOC in %) der Hausakku fürs Auto-Laden entladen werden darf. Entspricht E3/DC „Bis Ladezustand“.",
-        "en": "Sets how far (SOC in %) the home battery may be discharged for EV charging. Matches E3/DC “Down to state of charge”."
+        "de": "Legt fest, bis zu welchem Ladezustand (SOC in %) der Hausakku fürs Auto-Laden entladen werden darf. Entspricht E3/DC „Batterie entladen bis“.",
+        "en": "Sets the SOC (%) down to which the home battery may be discharged for EV charging. Matches E3/DC “Battery discharge until”."
       },
       "args": [
         {
           "type": "number",
           "name": "percent",
           "title": {
-            "de": "Batterie Entladegrenze (%)",
-            "en": "Battery discharge limit (%)"
+            "de": "Batterie entladen bis (%)",
+            "en": "Battery discharge until (%)"
           },
           "required": true,
           "min": 0,

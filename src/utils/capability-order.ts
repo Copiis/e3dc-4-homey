@@ -64,6 +64,7 @@ export const WALLBOX_CAPABILITY_ORDER = [
   'measure_power',
   'measure_wallbox_solarshare',
   'measure_vehicle_soc',
+  'measure_wallbox_discharge_soc',
   'wallbox_plugged',
   'measure_wallbox_max_current',
   'measure_wallbox_phases',
@@ -73,7 +74,6 @@ export const WALLBOX_CAPABILITY_ORDER = [
   'wallbox_plug_locked',
   'wallbox_schuko',
   'wallbox_priority_battery_first',
-  'measure_wallbox_discharge_soc',
   'wallbox_battery_discharge_sun',
   'wallbox_battery_discharge_mix',
 ] as const;
@@ -83,7 +83,6 @@ export const WALLBOX_TILE_HIDDEN_CAPABILITIES = [
   'wallbox_plug_locked',
   'wallbox_schuko',
   'wallbox_priority_battery_first',
-  'measure_wallbox_discharge_soc',
   'wallbox_battery_discharge_sun',
   'wallbox_battery_discharge_mix',
 ] as const;

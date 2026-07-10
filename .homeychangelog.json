@@ -1,4 +1,8 @@
 {
+  "1.8.42": {
+    "de": "- **Wallbox-Kachel:** „Batterie entladen bis“ (measure_wallbox_discharge_soc) jetzt direkt nach dem Fahrzeug-Ladezustand auf der Kachel sichtbar.\n- Titel auf „Batterie entladen bis“ angepasst (besser lesbar, passend zu E3/DC „Bis Ladezustand“).\n- Flow-Karte „Batterie entladen bis“ entsprechend aktualisiert.",
+    "en": "- **Wallbox tile:** \"Battery discharge until\" (measure_wallbox_discharge_soc) now shown directly after vehicle SOC on the tile.\n- Title updated to \"Battery discharge until\" (more readable, matches E3/DC \"Down to state of charge\").\n- Flow card \"Battery discharge until\" updated accordingly."
+  },
   "1.8.41": {
     "de": "- **Performance-Optimierungen:** Wallbox-EMS-Settings (Batterie-Priorität, Entlade-SOC-Grenze etc.) werden jetzt mit 5-Minuten-Cache statt bei jedem Poll gelesen – spart bis zu 4 RSCP-Anfragen pro 30s-Zyklus bei verknüpften Wallboxen.\n- Single-Pass-Filtering + kurze In-Memory-Caches (60s) für verknüpfte Geräte (Wallbox, Grid-Meter, Batterie-Module) – weniger wiederholte Store-Lookups.\n- Battery-Capacity-Cache auf 5 Minuten verlängert (Kapazität ändert sich selten).",
     "en": "- **Performance improvements:** Wallbox EMS settings (battery priority, discharge SOC limit etc.) are now cached for 5 minutes instead of being read on every poll – saves up to 4 RSCP requests per 30s cycle when wallboxes are linked.\n- Single-pass filtering + short in-memory caches (60s) for linked devices (wallbox, grid meter, battery modules) – fewer repeated store lookups.\n- Battery capacity cache extended to 5 minutes (capacity rarely changes)."

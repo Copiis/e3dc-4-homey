@@ -20,7 +20,7 @@ of the respective wallbox.
 **Ladepriorisierung sensors (system-wide EMS, same on every wallbox device):**
 - `wallbox_priority_battery_first` – sun mode priority: battery first vs wallbox first
 - `wallbox_battery_discharge_sun` – home battery discharge allowed in sun mode
-- `measure_wallbox_discharge_soc` (%) – min. home battery SOC for EV discharge (“Bis Ladezustand”)
+- `measure_wallbox_discharge_soc` (%) – min. home battery SOC for EV discharge (“Batterie entladen bis”)
 - `wallbox_battery_discharge_mix` – home battery discharge allowed in mixed mode / hold time
 
 System capability `evcharger_charging` is intentionally not used.

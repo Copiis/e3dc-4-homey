@@ -217,13 +217,23 @@ class WallboxDevice extends Homey.Device implements Wallbox {
    * depending on whether an active plan is running.
    */
   async applyLadeplanTileVisibility(): Promise<void> {
-    // Remove Ladepläne/EMS from main tile if not important (no active plan)
+    // Hide Ladeplan/EMS indicators only when no active plan.
+    // measure_wallbox_discharge_soc (Batterie entladen bis) is now always visible after Fahrzeug-Ladezustand.
     const hasActivePlan = this.scheduleHandler ? this.scheduleHandler.hasActivePlan() : false;
-    const ladeplanRelated = ['measure_wallbox_discharge_soc', 'wallbox_battery_discharge_sun', 'wallbox_battery_discharge_mix'];
+    const ladeplanRelated = ['wallbox_battery_discharge_sun', 'wallbox_battery_discharge_mix'];
     const toHide = hasActivePlan
       ? WALLBOX_TILE_HIDDEN_CAPABILITIES.filter(c => !ladeplanRelated.includes(c))
       : [...WALLBOX_TILE_HIDDEN_CAPABILITIES, ...ladeplanRelated];
     await hideCapabilitiesFromTile(this, toHide);
+
+    // Always show "Batterie entladen bis" (after Fahrzeug-Ladezustand) on the main tile
+    if (this.hasCapability('measure_wallbox_discharge_soc')) {
+      try {
+        await this.setCapabilityOptions('measure_wallbox_discharge_soc', { uiComponent: 'sensor' });
+      } catch (e) {
+        this.error('Failed to ensure measure_wallbox_discharge_soc visible on tile: ' + formatError(e));
+      }
+    }
   }
 
   async onAdded() {
