@@ -110,8 +110,9 @@ export function calculateMultiSegmentPvForecast(
     // Day not yet overtaken the forecast for the elapsed time -> stay at the original baseline
     adjustedKwhValue = baselineKwh;
   } else {
-    // Actual production has overtaken the expected so far -> allow adjusted to rise
-    adjustedKwhValue = actualKwh + remainingExpected;
+    // Actual production has overtaken the expected so far -> project the remaining using current slope (steep = likely over, flat = likely under)
+    const factor = actualKwh / expectedKwhSoFar;
+    adjustedKwhValue = actualKwh + remainingExpected * factor;
   }
 
   adjustedKwhValue = Math.max(actualKwh, adjustedKwhValue);
@@ -150,8 +151,9 @@ export function calculatePvForecast(inputs: PvForecastInputs): PvForecastResult 
     // not yet overtaken the forecast for elapsed time -> stay at original baseline
     adjustedKwhValue = baselineKwh;
   } else {
-    // actual has overtaken expected so far -> allow the total to rise with actual + remaining (unscaled)
-    adjustedKwhValue = actualKwh + remainingKwh;
+    // actual has overtaken expected so far -> project remaining using the observed slope so far
+    const factor = actualKwh / expectedKwhSoFar;
+    adjustedKwhValue = actualKwh + remainingKwh * factor;
   }
 
   adjustedKwhValue = Math.max(actualKwh, adjustedKwhValue);
