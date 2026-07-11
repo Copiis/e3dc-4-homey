@@ -24,7 +24,14 @@ import {SummaryType} from '../../src/model/summary.config';
 import {DailyIrradianceForecast, fetchTodayTiltedIrradianceForecast} from '../../src/services/open-meteo-forecast';
 import {updateCapabilityValue} from '../../src/utils/capability-utils';
 import {formatError} from '../../src/utils/error-utils';
-import {calculateMultiSegmentPvForecast, localDateString, roundKwh} from '../../src/utils/pv-forecast-calculator';
+import {
+  calculateMultiSegmentPvForecast,
+  estimateDailyProductionLandingPoint,
+  estimateProductionEndMs,
+  getLocalHour,
+  localDateString,
+  roundKwh,
+} from '../../src/utils/pv-forecast-calculator';
 import {
   PV_SEGMENT_SETTING_PREFIXES,
   pvForecastConfigHash,
@@ -327,6 +334,8 @@ class PvForecastDevice extends Homey.Device {
       });
 
       const actualKwh = await this.readActualPvTodayKwh(station, timezone);
+
+      // Reine Baseline (Ursprungsprognose) aus dem Wetter-Modell
       const forecast = calculateMultiSegmentPvForecast(
         segmentInputs,
         settings.calibrationFactor,
@@ -340,13 +349,80 @@ class PvForecastDevice extends Homey.Device {
         baselineKwh = forecast.baselineKwh;
       }
 
-      dayState = {
+      // Historie der kumulierten PV-Erzeugung (Insights-Kurve) immer pflegen
+      let history = [...(dayState?.productionHistory || [])];
+      const lastHist = history[history.length - 1];
+      if (!lastHist || nowMs - lastHist.ts > 4 * 60 * 1000) {
+        history.push({ ts: nowMs, kwh: actualKwh });
+      }
+      // Trimmen auf sinnvollen Zeitraum (letzte ~10 Stunden)
+      const trimStart = nowMs - 10 * 3600 * 1000;
+      history = history.filter(p => p.ts >= trimStart);
+
+      // === NEUE REGEL (alte Regeln vollständig gelöscht) ===
+      // Erst ab 12 Uhr mittags fängt die App an, anhand der bereits stattgefundenen
+      // PV-Erzeugung + Kurve in den Insights (Steilheit/Flachheit der Kurve)
+      // und dem geschätzten Produktionsende den Landepunkt der Tagesproduktion
+      // zu schätzen. Dies geschieht ca. jede halbe Stunde.
+      let adjustedKwh = baselineKwh;
+      const localHour = getLocalHour(timezone, nowMs);
+
+      // Sicherstellen dass dayState ein Objekt ist
+      let workingDayState: PvForecastDayState = dayState || {
         localDate: today,
         configHash,
         baselineKwh,
         lastWeatherFetchMs: nowMs,
       };
-      this.publishForecastValues(baselineKwh, forecast.adjustedKwh, actualKwh, dayState);
+
+      if (localHour >= 12) {
+        const lastEstimate = workingDayState.lastAdjustedEstimateMs ?? 0;
+
+        // ca. alle 30 Minuten neu rechnen
+        if (!lastEstimate || (nowMs - lastEstimate) >= 25 * 60 * 1000) {
+          const repHours = segmentInputs[0]?.hours || [];
+          const estimatedEndMs = estimateProductionEndMs(repHours, nowMs);
+
+          adjustedKwh = estimateDailyProductionLandingPoint(
+            history,
+            nowMs,
+            estimatedEndMs
+          );
+
+          workingDayState = {
+            ...workingDayState,
+            localDate: today,
+            configHash,
+            baselineKwh,
+            lastWeatherFetchMs: nowMs,
+            lastAdjustedEstimateMs: nowMs,
+            productionHistory: history,
+          };
+        } else {
+          if (typeof workingDayState.adjustedKwh === 'number') {
+            adjustedKwh = workingDayState.adjustedKwh;
+          }
+          workingDayState = {
+            ...workingDayState,
+            localDate: today,
+            configHash,
+            baselineKwh,
+            lastWeatherFetchMs: nowMs,
+            productionHistory: history,
+          };
+        }
+      } else {
+        adjustedKwh = baselineKwh;
+        workingDayState = {
+          localDate: today,
+          configHash,
+          baselineKwh,
+          lastWeatherFetchMs: nowMs,
+          productionHistory: history,
+        };
+      }
+
+      this.publishForecastValues(baselineKwh, adjustedKwh, actualKwh, workingDayState);
 
       this.syncErrorCount = 0;
       if (!this.getAvailable()) {

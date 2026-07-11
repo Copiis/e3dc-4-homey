@@ -100,26 +100,10 @@ export function calculateMultiSegmentPvForecast(
     correctionFactor = Math.max(CORRECTION_MIN, Math.min(CORRECTION_MAX, correctionFactor));
   }
 
-  const remainingExpected = Math.max(0, baselineKwh - expectedKwhSoFar);
-  const isNearEnd = remainingExpected < MIN_EXPECTED_KWH_FOR_CORRECTION;
-
-  let adjustedKwhValue: number;
-  if (isNearEnd) {
-    adjustedKwhValue = actualKwh;
-  } else if (actualKwh < baselineKwh) {
-    // Die angepasste Vorhersage (Endsumme) steigt erst, wenn die tatsächliche Produktion
-    // die Ursprungsprognose (voller baselineKwh) erreicht hat.
-    // Bis dahin bleibt die Prognose bei der ursprünglichen Wetter-Vorhersage.
-    adjustedKwhValue = baselineKwh;
-  } else {
-    // Produktion hat die Ursprungsprognose erreicht.
-    // Ab jetzt Schätzung der Endsumme nach der Steilheit/Flachheit der bisherigen Produktionskurve
-    // (Faktor = Verhältnis tatsächliche Produktion zu erwarteter Produktion bis jetzt).
-    const factor = expectedKwhSoFar > 0 ? actualKwh / expectedKwhSoFar : 1;
-    adjustedKwhValue = actualKwh + remainingExpected * factor;
-  }
-
-  adjustedKwhValue = Math.max(actualKwh, adjustedKwhValue);
+  // Neue Regel: Die angepasste Prognose (Kurven-Schätzung) wird ab 12 Uhr mittags
+  // im Device anhand der Insights-Produktionskurve berechnet.
+  // Hier liefern wir als adjusted immer die reine Baseline (Ursprungsprognose).
+  const adjustedKwhValue = baselineKwh;
 
   return {
     baselineKwh: roundKwh(baselineKwh),
@@ -145,26 +129,10 @@ export function calculatePvForecast(inputs: PvForecastInputs): PvForecastResult 
     correctionFactor = Math.max(CORRECTION_MIN, Math.min(CORRECTION_MAX, correctionFactor));
   }
 
-  const remainingExpected = Math.max(0, baselineKwh - expectedKwhSoFar);
-  const isNearEnd = remainingExpected < MIN_EXPECTED_KWH_FOR_CORRECTION;
-
-  let adjustedKwhValue: number;
-  if (isNearEnd) {
-    adjustedKwhValue = actualKwh;
-  } else if (actualKwh < baselineKwh) {
-    // Die angepasste Vorhersage (Endsumme) steigt erst, wenn die tatsächliche Produktion
-    // die Ursprungsprognose (voller baselineKwh) erreicht hat.
-    // Bis dahin bleibt die Prognose bei der ursprünglichen Wetter-Vorhersage.
-    adjustedKwhValue = baselineKwh;
-  } else {
-    // Produktion hat die Ursprungsprognose erreicht.
-    // Ab jetzt Schätzung der Endsumme nach der Steilheit/Flachheit der bisherigen Produktionskurve
-    // (Faktor = Verhältnis tatsächliche Produktion zu erwarteter Produktion bis jetzt).
-    const factor = expectedKwhSoFar > 0 ? actualKwh / expectedKwhSoFar : 1;
-    adjustedKwhValue = actualKwh + remainingKwh * factor;
-  }
-
-  adjustedKwhValue = Math.max(actualKwh, adjustedKwhValue);
+  // Alte Regeln gelöscht.
+  // Neue Regel (ab 12:00 mittags): Kurvenbasierte Schätzung der Endsumme
+  // erfolgt im Device anhand der Produktionskurve aus den Insights.
+  const adjustedKwhValue = baselineKwh;
 
   return {
     baselineKwh: roundKwh(baselineKwh),
@@ -185,4 +153,80 @@ export function localDateString(timezone: string, nowMs = Date.now()): string {
     month: '2-digit',
     day: '2-digit',
   }).format(new Date(nowMs));
+}
+
+/** Lokale Stunde (0-23) für die 12-Uhr-Regel */
+export function getLocalHour(timezone: string, nowMs = Date.now()): number {
+  return parseInt(
+    new Intl.DateTimeFormat('en-GB', {
+      timeZone: timezone,
+      hour: 'numeric',
+      hour12: false,
+    }).format(new Date(nowMs)),
+    10
+  );
+}
+
+/** Geschätztes Ende der PV-Produktion anhand der Forecast-Stunden (letzte relevante Einstrahlung) */
+export function estimateProductionEndMs(hours: HourlyIrradiance[], nowMs: number): number {
+  if (!hours || hours.length === 0) {
+    return nowMs + 5 * 3600 * 1000;
+  }
+  // Letzte Stunde mit spürbarer Einstrahlung (produziert noch)
+  for (let i = hours.length - 1; i >= 0; i--) {
+    if ((hours[i].globalTiltedIrradianceWm2 || 0) > 25) {
+      return hourTimestampMs(hours[i].time) + 45 * 60 * 1000;
+    }
+  }
+  return nowMs + 4 * 3600 * 1000;
+}
+
+/**
+ * Neue Regel ab 12 Uhr mittags:
+ * Schätzt den Landepunkt (finale kWh der Tagesproduktion) anhand
+ * der bisherigen Produktionskurve (Steilheit/Flachheit aus den letzten relevanten Punkten)
+ * + geschätztem Produktionsende.
+ * Wird im Device nur alle ~30 Minuten aufgerufen.
+ */
+export function estimateDailyProductionLandingPoint(
+  history: Array<{ ts: number; kwh: number }>,
+  nowMs: number,
+  estimatedEndMs: number
+): number {
+  if (!history || history.length < 2) {
+    return history?.[history.length - 1]?.kwh ?? 0;
+  }
+
+  const sorted = [...history]
+    .sort((a, b) => a.ts - b.ts)
+    .filter(p => p.kwh >= 0);
+
+  // Für Steilheit/Flachheit: vorzugsweise die Kurve der letzten ~3 Stunden verwenden
+  const recentWindowStart = nowMs - 3 * 3600 * 1000;
+  let points = sorted.filter(p => p.ts >= recentWindowStart);
+
+  if (points.length < 2) {
+    points = sorted.slice(-8); // Fallback: letzte ~40min bei 5min-Intervallen
+  }
+  if (points.length < 2) {
+    return sorted[sorted.length - 1].kwh;
+  }
+
+  const first = points[0];
+  const last = points[points.length - 1];
+  const deltaHours = (last.ts - first.ts) / 3600000;
+
+  if (deltaHours < 0.15) {
+    return last.kwh;
+  }
+
+  const ratePerHour = (last.kwh - first.kwh) / deltaHours; // Steigung der Kurve
+  const remainingHours = Math.max(0.2, (estimatedEndMs - nowMs) / 3600000);
+
+  let final = last.kwh + ratePerHour * remainingHours;
+
+  // Nie unter aktuellen Wert fallen
+  final = Math.max(last.kwh, final);
+
+  return roundKwh(final);
 }

@@ -25,6 +25,10 @@ export interface PvForecastDayState {
   adjustedKwh?: number;
   actualKwh?: number;
   lastWeatherFetchMs: number;
+  /** Timestamp of last curve-based adjusted estimate (only after 12:00) */
+  lastAdjustedEstimateMs?: number;
+  /** Historical production points for curve analysis (ts + cumulative kWh today) */
+  productionHistory?: Array<{ ts: number; kwh: number }>;
 }
 
 export const PV_SEGMENT_COUNT = 3;
