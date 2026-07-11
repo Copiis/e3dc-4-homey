@@ -106,12 +106,16 @@ export function calculateMultiSegmentPvForecast(
   let adjustedKwhValue: number;
   if (isNearEnd) {
     adjustedKwhValue = actualKwh;
-  } else if (actualKwh <= expectedKwhSoFar) {
-    // Day not yet overtaken the forecast for the elapsed time -> stay at the original baseline
+  } else if (actualKwh < baselineKwh) {
+    // Die angepasste Vorhersage (Endsumme) steigt erst, wenn die tatsächliche Produktion
+    // die Ursprungsprognose (voller baselineKwh) erreicht hat.
+    // Bis dahin bleibt die Prognose bei der ursprünglichen Wetter-Vorhersage.
     adjustedKwhValue = baselineKwh;
   } else {
-    // Actual production has overtaken the expected so far -> project the remaining using current slope (steep = likely over, flat = likely under)
-    const factor = actualKwh / expectedKwhSoFar;
+    // Produktion hat die Ursprungsprognose erreicht.
+    // Ab jetzt Schätzung der Endsumme nach der Steilheit/Flachheit der bisherigen Produktionskurve
+    // (Faktor = Verhältnis tatsächliche Produktion zu erwarteter Produktion bis jetzt).
+    const factor = expectedKwhSoFar > 0 ? actualKwh / expectedKwhSoFar : 1;
     adjustedKwhValue = actualKwh + remainingExpected * factor;
   }
 
@@ -147,12 +151,16 @@ export function calculatePvForecast(inputs: PvForecastInputs): PvForecastResult 
   let adjustedKwhValue: number;
   if (isNearEnd) {
     adjustedKwhValue = actualKwh;
-  } else if (actualKwh <= expectedKwhSoFar) {
-    // not yet overtaken the forecast for elapsed time -> stay at original baseline
+  } else if (actualKwh < baselineKwh) {
+    // Die angepasste Vorhersage (Endsumme) steigt erst, wenn die tatsächliche Produktion
+    // die Ursprungsprognose (voller baselineKwh) erreicht hat.
+    // Bis dahin bleibt die Prognose bei der ursprünglichen Wetter-Vorhersage.
     adjustedKwhValue = baselineKwh;
   } else {
-    // actual has overtaken expected so far -> project remaining using the observed slope so far
-    const factor = actualKwh / expectedKwhSoFar;
+    // Produktion hat die Ursprungsprognose erreicht.
+    // Ab jetzt Schätzung der Endsumme nach der Steilheit/Flachheit der bisherigen Produktionskurve
+    // (Faktor = Verhältnis tatsächliche Produktion zu erwarteter Produktion bis jetzt).
+    const factor = expectedKwhSoFar > 0 ? actualKwh / expectedKwhSoFar : 1;
     adjustedKwhValue = actualKwh + remainingKwh * factor;
   }
 
