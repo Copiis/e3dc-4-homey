@@ -23,21 +23,6 @@ class MyApp extends Homey.App {
     this.registerPlantAutocompleteWidget('wallbox-ladeplaner');
     this.registerPlantAutocompleteWidget('power-overview');
     this.registerPlantAutocompleteWidget('live-energy-view');
-
-    this.postTimelineWelcomeIfNeeded().catch(reason => {
-      this.error('Timeline welcome notification failed: ' + formatError(reason));
-    });
-  }
-
-  private async postTimelineWelcomeIfNeeded(): Promise<void> {
-    const currentVersion = this.homey.manifest.version;
-    const lastVersion = this.homey.settings.get('timelineWelcomeVersion') as string | undefined;
-    if (lastVersion === currentVersion) {
-      return;
-    }
-    const excerpt = this.homey.__('timeline.welcome', { VERSION: currentVersion });
-    await this.homey.notifications.createNotification({ excerpt });
-    await this.homey.settings.set('timelineWelcomeVersion', currentVersion);
   }
 
   private registerPlantAutocompleteWidget(widgetId: string): void {
