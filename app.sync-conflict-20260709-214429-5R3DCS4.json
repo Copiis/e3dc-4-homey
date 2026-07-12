@@ -1,7 +1,7 @@
 {
   "_comment": "This file is generated. Please edit .homeycompose/app.json instead.",
   "id": "de.jnkconsulting.e3dc.v2",
-  "version": "1.8.44",
+  "version": "1.8.37",
   "compatibility": ">=12.4.5",
   "sdk": 3,
   "brandColor": "#7AB31B",
@@ -318,8 +318,7 @@
         "meter_power",
         "charge_time",
         "diagnostic_report",
-        "firmware_version",
-        "wallbox_ladeplan_active"
+        "firmware_version"
       ],
       "platforms": [
         "local"
@@ -346,14 +345,6 @@
           }
         },
         "diagnostic_report": {
-          "preventInsights": true,
-          "preventTag": true
-        },
-        "wallbox_ladeplan_active": {
-          "title": {
-            "en": "Wallbox charge plan active",
-            "de": "Wallbox-Ladeplan aktiv"
-          },
           "preventInsights": true,
           "preventTag": true
         }
@@ -599,41 +590,6 @@
                 "de": "Interner Speicher für HKW-Ladeplaner-Zeitpläne. Wird normalerweise nur über das Dashboard-Widget verwaltet. Nur manuell ändern, wenn du weißt, was du tust."
               },
               "uiComponent": null
-            }
-          ]
-        },
-        {
-          "type": "group",
-          "label": {
-            "en": "E3DC Cloud (optional fallback)",
-            "de": "E3DC Cloud (optionaler Fallback)"
-          },
-          "children": [
-            {
-              "id": "useE3dcCloud",
-              "type": "checkbox",
-              "label": {
-                "en": "Use E3DC Cloud for fallback values (e.g. vehicle SOC)",
-                "de": "E3DC Cloud für Fallback-Werte nutzen (z. B. Fahrzeug-SOC)"
-              },
-              "value": false,
-              "hint": {
-                "en": "When local RSCP does not report vehicle SOC (common with cloud-paired cars), try to fetch via the official E3DC Cloud API. Requires internet. Local RSCP always has priority.",
-                "de": "Falls lokales RSCP keinen Fahrzeug-SOC liefert (häufig bei cloud-verbundenen Autos), über die offizielle E3DC Cloud API versuchen. Internet nötig. Lokales RSCP hat immer Vorrang."
-              }
-            },
-            {
-              "id": "cloudSystemSn",
-              "type": "text",
-              "label": {
-                "en": "System Serial Number (SN) – optional",
-                "de": "System-Seriennummer (SN) – optional"
-              },
-              "value": "",
-              "hint": {
-                "en": "Leave empty for auto-discovery from your portal account. Find the SN in the E3DC portal or on the device.",
-                "de": "Leer lassen für automatische Erkennung aus deinem Portal-Account. Die SN steht im E3DC-Portal oder am Gerät."
-              }
             }
           ]
         }
@@ -1169,19 +1125,17 @@
       "class": "evcharger",
       "capabilities": [
         "measure_power",
-        "measure_wallbox_solarshare",
-        "measure_vehicle_soc",
-        "measure_wallbox_discharge_soc",
-        "wallbox_ladeplan_active",
         "wallbox_plugged",
+        "wallbox_charging",
+        "wallbox_sun_mode",
+        "measure_wallbox_solarshare",
         "measure_wallbox_max_current",
         "measure_wallbox_phases",
         "meter_power",
-        "wallbox_charging",
-        "wallbox_sun_mode",
         "wallbox_plug_locked",
         "wallbox_schuko",
         "wallbox_priority_battery_first",
+        "measure_wallbox_discharge_soc",
         "wallbox_battery_discharge_sun",
         "wallbox_battery_discharge_mix"
       ],
@@ -1197,6 +1151,9 @@
         "wallbox_priority_battery_first": {
           "preventInsights": true,
           "preventTag": true
+        },
+        "measure_wallbox_discharge_soc": {
+          "uiComponent": null
         },
         "wallbox_battery_discharge_sun": {
           "preventInsights": true,
@@ -1223,25 +1180,6 @@
           "preventTag": true
         },
         "wallbox_plugged": {
-          "preventInsights": true,
-          "preventTag": true
-        },
-        "measure_vehicle_soc": {
-          "title": {
-            "en": "Vehicle SOC",
-            "de": "Fahrzeug-SOC"
-          },
-          "units": {
-            "en": "%",
-            "de": "%"
-          },
-          "decimals": 0
-        },
-        "wallbox_ladeplan_active": {
-          "title": {
-            "en": "Charge plan active",
-            "de": "Ladeplan aktiv"
-          },
           "preventInsights": true,
           "preventTag": true
         },
@@ -3097,16 +3035,16 @@
       {
         "id": "wallbox_discharge_battery_until",
         "title": {
-          "de": "Batterie entladen bis",
-          "en": "Battery discharge until"
+          "de": "Batterie Entladegrenze",
+          "en": "Battery discharge limit"
         },
         "titleFormatted": {
-          "de": "Batterie entladen bis [[percent]] %",
-          "en": "Battery discharge until [[percent]] %"
+          "de": "Batterie Entladegrenze [[percent]] %",
+          "en": "Battery discharge limit [[percent]] %"
         },
         "hint": {
-          "de": "Legt fest, bis zu welchem Ladezustand (SOC in %) der Hausakku fürs Auto-Laden entladen werden darf. Entspricht E3/DC „Batterie entladen bis“.",
-          "en": "Sets the SOC (%) down to which the home battery may be discharged for EV charging. Matches E3/DC “Battery discharge until”."
+          "de": "Legt fest, bis zu welchem Ladezustand (SOC in %) der Hausakku fürs Auto-Laden entladen werden darf. Entspricht E3/DC „Bis Ladezustand“.",
+          "en": "Sets how far (SOC in %) the home battery may be discharged for EV charging. Matches E3/DC “Down to state of charge”."
         },
         "args": [
           {
@@ -3118,8 +3056,8 @@
             "type": "number",
             "name": "percent",
             "title": {
-              "de": "Batterie entladen bis (%)",
-              "en": "Battery discharge until (%)"
+              "de": "Batterie Entladegrenze (%)",
+              "en": "Battery discharge limit (%)"
             },
             "required": true,
             "min": 0,
@@ -3869,7 +3807,7 @@
       "type": "number",
       "title": {
         "en": "Vehicle SOC",
-        "de": "Fahrzeug-SOC"
+        "de": "Fahrzeug-Ladezustand"
       },
       "getable": true,
       "setable": false,
@@ -3904,8 +3842,8 @@
     "measure_wallbox_discharge_soc": {
       "type": "number",
       "title": {
-        "en": "Battery discharge until",
-        "de": "Batterie entladen bis"
+        "en": "Battery discharge limit",
+        "de": "Batterie-Entladegrenze"
       },
       "getable": true,
       "setable": false,
@@ -4037,25 +3975,6 @@
       "setable": true,
       "uiComponent": "button",
       "insights": true
-    },
-    "wallbox_ladeplan_active": {
-      "type": "boolean",
-      "title": {
-        "en": "Charge plan active",
-        "de": "Ladeplan aktiv"
-      },
-      "titleTrue": {
-        "en": "Yes",
-        "de": "Ja"
-      },
-      "titleFalse": {
-        "en": "No",
-        "de": "Nein"
-      },
-      "getable": true,
-      "setable": false,
-      "uiComponent": "sensor",
-      "insights": false
     },
     "wallbox_plug_locked": {
       "type": "boolean",

@@ -46,7 +46,6 @@ import {
   setPlantPowerState
 } from '../../src/utils/plant-power-cache';
 import { LiveDataPoller } from '../../src/polling/live-data-poller';
-import { E3dcCloudClient } from '../../src/services/e3dc-cloud-client';
 
 // Flow cards now fully encapsulated via FlowCardManager
 import { FlowCardManager } from '../../src/cards/flow-card-manager';
@@ -88,13 +87,10 @@ const DIAGNOSTIC_ANALYSIS_STORE_KEY = 'diagnosticAnalysisLog'
 class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
   private liveDataPoller: LiveDataPoller | null = null
   private wallboxManager: WallboxManager | null = null
-  private e3dcCloudClient: E3dcCloudClient | null = null
   private capabilityManager: CapabilityManager | null = null
   private emsScheduleManager: EmsScheduleManager | null = null
   private powerModeManager: PowerModeManager | null = null
   private diagnosticManager: DiagnosticManager | null = null
-
-  lastCloudVehicleSoc?: number;
 
   // Dynamically attached value-changed and event triggers (populated by FlowCardManager)
   // Declared here so the class structurally satisfies IHpsDevice without casts.
@@ -161,13 +157,6 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
       this,
       () => this.getApi(),
     )
-    // initial status for wallbox plan indicator on HKW tile
-    this.updateWallboxLadeplanStatus()
-
-    if (!this.hasCapability('wallbox_ladeplan_active')) {
-      this.addCapability('wallbox_ladeplan_active').catch(() => {});
-    }
-
     this.capabilityManager = new CapabilityManager(this, new EnergyMeterIntegrator(this));
     this.powerModeManager = new PowerModeManager(this, () => this.getApi(), this);
     this.emsScheduleManager = new EmsScheduleManager(this, () => this.getApi(), this, this.powerModeManager);
@@ -181,12 +170,6 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
     )
     this.liveDataPoller.onData((data) => this.processLiveData(data))
     this.liveDataPoller.start(SYNC_INTERVAL)
-
-    // Optional E3DC Cloud client for fallback values (e.g. vehicle SOC)
-    this.e3dcCloudClient = new E3dcCloudClient({
-      log: (m: string) => this.log('[Cloud] ' + m),
-      error: (m: string) => this.error('[Cloud] ' + m),
-    })
   }
   getCurrentSOC(): number {
     const number = this.getCapabilityValue('measure_battery')
@@ -210,14 +193,6 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
     const state = this.powerModeManager?.getPowerModeState?.() ?? null;
     return !!state?.scheduleId;
   }
-
-  /** Updates the wallbox_ladeplan_active capability based on linked wallbox devices. */
-  private updateWallboxLadeplanStatus() {
-    if (!this.hasCapability('wallbox_ladeplan_active')) return;
-    const active = this.wallboxManager?.hasActiveWallboxLadeplan?.() ?? false;
-    this.setCapabilityValue('wallbox_ladeplan_active', active).catch(() => {});
-  }
-
   asSimple(): SimpleClass {
     return this;
   }
@@ -233,113 +208,22 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
   getId(): string {
     return this.getData().id;
   }
-  private lastBatteryReadTime = 0;
-  private lastBatteryUsable = 0;
-  private lastBatteryData: BatteryData | null = null;
-
-  // Short cache for linked battery modules (reduces repeated scans on capacity reads)
-  private linkedBatteryModulesCache: { timestamp: number; devices: unknown[] } | null = null;
-  private static readonly LINKED_BATTERY_CACHE_TTL_MS = 60_000;
-
   public getBatteryCapacity(): Promise<number> {
-    const now = Date.now();
-    const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes — battery capacity changes very rarely (only on hardware swap or strong degradation)
-    if (now - this.lastBatteryReadTime < CACHE_TTL_MS && this.lastBatteryUsable > 0) {
-      return Promise.resolve(this.lastBatteryUsable);
-    }
-
     return new Promise((resolve, reject) => {
       this.getApi()
           .readBatteryData(true, this)
           .then(value => {
-            if (value && value.length > 0) {
-              const batteryData = value[0];
-              const usable = resolveUsableCapacityWh(batteryData);
-              this.lastBatteryReadTime = Date.now();
-              this.lastBatteryUsable = usable;
-              this.lastBatteryData = batteryData;
-
-              this.updateBatteryCapacitySettings(batteryData);
-              this.updateLinkedBatteryModules(batteryData, usable);
-
-              resolve(usable);
-            } else {
-              this.error('getBatteryCapacity: empty battery data');
-              this.resolveFallbackCapacity(resolve);
-            }
+            const usable = resolveUsableCapacityWh(value[0])
+            resolve(usable)
           })
           .catch(reason => {
-            this.error('getBatteryCapacity: Error reading battery data: ' + formatError(reason));
-            this.resolveFallbackCapacity(resolve);
+            this.error('getBatteryCapacity: Error reading battery data: ' + formatError(reason))
+            const settings = this.getSettings() as Record<string, unknown>
+            const fromSettings = (settings.rscpAsoc as number) || (settings.capacity as number) || 0
+            resolve(fromSettings > 0 ? fromSettings : 0)
           })
     })
   }
-
-  private resolveFallbackCapacity(resolve: (value: number) => void) {
-    const settings = this.getSettings() as Record<string, unknown>;
-    const fromSettings = (settings.rscpAsoc as number) || (settings.capacity as number) || 0;
-    const fallback = fromSettings > 0 ? fromSettings : (this.lastBatteryUsable || 0);
-    resolve(fallback);
-  }
-
-  /**
-   * Persist detected battery capacities/SOH into the HKW device settings (shown as labels
-   * under "Batteriedaten"). Restored from refactor; used for fallback + visibility.
-   */
-  private updateBatteryCapacitySettings(battery: BatteryData): void {
-    try {
-      const storedSettings: PowerStationConfig = this.getSettings();
-      const usableWh = resolveUsableCapacityWh(battery);
-      const updated: PowerStationConfig = {
-        ...storedSettings,
-        rscpCapacity: Math.round(battery.capacity).toString(),
-        rscpAsoc: Math.round(usableWh).toString(),
-        rscpSoh: formatSohPercent(usableWh, battery.capacity),
-      };
-      this.setSettings(updated).catch(reason => {
-        this.log('Failed to store battery capacity settings: ' + formatError(reason));
-      });
-    } catch (e) {
-      this.error('updateBatteryCapacitySettings failed: ' + formatError(e));
-    }
-  }
-
-  /**
-   * Push full battery readout (usable capacity in kWh, dcb details, temps, voltage, name)
-   * to all linked Batteriemonitor devices for this station.
-   * This populates the "Kapazität" (and related) fields on the battery module tile.
-   */
-  private updateLinkedBatteryModules(batteryData: BatteryData, usableWh: number) {
-    try {
-      const now = Date.now();
-      let batteryDevices: unknown[];
-      if (this.linkedBatteryModulesCache && now - this.linkedBatteryModulesCache.timestamp < HomePowerStationDevice.LINKED_BATTERY_CACHE_TTL_MS) {
-        batteryDevices = this.linkedBatteryModulesCache.devices;
-      } else {
-        batteryDevices = this.homey.drivers.getDriver('battery-module').getDevices();
-        this.linkedBatteryModulesCache = { timestamp: now, devices: batteryDevices };
-      }
-
-      const stationId = this.getId();
-      const capacityKwh = usableWh / 1000.0;
-
-      batteryDevices.forEach((currentDevice: unknown) => {
-        const batteryConfig = (currentDevice as { getStoreValue: (k: string) => unknown }).getStoreValue('settings') as { stationId?: string } | undefined;
-        if (!batteryConfig?.stationId) {
-          return;
-        }
-        if (batteryConfig.stationId == stationId) {
-          const linked = currentDevice as { updateBatteryInfo?: (d: BatteryData, c: number) => void };
-          if (linked.updateBatteryInfo) {
-            linked.updateBatteryInfo(batteryData, capacityKwh);
-          }
-        }
-      });
-    } catch (e) {
-      this.error('updateLinkedBatteryModules: ' + formatError(e));
-    }
-  }
-
   public getApi(): RscpApi {
     const api = new RscpApi()
     const storedSettings: PowerStationConfig = this.getSettings();
@@ -361,17 +245,6 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
     }, this)
     return api
   }
-
-  /**
-   * Called by Wallbox Ladepläne when they change the global "Batterie entladen bis" value.
-   * This forces the WallboxManager to drop its 5-minute EMS settings cache on the next
-   * live data poll, preventing it from overwriting the just-set plan value (or restore)
-   * with a stale cached original value → eliminates the flickering on the wallbox tile.
-   */
-  invalidateWallboxEmsSettingsCache(): void {
-    this.wallboxManager?.invalidateEmsSettingsCache?.();
-  }
-
   async sync() {
     if (this.liveDataPoller) {
       const data = await this.liveDataPoller.forceFetch();
@@ -401,83 +274,17 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
       this.capabilityManager?.handleManualChargeStateChanges(result)
       this.capabilityManager?.handleEmergencyPowerStateChanges(result)
       this.wallboxManager?.handleWallboxData(result)
-      this.updateWallboxLadeplanStatus()
-
-      // Optional cloud fallback for vehicle SOC (when local RSCP reports 0)
-      this.applyCloudVehicleSocFallback().catch(e => this.error('Cloud fallback error: ' + formatError(e)))
-
       const agg = this.wallboxManager?.getWallboxAggregation() ?? { wallboxPower: 0, wallboxSolarShare: 0, hasWallbox: false };
       const stationId = String(this.getData().id);
       setPlantPowerState(stationId, buildPowerStateFromLiveData(result, agg.wallboxPower, agg.wallboxSolarShare, agg.hasWallbox));
       this.capabilityManager?.updateLinkedGridMeter(result)
       this.capabilityManager?.handleAvailability();
-      this.diagnosticManager?.recordSyncSuccess(result, this.lastCloudVehicleSoc)
+      this.diagnosticManager?.recordSyncSuccess(result)
       this.capabilityManager?.updateLinkedBattery(result)
       this.capabilityManager?.updateBatteryDataIfNeeded?.();
     } catch (e) {
       this.error('Error processing live data: ' + formatError(e))
       this.diagnosticManager?.recordSyncFailure('Verarbeitung Live-Daten / processing live data: ' + formatError(e))
-    }
-  }
-
-  /**
-   * Opt-in E3DC Cloud fallback.
-   * If enabled in settings, tries to fetch vehicle SOC from the cloud when local data is 0/unplausible.
-   */
-  private async applyCloudVehicleSocFallback(): Promise<void> {
-    const settings = this.getSettings() as any;
-    if (!settings.useE3dcCloud) {
-      return;
-    }
-
-    if (!this.e3dcCloudClient) {
-      return;
-    }
-
-    const cloudConfig = {
-      portalUsername: settings.portalUsername || '',
-      portalPassword: settings.portalPassword || '',
-      enabled: !!settings.useE3dcCloud,
-      systemSn: settings.cloudSystemSn ? Number(settings.cloudSystemSn) : undefined,
-    };
-
-    const cloudSoc = await this.e3dcCloudClient.fetchVehicleSocFallback(cloudConfig);
-    this.lastCloudVehicleSoc = cloudSoc;
-    if (cloudSoc === undefined) {
-      this.log('E3DC Cloud: no plausible vehicle SOC available from cloud (portal may have issues)');
-      return;
-    }
-
-    // Apply to linked wallbox devices that currently have no plausible local SOC
-    const wallboxDevices = this.homey.drivers.getDriver('wallbox').getDevices();
-    for (const d of wallboxDevices) {
-      try {
-        const wb = d as any;
-        const store = wb.getStoreValue?.('settings');
-        if (!store || String(store.stationId) !== String(this.getData().id)) continue;
-
-        const source = (wb as any).lastSocSource || 'none';
-        const isFromLocal = source === 'local';
-
-        // Refresh from cloud if we don't have fresh local data (even if cap currently shows an old plausible fallback value)
-        if (!isFromLocal) {
-          if (typeof wb.applyCloudVehicleSoc === 'function') {
-            wb.applyCloudVehicleSoc(cloudSoc);
-          } else {
-            // Fallback for older instances
-            await wb.setCapabilityValue('measure_vehicle_soc', cloudSoc);
-          }
-          this.log(`Applied cloud vehicle SOC fallback ${cloudSoc}% to wallbox ${wb.getName?.() || ''}`);
-        }
-      } catch (e) {
-        this.error('Failed to apply cloud SOC fallback to wallbox: ' + formatError(e));
-      }
-    }
-
-    // Also record in diagnostics
-    const cloudState = this.e3dcCloudClient.getLastState?.();
-    if (cloudState) {
-      // The diagnostic manager will pick it up on next record if we expose more; for now log is sufficient
     }
   }
 

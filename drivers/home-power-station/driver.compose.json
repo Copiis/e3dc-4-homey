@@ -13,7 +13,8 @@
     "meter_power",
     "charge_time",
     "diagnostic_report",
-    "firmware_version"
+    "firmware_version",
+    "wallbox_ladeplan_active"
   ],
   "platforms": [
     "local"
@@ -40,6 +41,14 @@
       }
     },
     "diagnostic_report": {
+      "preventInsights": true,
+      "preventTag": true
+    },
+    "wallbox_ladeplan_active": {
+      "title": {
+        "en": "Wallbox charge plan active",
+        "de": "Wallbox-Ladeplan aktiv"
+      },
       "preventInsights": true,
       "preventTag": true
     }

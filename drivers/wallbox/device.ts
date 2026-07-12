@@ -187,6 +187,11 @@ class WallboxDevice extends Homey.Device implements Wallbox {
   private async migrateCapabilities(): Promise<void> {
     await ensureCapabilities(this, [...WALLBOX_CAPABILITY_ORDER]);
     await reorderCapabilitiesIfNeeded(this, WALLBOX_CAPABILITY_ORDER);
+
+    // Ensure new plan indicator capability for existing devices
+    if (!this.hasCapability('wallbox_ladeplan_active')) {
+      await this.addCapability('wallbox_ladeplan_active').catch(() => {});
+    }
     await this.applyLadeplanTileVisibility();
 
     // Remove legacy capabilities
@@ -233,10 +238,26 @@ class WallboxDevice extends Homey.Device implements Wallbox {
       : [...WALLBOX_TILE_HIDDEN_CAPABILITIES, ...ladeplanRelated];
     await hideCapabilitiesFromTile(this, toHide);
 
+    // Set explicit indicator capability
+    if (this.hasCapability('wallbox_ladeplan_active')) {
+      try {
+        await this.setCapabilityValue('wallbox_ladeplan_active', hasActivePlan);
+      } catch (e) {
+        this.error('Failed to set wallbox_ladeplan_active: ' + formatError(e));
+      }
+    }
+
     // Always show "Batterie entladen bis" (after Fahrzeug-SOC) on the main tile
+    // When a plan is active, change title to make it obvious that a Ladeplan is controlling it.
     if (this.hasCapability('measure_wallbox_discharge_soc')) {
       try {
-        await this.setCapabilityOptions('measure_wallbox_discharge_soc', { uiComponent: 'sensor' });
+        const title = hasActivePlan
+          ? { en: 'Battery discharge until (by charge plan)', de: 'Batterie entladen bis (durch Ladeplan)' }
+          : { en: 'Battery discharge until', de: 'Batterie entladen bis' };
+        await this.setCapabilityOptions('measure_wallbox_discharge_soc', {
+          uiComponent: 'sensor',
+          title
+        });
       } catch (e) {
         this.error('Failed to ensure measure_wallbox_discharge_soc visible on tile: ' + formatError(e));
       }

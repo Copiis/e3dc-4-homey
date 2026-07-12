@@ -1,0 +1,413 @@
+{
+  "1.8.37": {
+    "de": "- **AI360-Modus / Entladesperre:** Bessere Behandlung abgelehnter Power-Mode- und manueller Ladebefehle. Warnungen im Diagnosebericht, Timeline-Benachrichtigungen bei Fehlschlägen, Keep-Alive wird bei wiederholten Ablehnungen gedrosselt (60s Pause).",
+    "en": "- **AI360 mode / discharge lock:** Improved handling when power mode and manual charge commands are rejected by the HPS. Warnings in the diagnostic report, timeline notifications on failure, keep-alive is throttled on repeated rejections (60s pause)."
+  },
+  "1.8.36": {
+    "de": "- **Bugfix Diagnosebericht:** Die Flow-Karte „Diagnosebericht erstellen“ liefert jetzt den tatsächlichen Bericht als Token zurück (vorher war der Token immer leer). Der Bericht wird weiterhin in die HKW-Einstellungen geschrieben.",
+    "en": "- **Bugfix diagnostic report:** The 'Create diagnostic report' Flow card now correctly returns the actual report as a token (previously the token was always empty). The report is still written to the HPS device settings."
+  },
+  "1.8.35": {
+    "de": "- **Bugfix EMS Steuerung / Ladeplaner (Akkunetzladen):** Geplantes Netzladen (Grid-Charge) über den Ladeplaner startete, wurde aber alle ~20 Sekunden unterbrochen. Ursache: Refresh-Intervall für EMS-Power-Modes war auf 30 s erhöht. Jetzt wieder stabiles 10-Sekunden-Keep-Alive für aktive Modi (Haupt-Poll bleibt bei 30 s für weniger Last). Danke an RobertHerter für den präzisen Bericht und den Hinweis!",
+    "en": "- **Bugfix EMS control / charging planner (grid charge):** Scheduled grid charging (Akkunetzladen) via the Ladeplaner would start but interrupt every ~20 seconds. Cause: EMS power mode refresh interval had been raised to 30s. Restored stable 10-second keep-alive for active modes (main poll stays at 30s to reduce load). Thanks to RobertHerter for the detailed report and the 10s hint!"
+  },
+  "1.8.34": {
+    "de": "- **Bugfix Rest(ent)ladezeit:** Korrektur der Berechnung für verbleibende Lade-/Entladezeit (HKW-Kachel + Device). Beim Laden jetzt korrekte Zeit bis voll, beim Entladen Zeit bis leer (basiert auf nutzbarer Kapazität + aktueller Leistung).",
+    "en": "- **Bugfix remaining (dis)charge time:** Fixed calculation of remaining charge/discharge time (HKW tile + device capability). When charging: correct time to full; when discharging: time to empty (based on usable capacity + instantaneous power)."
+  },
+  "1.8.33": {
+    "de": "- **Refactor:** WallboxScheduleHandler in Store/Validator/Executor gesplittet (konsistent zu EmsScheduleManager). handleEmsTriggers nach CapabilityManager verschoben. Repetitive EMS-Settings in WallboxEmsSettingsManager extrahiert. getApi-Cache + weitere Cleanups. WallboxDevice nun schlanker als HKW-Device.",
+    "en": "- **Refactor:** WallboxScheduleHandler split into Store/Validator/Executor (consistent with EmsScheduleManager). handleEmsTriggers moved to CapabilityManager. Repetitive EMS settings extracted to WallboxEmsSettingsManager. getApi cache + other cleanups. WallboxDevice now slimmer than HKW device."
+  },
+  "1.8.32": {
+    "de": "- **Wallbox Ladeplan 'Bis voll':** Erkennung jetzt rein über Leistungsabnahme der Wallbox (nicht über Fahrzeug-SOC). Wenn nach Start des Plans >5 Min. Leistung <80W bleibt → Plan beenden und löschen. Passt zu manueller, bewusster Plan-Erstellung.",
+    "en": "- **Wallbox Ladeplan 'Bis voll':** Now detects full via wallbox power draw only (not vehicle SOC). If power stays <80W for >5 min after plan start → end and remove the plan. Matches manual, conscious plan creation."
+  },
+  "1.8.31": {
+    "de": "- **Ladepläne & Flows:** Flows respektieren jetzt immer aktive Ladepläne (User-Pläne haben Vorrang). Flow-Befehle für Power-Modes und Wallbox (Charging, Sun, Current) werden ignoriert, solange ein Plan läuft.\n- **Widgets:** Warnhinweis in HKW- und Wallbox-Ladeplaner-Widget hinzugefügt: „Aktive Pläne haben Vorrang vor Flows“.",
+    "en": "- **Ladepläne & Flows:** Flows now always respect active charge plans (user plans take precedence). Power mode and wallbox flows (charging, sun, current) are ignored while a plan is active.\n- **Widgets:** Added warning text in HKW and Wallbox Ladeplaner widgets: “Active plans take precedence over flows”."
+  },
+  "1.8.30": {
+    "de": "- **Batterie-Leistung (Kachel & Widget):** Vorzeichen jetzt exakt wie im E3DC-Portal (positiv bei Ladung der Batterie, negativ bei Entladung). Kachel zeigt korrekte Werte, Widget-Pfeile sind jetzt richtig.",
+    "en": "- **Battery power (tile & widget):** Sign now matches E3DC portal exactly (positive when charging the battery, negative when discharging). Tile shows correct values, widget arrows are now correct."
+  },
+  "1.8.29": {
+    "de": "- **Batterie-Leistung (Kachel):** Vorzeichen-Konvention vereinheitlicht (positiv = Laden, negativ = Entladen) → korrekte Anzeige auf der Batterie-Kachel.\n- **Kritischer Bugfix:** Delegation-Fehler in CapabilityManager behoben (updateLinkedBatteryLiveData) → Live-Daten-Updates (inkl. Batterie-Werte) funktionieren wieder zuverlässig.\n- **Tile-Refresh:** Force-Update für measure_battery_delivery (auch nach Löschen/Hinzufügen der Kachel).\n- Battery-Module und Energy-Summary profitieren von den Fixes.",
+    "en": "- **Battery power (tile):** Standardized sign convention (positive = charging, negative = discharging) → correct display on the battery tile.\n- **Critical bugfix:** Fixed delegation error in CapabilityManager (updateLinkedBatteryLiveData) → live data updates (incl. battery values) now work reliably again.\n- **Tile refresh:** Force update for measure_battery_delivery (even after removing/re-adding the capability to the tile).\n- Battery modules and Energy-Summary benefit from the fixes."
+  },
+  "1.8.28": {
+    "de": "- **Detaillierte Diagnose:** Neuer Schalter in den HKW-Einstellungen (default AUS) für das Analyse-Protokoll → spart deutlich CPU-Ressourcen.\n- **Auto-Abschaltung:** Schaltet sich automatisch nach 60 Minuten oder 10 Minuten nach Export des Berichts aus.\n- **Kopier-Hilfe:** Klare Anleitung direkt unter dem Diagnosebericht-Feld in den Einstellungen + verbesserte Hinweise im Bericht.\n- Flow-Karte und Bericht-Header aktualisiert.",
+    "en": "- **Detailed diagnostics:** New toggle in HPS settings (default OFF) for the analysis log → significantly saves CPU resources.\n- **Auto-disable:** Automatically turns off after 60 minutes or 10 minutes after exporting the report.\n- **Copy help:** Clear instructions directly under the diagnostic report field in settings + improved hints in the report.\n- Flow card and report header updated."
+  },
+  "1.8.27": {
+    "de": "- **Performance für Homey Pro (Early 2023):** Sync- und Schedule-Intervalle verlängert (20s→30s, 10s→30/60s), Diagnostic-Reports gedrosselt (Throttling 60s, nur noch bei Export oder wichtigen Events), Logging aus Hot-Paths entfernt.\n- **Widgets (Ladeplaner):** Refresh-Intervall auf 60 s reduziert (weniger Last).\n- Deutlich weniger CPU-Last und Log-Spam bei laufendem Flow-Editor oder aktiven Plänen.\n- Install-Skript-Kommentare aktualisiert (primäre Ziel-IP).",
+    "en": "- **Performance for Homey Pro (Early 2023):** Sync and schedule check intervals increased (20s→30s, 10s→30/60s), diagnostic reports throttled (60s + only on export/key events), heavy logging removed from hot paths.\n- **Ladeplaner widgets:** refresh interval reduced to 60s (lower load).\n- Significantly less CPU usage and log spam while flow editor is open or plans are active.\n- Install script comments updated (primary target IP)."
+  },
+  "1.8.26": {
+    "de": "- Weitere Stabilitäts- und Ladeplaner-Fixes (Widget-Loading, manuelles Löschen von Plänen mit sofortigem Revert)\n- Release mit allen Neuerungen seit v1.8.13 (siehe Forum)",
+    "en": "- Additional stability and Ladeplaner fixes (widget loading, manual plan deletion with immediate revert)\n- Release with all new features since v1.8.13 (see forum)"
+  },
+  "1.8.25": {
+    "de": "- **Wallbox Ladeplaner:** Optionale Endzeit hinzugefügt (wie beim HKW Ladeplaner) für feste Zeitfenster (z. B. dynamische Tarife)\n- „Bis voll“ bleibt als Alternative\n- Ladepläne überschreiben jetzt alle vorherigen Einstellungen (Force-Override)\n- Bessere Erkennung „voll“ über Leistung (Fallback für Tesla & Co.)\n- Ladepläne starten zuverlässiger zum geplanten Zeitpunkt und werden automatisch bereinigt\n- Verbessertes Logging und Stabilität\n- **Widget:** Ladeprobleme (unendlicher Spinner) bei Ersteinrichtung behoben\n- **Manuelles Löschen von Ladeplänen:** Löschen eines aktiven Plans beendet das Laden sofort (Force-Revert, genau wie beim HKW-Ladeplaner)",
+    "en": "- **Wallbox Ladeplaner:** Optional end time added (like the HKW Ladeplaner) for fixed time windows (e.g. dynamic tariffs)\n- \"Until full\" remains as alternative\n- Plans now override all previous settings (force-override)\n- Better \"full\" detection via power (good fallback for Tesla etc.)\n- Plans start more reliably at the scheduled time and are auto-cleaned up\n- Improved logging and stability\n- **Widget:** Loading issues (infinite spinner) on first setup fixed\n- **Manual plan deletion:** Deleting an active plan now immediately stops charging (force-revert, exactly like the HKW Ladeplaner)"
+  },
+  "1.8.24": {
+    "de": "- **Neue Widgets:** \"HKW Ladeplaner\" und \"Wallbox Ladeplaner\" als interaktive Widgets für manuelle Zeitpläne.\n- **HKW Ladeplaner:** Start/Ende (Datum+Uhrzeit) oder bis SOC-% für Hausakku. Modi: Laden/Entladen/Netzladen/Pause + Leistung.\n- **Wallbox Ladeplaner:** Start/Ende oder bis voll. Aktionen: Erlauben/Blocken, Sonnenmodus an/aus, Stromstärke wählbar, Batterie zuerst / Mix-Modus, Entlade Hausakku bis %.\n- **Speicherung:** Beide Ansätze unterstützt (zentral im HKW + pro Wallbox-Gerät).\n- **Backend:** Erweiterte Scheduler-Logik mit untilFull / untilSoc und Auto-Revert.",
+    "en": "- **New Widgets:** \"HKW Ladeplaner\" and \"Wallbox Ladeplaner\" as interactive widgets for manual schedules.\n- **HKW Ladeplaner:** Start/end (date+time) or until SOC-% for home battery. Modes: charge/discharge/grid charge/idle + power.\n- **Wallbox Ladeplaner:** Start/end or until full. Actions: allow/block, sun mode on/off, selectable current, battery first / mix mode, discharge house battery until %.\n- **Storage:** Both approaches supported (central in HPS + per wallbox device).\n- **Backend:** Extended scheduler logic with untilFull / untilSoc and auto-revert."
+  },
+  "1.8.23": {
+    "de": "- **EMS Zeitpläne:** Neue manuelle EMS-Zeitpläne als JSON-Liste in den HKW-Einstellungen (Datum/Uhrzeit, Leistung, Dauer, Modus für Laden/Entladen/Netzladen). Automatische Aktivierung zur geplanten Zeit mit Timer und Auto-Revert.\n- **Widget:** Schrift vergrößert, Geräte-Namen aus Live-Kachel entfernt (Symbole reichen aus), Verbrauch im Haus-Kasten zentriert, Batterie-Symbol flach und zentriert mit besserem Abstand der Werte.\n- **Einstellungen vereinfacht:** Im Haupt-Widget nur noch HKW-Auswahl und Min. Leistung für Flow. Wallbox-Widget: HKW-Auswahl jetzt mit Hinweis (auto bei einem HKW) und korrekter Autocomplete-Registrierung.\n- **EMS:** Bestätigt: 45min Netzladen mit exaktem Revert funktioniert zuverlässig (Robert).",
+    "en": "- **EMS schedules:** New manual EMS schedules as JSON list in HPS settings (date/time, power, duration, mode for charge/discharge/grid charge). Automatic activation at scheduled time with timer and auto-revert.\n- **Widget:** Increased font sizes, removed device names from live tile (icons sufficient), centered consumption under house in box, flattened and centered battery symbol with better value spacing.\n- **Settings simplified:** Main widget now only HKW selection and Min. power for flow. Wallbox widget: HKW selection with hint (auto for single HPS) and fixed autocomplete registration.\n- **EMS:** Confirmed: 45min grid charge with exact revert works reliably (Robert)."
+  },
+  "1.8.22": {
+    "de": "- **E3DC-HKW Widget:** Bessere Unterstützung für Nutzer ohne Wallbox (hasWallbox-Erkennung, Linien und Sektion werden sauber ausgeblendet, dynamische Höhe)\n- **Widget-Symbole:** Angepasste Icons für Haus, Strommast, Batterie, Wallbox und Solarpaneele\n- **Widget:** Verbessertes Ausblenden und Layout-Anpassung\n- **PV-Prognose:** Angepasste Prognose wird nicht mehr künstlich zu hoch getrieben. Statt vergangener Leistung auf die Zukunft hochzuskalieren, wird nun die tatsächliche Produktion + die ursprüngliche Rest-Prognose verwendet.",
+    "en": "- **E3DC-HKW Widget:** Better support for users without Wallbox (hasWallbox detection, lines and section are cleanly hidden, dynamic height)\n- **Widget icons:** Updated icons for house, power pylon, battery, wallbox and solar panels\n- **Widget:** Improved hiding behavior and layout adaptation\n- **PV forecast:** Adjusted forecast no longer artificially inflated. Instead of scaling past performance onto the future, it now uses actual production + the original remaining forecast."
+  },
+  "1.8.20": {
+    "de": "- **E3DC-HKW Widget:** Doppelte IDs für grid-value und battery-value behoben. Die Werte für Netz und Batterie in der Übersichtsliste (unter dem Flussdiagramm) werden jetzt korrekt aktualisiert (waren vorher auf „0 W“ festgefroren).",
+    "en": "- **E3DC-HKW Widget:** Fixed duplicate IDs for grid-value and battery-value. The grid and battery values in the overview list (below the flow diagram) now update correctly (were previously stuck at \"0 W\")."
+  },
+  "1.8.19": {
+    "de": "- **Restladezeit:** Die < 50 W Grenze entfernt. Es wird jetzt nur noch geprüft, ob die berechnete Zeit > 24 h ist → dann `> 24h`. Bei 0 W ebenfalls `> 24h`.",
+    "en": "- **Remaining charge time:** Removed the < 50 W limit. Now only checks if calculated time > 24 h → shows `> 24h`. Also `> 24h` when power is 0 W."
+  },
+  "1.8.18": {
+    "de": "- **Widget-Previews:** Athom-konforme Symbole für E3DC-HKW und Wallbox neu generiert (kein Text, korrekte Icons für Fluss und Steuerung)\n- **Generator aktualisiert:** generate-previews.py jetzt für aktuelle Widgets (e3dc-hkw + wallbox)",
+    "en": "- **Widget previews:** Regenerated Athom-compliant icons for E3DC-HKW and Wallbox (no text, proper icons for flow and controls)\n- **Generator updated:** generate-previews.py now targets current widgets (e3dc-hkw + wallbox)"
+  },
+  "1.8.17": {
+    "de": "- **E3DC-HKW Widget:** Live-Energiefluss und Übersicht zu einem Widget zusammengeführt (Fluss oben, Zahlen unten)\n- **Alte Widgets entfernt:** Live-Energiefluss und Übersicht sind jetzt im neuen E3DC-HKW-Widget enthalten\n- **Widget-Verbesserungen:** Batterie-Lade-/Entlade-Richtung korrigiert, Flussrichtungen (inkl. Netz) gefixt, direkte PV→Batterie-Linie entfernt, Netz-Label auf „Netz“ vereinfacht (Richtung über Pfeile)\n- **Ladezeit:** Nutzt jetzt den angezeigten Batteriewert + bessere Fallbacks für nutzbare Kapazität\n- **Wallbox:** Laden freigeben schaltet Sonnenmodus nicht mehr ab",
+    "en": "- **E3DC-HKW Widget:** Merged live energy flow and overview into one widget (flow on top, numbers below)\n- **Old widgets removed:** Live energy flow and overview are now part of the new E3DC-HKW widget\n- **Widget fixes:** Battery charge/discharge direction corrected, flow directions (incl. grid) fixed, removed direct PV→battery line, simplified grid label to just \"Netz\" (direction via arrows)\n- **Charge time:** Now uses the displayed battery power value + better fallbacks for usable capacity\n- **Wallbox:** Enabling charging no longer disables sun mode"
+  },
+  "1.8.16": {
+    "de": "- **Dashboard-Widget:** Neues Wallbox-Widget mit zwei klickbaren Status-Kreisen für Laden und Sonnenmodus (zeigt aktuellen Zustand farblich, direkter Toggle per Klick)\n- **Flow-Karten:** Duplikate entfernt – nur noch „Laden freigeben/sperren“ (und Bedingungen) behalten; „starten/stoppen“ als Redundanz entfernt\n- **Wallbox-Steuerung:** Die beiden Buttons (Laden / Sonnenmodus) sind jetzt klickbar und schalten den Status direkt um",
+    "en": "- **Dashboard Widget:** New Wallbox widget with two clickable status circles for Charging and Sun mode (shows current state with highlight, direct toggle on click)\n- **Flow cards:** Duplicates removed – only \"Allow/Block charging\" (and conditions) kept; \"Start/Stop\" removed as redundant\n- **Wallbox control:** The two buttons (Charging / Sun mode) are now clickable and toggle the state directly"
+  },
+  "1.8.15": {
+    "de": "- **Code-Review Fixes:** Weniger Log-Spam bei Syncs; Wallbox-Kommandos serialisiert gegen Race-Conditions; längere Verify-Timeouts; keine unnötigen Wallbox-Abfragen; bessere Nach-Prüfung bei Power-Limits; diverse kleinere Verbesserungen (Error-Counting, Promise-Pattern)",
+    "en": "- **Code review fixes:** Reduced log spam on syncs; wallbox commands serialized against races; longer verify timeouts; skip unnecessary wallbox queries; added post-read checks for power limits; various smaller improvements (error counting, Promise pattern)"
+  },
+  "1.8.14": {
+    "de": "- **Netz-Gesamtzähler:** Zeitzonenkorrektur für Mitternachts-Rollover und Archiv (verhindert falsche kumulierte Import/Export-Werte bei manchen Zeitzonen)",
+    "en": "- **Grid cumulative counters:** Fixed timezone handling for midnight rollover and archive (prevents incorrect total import/export values for some timezones)"
+  },
+  "1.8.13": {
+    "de": "- **Wallbox-Flows:** Laden freigeben/stoppen und Sonnenmodus mit korrekter RSCP-Steuerung (Pause-Toggle wie python-e3dc, ioBroker-Sequenz, REQ_SET_MODE)\n- **Wallbox:** Flow-Karten auf Geräteebene; Erfolg erst nach RSCP-Rücklesen (kein falscher Flow-Grün mehr)\n- **Diagnosebericht:** `algHex` wird dekodiert (Sonnenmodus, gesperrt, aktiv, Strom)",
+    "en": "- **Wallbox flows:** allow/stop charging and sun mode with correct RSCP control (pause toggle per python-e3dc, ioBroker sequence, REQ_SET_MODE)\n- **Wallbox:** device-level flow cards; success only after RSCP read-back (no more false green flows)\n- **Diagnostic report:** `algHex` decoded (sun mode, blocked, active, current)"
+  },
+  "1.8.12": {
+    "de": "- **Lade-/Entladegrenzen:** Flows warten jetzt auf die echte RSCP-Antwort (kein vorgetäuschter Erfolg mehr)\n- **Pairing/Repair:** Verbindungstest blockiert nicht mehr bei Standard-Port 5033\n- **HKW löschen:** kein Absturz mehr durch uninitialisierte RSCP-Verbindung\n- **Batteriemonitor:** Min-/Max-Temperatur korrekt; keine Division durch Null ohne Sensoren\n- **Restladezeit:** zeigt „—“ wenn die Batterie praktisch stillsteht (< 50 W)\n- **Manueller Ladevorgang:** startet auch vor dem ersten Sync (nicht mehr fälschlich „läuft bereits“)",
+    "en": "- **Charge/discharge limits:** flows now wait for the real RSCP response (no more fake instant success)\n- **Pairing/repair:** connection test no longer fails on standard port 5033\n- **Delete HPS:** no crash from uninitialized RSCP connection cleanup\n- **Battery monitor:** correct min/max temperature; no divide-by-zero without sensors\n- **Remaining charge time:** shows “—” when the battery is effectively idle (< 50 W)\n- **Manual charge:** can start before the first sync (no longer wrongly “already running”)"
+  },
+  "1.8.11": {
+    "de": "- **App Store:** deutsche Store-Beschreibung (`README.de.txt`) — langer Text auf homey.app/de-de jetzt auf Deutsch",
+    "en": "- **App Store:** German store description (`README.de.txt`) — long text on homey.app/de-de now in German"
+  },
+  "1.8.10": {
+    "de": "- **Widget-Previews** für App Store angepasst (Athom-Richtlinien: vereinfachte Grafiken ohne Text)",
+    "en": "- **Widget previews** updated for App Store (Athom guidelines: simplified graphics without text)"
+  },
+  "1.8.9": {
+    "de": "- **Batteriemonitor-Kachel:** Ladestand wieder sichtbar\n- Temperaturen, Spannung und Modulanzahl von der Kachel ausgeblendet (weiterhin per Sync/Flows verfügbar)\n- Kapazität an letzter Stelle\n- Bestehende Geräte: automatische Migration beim App-Start",
+    "en": "- **Battery monitor tile:** charge level visible again\n- Temperatures, voltage and module count hidden from tile (still synced / available for flows)\n- Capacity moved to last position\n- Existing devices: automatic migration on app start"
+  },
+  "1.8.8": {
+    "de": "- **Batteriemonitor-Kachel:** Felder in sinnvoller Reihenfolge (Leistung, Notstromreserve, Kapazität, Temperaturen, Lade-/Entladeleistung, Ladung/Entladung gesamt, Spannung, Modulanzahl)\n- Bestehende Akku-Geräte: automatische Migration beim App-Start; bei falscher Anzeige einmal entfernen und neu hinzufügen",
+    "en": "- **Battery monitor tile:** fields in a sensible order (power, emergency reserve, capacity, temperatures, charge/discharge limits, total charge/discharge, voltage, module count)\n- Existing battery devices: automatic migration on app start; if the layout is wrong, remove and re-add once"
+  },
+  "1.8.7": {
+    "de": "- **Kachel-Sortierung** verbessert: HKW, Netz, Wallbox und Statistiken (bestehende Geräte werden beim Update automatisch umgeordnet)\n- **Wallbox-Kachel:** weniger Experten-Felder sichtbar (Verriegelung, Schuko, Batterie-Mischmodus u. a. bleiben für Flows verfügbar)\n- **Widget Live-Energiefluss:** Batterie-Pfeile korrekt; Ladung getrennt als PV → Batterie bzw. Netz → Haus → Batterie",
+    "en": "- **Improved tile order** for HPS, grid meter, wallbox and statistics (existing devices reordered automatically on update)\n- **Wallbox tile:** fewer expert fields on tile (lock, Schuko, battery mix mode etc. still available for flows)\n- **Live energy flow widget:** correct battery arrow direction; charging split into PV → battery vs grid → house → battery"
+  },
+  "1.8.6": {
+    "de": "- PV-Prognose: verständlichere Hinweise zu **Wirkungsgrad-Faktor** und **Kalibrierungsfaktor** in den Geräteeinstellungen",
+    "en": "- PV forecast: clearer hints for **performance ratio** and **calibration factor** in device settings"
+  },
+  "1.8.5": {
+    "de": "- **PV-Prognose:** Ist-Wert „heute“ wieder korrekt vom HKW-Tageszähler (nicht kumulativer `meter_power`)\n- Tagesprognose wird neu berechnet, wenn sich deine PV-Flächen-Einstellungen ändern",
+    "en": "- **PV forecast:** actual “today” again from HPS daily counter (not cumulative `meter_power`)\n- Daily forecast recalculates when your PV surface settings change"
+  },
+  "1.8.4": {
+    "de": "- **PV-Prognose:** bis zu **3 PV-Flächen** einzeln konfigurierbar (kWp, Neigung, Himmelsrichtung) — für Flachdach Ost/West + Wand Süd u. ä.\n- Wetter und Prognose werden pro Fläche berechnet und summiert",
+    "en": "- **PV forecast:** up to **3 configurable PV surfaces** (kWp, tilt, compass) — e.g. flat roof east/west + south wall\n- Weather and forecast are calculated per surface and summed"
+  },
+  "1.8.3": {
+    "de": "- **PV-Prognose:** Pflichtangaben kWp, Neigung und **Himmelsrichtung** (Dropdown) — keine utopischen Standardwerte mehr\n- Korrekte Open-Meteo-Ausrichtung; Einstellungen beim Hinzufügen des Geräts\n- Prognose wird neu berechnet, wenn du die Anlagen-Daten änderst",
+    "en": "- **PV forecast:** required kWp, tilt and **compass orientation** (dropdown) — no more unrealistic defaults\n- Correct Open-Meteo azimuth; settings step when adding the device\n- Forecast recalculates when you change system data"
+  },
+  "1.8.2": {
+    "de": "- **PV-Prognose:** Werte werden wieder angezeigt — App nutzt Homey-Standort (neue Berechtigung) und liest Ist-PV vom HKW-Zähler statt extra RSCP-Abfrage\n- Letzte Prognose-Werte bleiben nach App-Neustart sichtbar",
+    "en": "- **PV forecast:** values display again — app uses Homey location (new permission) and reads actual PV from HPS meter instead of extra RSCP call\n- Last forecast values persist across app restarts"
+  },
+  "1.8.1": {
+    "de": "- App-Absturz behoben, wenn das HKW nicht erreichbar ist (z. B. `EHOSTUNREACH` / falsches Netzwerk)\n- RSCP-Verbindungsfehler werden abgefangen; Gerät wird stattdessen als nicht verfügbar markiert",
+    "en": "- Fixed app crash when the HPS is unreachable (e.g. `EHOSTUNREACH` / wrong network)\n- RSCP connection errors are handled; device is marked unavailable instead"
+  },
+  "1.8.0": {
+    "de": "- Neues Gerät **HKW – PV-Prognose**: geschätzte Tages-PV-Erzeugung (kWh) über Wetterdaten (Open-Meteo)\n- **Ursprungs-Prognose** (Tagesanfang) und **angepasste Prognose** (laufend mit Ist-Werten vom HKW)\n- Einstellungen: kWp, Neigung, Ausrichtung, Standort, Kalibrierung",
+    "en": "- New device **HPS – PV forecast**: estimated daily PV yield (kWh) via weather data (Open-Meteo)\n- **Baseline forecast** (start of day) and **adjusted forecast** (updated with actual HPS readings)\n- Settings: kWp, tilt, azimuth, location, calibration"
+  },
+  "1.7.1": {
+    "de": "- Dashboard-Widgets **Live-Energiefluss** und **Übersicht**: Live-Werte werden wieder korrekt angezeigt (Daten direkt aus HKW-Sync statt leerer Capability-Abfrage)\n- Live-Energiefluss: animierte Fluss-Pfeile, rechteckiges Layout, bessere Lesbarkeit auf Homey Mobile",
+    "en": "- Dashboard widgets **Live energy flow** and **Overview**: live values display correctly again (data from HPS sync instead of empty capability reads)\n- Live energy flow: animated flow arrows, rectangular layout, improved readability on Homey Mobile"
+  },
+  "1.7.0": {
+    "de": "- Neues Gerät **HKW - Energieübersicht**: Live-Aggregation von PV, Verbrauch, Netz, Batterie, Wallbox und PV-Überschuss (20 s)\n- Neues Dashboard-Widget **Live-Energiefluss** mit animierten Energiepfeilen\n- **Reparieren** am HKW: RSCP-Daten aktualisieren ohne Gerät zu löschen\n- EMS-Trigger: PV-Überschuss-Schwelle, Batterie-SoC unter Schwelle, Wallbox bereit",
+    "en": "- New device **HPS - Energy Summary**: live aggregation of PV, consumption, grid, battery, wallbox and PV surplus (20 s)\n- New dashboard widget **Live energy flow** with animated energy arrows\n- **Repair** on HPS: update RSCP credentials without deleting the device\n- EMS triggers: PV surplus threshold, battery SoC below threshold, wallbox ready"
+  },
+  "1.6.8": {
+    "de": "- Zeitleiste: Willkommens-Meldung nach App-Update (Kategorie „E3DC - HKW“ erscheint in den Benachrichtigungseinstellungen)",
+    "en": "- Timeline: welcome notification after app update (category “E3DC - HPS” appears in notification settings)"
+  },
+  "1.6.7": {
+    "de": "- Zeitleiste: HKW-Verbindung (offline/online), Inselbetrieb, Firmware-Update\n- Wallbox: Stecker, Sonnenmodus und Lade-Freigabe erscheinen in der Zeitleiste",
+    "en": "- Timeline: HPS connection (offline/online), island mode, firmware update\n- Wallbox: plug, sun mode and charging allowed/blocked appear in the timeline"
+  },
+  "1.6.6": {
+    "de": "- Wallbox: Leistung und Ladeenergie (gesamt) korrigiert — wenn EXTERN_DATA_ALL 0 W liefert, werden Solaranteil + Netzanteil verwendet; Gesamtenergie wird bei stehendem RSCP-Zähler integriert",
+    "en": "- Wallbox: fixed power and total charging energy — when EXTERN_DATA_ALL reports 0 W, solar + grid share is used; total energy is integrated when the RSCP counter stalls"
+  },
+  "1.6.5": {
+    "de": "- HKW: Debug-Modus entfernt — Support über Diagnosebericht (Einstellungen → Diagnose)",
+    "en": "- HPS: removed debug mode — use diagnostic report (Settings → Diagnosis) for support"
+  },
+  "1.6.4": {
+    "de": "- HKW Diagnosebericht: Analyse-Protokoll bleibt erhalten (Fehler, Wiederherstellung, Verfügbarkeit) — nicht von neuen Syncs gelöscht\n- Forum-taugliches Format; Textfeld zum einfachen Kopieren",
+    "en": "- HPS diagnostic report: analysis log persists (errors, recovery, availability) — not cleared by new syncs\n- Forum-friendly format; textarea for easy copy"
+  },
+  "1.6.3": {
+    "de": "- HKW Batteriedaten: Bezeichnungen präzisiert — „Nutzbare Kapazität (Wh/%)“ statt ASOC/SOH",
+    "en": "- HPS battery settings: clearer labels — “Usable capacity (Wh/%)” instead of ASOC/SOH"
+  },
+  "1.6.2": {
+    "de": "- HKW Batteriedaten: ASOC-Auslese korrigiert — nutzbare Kapazität aus USABLE_CAPACITY, Notstrom-Reserve-Max., DCB Full-Charge oder ASOC (je nach E3DC-Modell)\n- ASOC-Wert 1 Wh / SOH 0 % behoben (falsche Skalierung auf manchen Geräten)",
+    "en": "- HPS battery settings: fixed ASOC read — usable capacity from USABLE_CAPACITY, emergency reserve max, DCB full-charge or ASOC (model-dependent)\n- Fixed ASOC showing 1 Wh / SOH 0% (wrong scaling on some units)"
+  },
+  "1.6.1": {
+    "de": "- HKW Batteriedaten: Nennkapazität, nutzbare Kapazität (ASOC) und SOH (%) werden automatisch angezeigt\n- Eigenen Kapazitätswert entfernt — ASOC wird für manuelles Laden, Restladezeit und Batterie-Kachel verwendet (genauere %-Ziele)",
+    "en": "- HPS battery settings: specified capacity, usable capacity (ASOC) and SOH (%) shown automatically\n- Removed custom capacity override — ASOC is used for manual charging, remaining charge time and battery tile (more accurate % targets)"
+  },
+  "1.6.0": {
+    "de": "- HKW: EMS-Steuerung über fünf neue Flow-Aktionen (Automatik, Batterie pausieren, forciert laden/entladen, Netzladen) — Beitrag @RobertHerter\n- HKW: Befehl wird alle 10 s erneut gesendet; nach Ablauf der Dauer kehrt das EMS automatisch in den Automatikmodus zurück\n- Flow-Trigger: Vorzeichen-Hinweise für Batterie- und Netzleistung korrigiert\n- Widget: „PV-Leistung“ (Schreibweise)",
+    "en": "- HPS: EMS control via five new flow actions (auto, pause battery, force charge/discharge, grid charge) — contribution @RobertHerter\n- HPS: command resent every 10 s; after the duration expires EMS returns to automatic mode\n- Flow triggers: corrected sign hints for battery and grid power\n- Widget: “PV power” label spelling"
+  },
+  "1.5.21": {
+    "de": "- App-Crash mit nur „[object Object]“ behoben — RSCP-/Verbindungsfehler (z. B. Timeout) erscheinen als lesbare Meldung\n- Widget power-overview: abgesichert bei fehlenden Capabilities",
+    "en": "- Fixed app crash showing only “[object Object]” — RSCP/connection errors (e.g. timeout) now show readable messages\n- power-overview widget: hardened when capabilities are missing"
+  },
+  "1.5.20": {
+    "de": "- Einheitliche Energie-Bezeichnungen über alle Geräte und Capabilities (Beitrag @RobertHerter)\n- Akku → Batterie, Netz-Präfix (Netzbezug / Netzeinspeisung), einheitliche Schreibweise (PV-Leistung, Batterieleistung, Max./Min.)\n- Widget: „Bat. Bezug“ korrigiert zu „Bat. Entladung“",
+    "en": "- Consistent energy labels across devices and capabilities (contribution @RobertHerter)\n- Battery naming harmonized, grid prefix (grid import / grid feed-in), unified spelling (PV power, battery power, Max./Min.)\n- Widget: “Bat. import” corrected to “Bat. discharge”"
+  },
+  "1.5.19": {
+    "de": "- Spenden-Link: GitHub Sponsors (Copiis)\n- HKW: „PV-Erzeugung (gesamt)“ statt generischem „Energie“ — kumulativ seit Pairing, nicht Tages-PV\n- Wallbox: „Ladeenergie (gesamt)“ für den kWh-Zähler\n- Homepage verweist auf die Doku; Metadaten (Tags) bereinigt",
+    "en": "- Donate link: GitHub Sponsors (Copiis)\n- HPS: “PV generation (total)” instead of generic “Energy” — cumulative since pairing, not daily PV\n- Wallbox: “Charging energy (total)” for the kWh counter\n- Homepage points to docs; metadata (tags) cleaned up"
+  },
+  "1.5.18": {
+    "de": "- Wallbox-Crashfix (fehlende Capabilities, Sync nach Migration) — Test-Release",
+    "en": "- Wallbox crash fix (missing capabilities, sync after migration) — test release"
+  },
+  "1.5.17": {
+    "de": "- Wallbox-Crash behoben: fehlende Capabilities (`measure_power`, `wallbox_charging`, …) werden beim App-Start nachgerüstet; Sync wartet bis Migration fertig ist\n- `setCapabilityValue`-Fehler crashen die App nicht mehr (nur Log)",
+    "en": "- Wallbox crash fix: missing capabilities (`measure_power`, `wallbox_charging`, …) are added on app start; sync waits until migration completes\n- `setCapabilityValue` errors no longer crash the app (logged only)"
+  },
+  "1.5.16": {
+    "de": "- Netz-Gerät: Gesamt-Zähler archiviert erst wenn E3DC-Tageswerte auf ~0 fallen (kein Sprung mehr um Mitternacht)\n- E3DC-Tageshistorie nutzt Homey-Zeitzone statt UTC-Mitternacht\n- Kumulativ-Archiv wird einmalig neu aufgebaut (Logik v2)",
+    "en": "- Grid meter: cumulative counters archive only when E3DC daily values drop to ~0 (no midnight jump)\n- E3DC daily history uses Homey timezone instead of UTC midnight\n- Cumulative archive rebuilt once (logic v2)"
+  },
+  "1.5.15": {
+    "de": "- HKW-Diagnose: Fehler-Log zeigt nur noch Fehler (kein „Sync OK“ bei jedem Sync mehr)\n- Sync-Status weiterhin im Report-Kopf (`Letzter Sync: ok`)",
+    "en": "- HPS diagnostic: error log shows errors only (no more “Sync OK” on every sync)\n- Sync status still in report header (`last sync: ok`)"
+  },
+  "1.5.14": {
+    "de": "- Wallbox: Sensor „Fahrzeug-Ladezustand“ entfernt (Tesla-Cloud-SOC nicht über lokales RSCP verfügbar)\n- Bestehende Wallbox-Geräte: Capability wird beim App-Start automatisch entfernt",
+    "en": "- Wallbox: removed “Vehicle SOC” sensor (Tesla cloud SOC not available via local RSCP)\n- Existing wallbox devices: capability auto-removed on app start"
+  },
+  "1.5.13": {
+    "de": "- Wallbox SOC: zusätzliche RSCP-Quellen (Ladeplan-Text, EMS Runscreen-Werte)\n- Diagnose-Report: chargePlanSoc/Text + Hinweis Tesla-Cloud\n- Kein irreführendes 0 % mehr wenn RSCP keinen SOC liefert",
+    "en": "- Wallbox SOC: extra RSCP sources (charge plan text, EMS runscreen values)\n- Diagnostic report: chargePlanSoc/text + Tesla cloud note\n- No misleading 0% when RSCP provides no SOC"
+  },
+  "1.5.12": {
+    "de": "- Wallbox: Fahrzeug-Ladezustand — verbesserte SOC-Auswertung (rekursives WBTag.SOC, EXTERN_DATA_ALG PreCharge 8-Byte-Layout)\n- Debug-Log: Rohwerte socRaw/algPrecharge/algHex beim HKW-Poll\n- Anzeige auch bei aktivem Laden ohne Stecker-Bit",
+    "en": "- Wallbox: vehicle SOC — improved parsing (recursive WBTag.SOC, EXTERN_DATA_ALG 8-byte precharge layout)\n- Debug log: raw socRaw/algPrecharge/algHex on HPS poll\n- Display also when charging active without plug bit"
+  },
+  "1.5.11": {
+    "de": "- Wallbox: Fahrzeug-Ladezustand (%) liest jetzt WBTag.SOC — funktioniert auch bei Tesla/Cloud-Anbindung in der E3/DC-App\n- Fallback: EXTERN_DATA_ALG PreCharge-Byte; Anzeige auch ohne Stecker-Status wenn SOC > 0",
+    "en": "- Wallbox: vehicle SOC (%) now reads WBTag.SOC — works with Tesla/cloud pairing in the E3/DC app\n- Fallback: EXTERN_DATA_ALG precharge byte; shown without plug status when SOC > 0"
+  },
+  "1.5.10": {
+    "de": "- Wallbox: Sensor „Batterieentladung (Mischmodus)“ zeigt korrekt Unterbunden/Erlaubt (Bool- und UChar8-Antworten der E3/DC)",
+    "en": "- Wallbox: “Battery discharge (mixed mode)” sensor now correctly shows Blocked/Allowed (E3/DC Bool and UChar8 responses)"
+  },
+  "1.5.9": {
+    "de": "- Wallbox: Sensor „Batterieentladung (Mischmodus)“ liefert wieder Werte (RSCP-Lesefix)\n- Wallbox-Kachel: Bezeichnungen angepasst — Ladepriorität (Nur im Sonnenmodus), Verriegelung, Ladekabel\n- EMS-Sync: fehlgeschlagene Einzelwerte blockieren nicht mehr alle Ladepriorisierungs-Sensoren",
+    "en": "- Wallbox: “Battery discharge (mixed mode)” sensor shows values again (RSCP read fix)\n- Wallbox tile: updated labels — priority (sun mode only), lock, charging cable\n- EMS sync: a single failed read no longer blocks all charging-priority sensors"
+  },
+  "1.5.8": {
+    "de": "- Wallbox-Kachel: neue Sensoren — Fahrzeug-SOC, Phasen, Max.-Strom, Stecker/Verriegelung, Schuko\n- Wallbox-Kachel: Ladepriorisierung als Status (Batterie/Wallbox zuerst, Entladung Sonnen-/Mischmodus, Entladegrenze %)\n- Bestehende Wallbox-Geräte erhalten die Sensoren automatisch beim App-Start",
+    "en": "- Wallbox tile: new sensors — vehicle SOC, phases, max current, plug/lock, Schuko outlet\n- Wallbox tile: charging priority as read-only status (battery/wallbox first, sun/mixed discharge, SOC limit %)\n- Existing wallbox devices auto-gain sensors on app start"
+  },
+  "1.5.7": {
+    "de": "- Netz-Kachel: **(gesamt)**-Zähler aus E3DC-Tageswerten (Archiv + heute) statt Live-Integration von `POWER_GRID` — kein Vorzeichen-Problem mehr bei H20/S10\n- `measure_power` = Rohwert wie HKW `Netzleistung` (kein Flip)\n- Mitternacht: Gestern wird ins Archiv summiert; bestehende Netz-Geräte starten mit leerem Archiv",
+    "en": "- Grid meter: **cumulative** counters from E3DC daily history (archive + today) instead of live `POWER_GRID` integration — no more sign issues on H20/S10\n- `measure_power` = raw value like HPS grid power (no flip)\n- Midnight: yesterday rolled into archive; existing grid devices start with empty archive"
+  },
+  "1.5.6": {
+    "de": "- Netz-Kachel: **Vorzeichen-Kalibrierung** für `POWER_GRID` (S10 vs. H20 u. a.) — (gesamt)-Zähler landen auf dem richtigen Sensor\n- Bestehende Netz-Geräte kalibrieren beim App-Start neu; Integrator-Zähler werden dabei zurückgesetzt",
+    "en": "- Grid meter: **sign calibration** for `POWER_GRID` (S10 vs H20 etc.) — cumulative counters map to the correct sensor\n- Existing grid devices re-calibrate on app start; integrator counters reset during calibration"
+  },
+  "1.5.5": {
+    "de": "- Netz-Kachel: Tageswerte **Netzbezug (heute)** und **Netzeinspeisung (heute)** aus E3DC-Historie (wie Portal/App)\n- Kumulativ für Homey Energy unverändert (`meter_power.imported` / `.exported`)",
+    "en": "- Grid meter tile: daily **grid import (today)** and **grid export (today)** from E3DC history DB (matches portal/app)\n- Cumulative Homey Energy counters unchanged (`meter_power.imported` / `.exported`)"
+  },
+  "1.5.4": {
+    "de": "- Netz-Gerät: `energy.cumulative: true` — erscheint nun als Smartmeter in Homey Energy (Bezug/Einspeisung)\n- Netz-Vorzeichen korrigiert (EMS POWER_GRID → Bezug positiv)\n- Bestehendes Netz-Gerät nach Update ggf. einmal entfernen und neu hinzufügen",
+    "en": "- Grid meter: `energy.cumulative: true` — now registers as smart meter in Homey Energy (import/export)\n- Grid sign corrected (EMS POWER_GRID → import positive)\n- Re-add existing grid meter device after update if Energy tab does not update"
+  },
+  "1.5.3": {
+    "de": "- Crash-Diagnose: lesbare Fehlermeldungen statt „[object Object]“ in Logs (Flow-Karten, RSCP-API, Trigger)\n- Absturz-Schutz: globale Handler für unbehandelte Fehler + fehlende .catch() im Sync\n- Geräte-Init (Wallbox, Netz, Akku) mit try/catch abgesichert",
+    "en": "- Crash diagnostics: readable error messages instead of “[object Object]” in logs (flow cards, RSCP API, triggers)\n- Crash guard: global unhandled-error handlers + missing .catch() in sync loop\n- Device onInit (wallbox, grid, battery) wrapped in try/catch"
+  },
+  "1.5.2": {
+    "de": "- Akku-Kachel: Ladung und Entladung unterscheidbar benannt (Akku-Ladung / Akku-Entladung, eigene Icons)",
+    "en": "- Battery tile: distinct labels for charged vs discharged energy (with icons)"
+  },
+  "1.5.1": {
+    "de": "- Netz-Kachel: Bezug und Einspeisung unterscheidbar benannt (Netzbezug / Netzeinspeisung, eigene Icons)",
+    "en": "- Grid meter tile: distinct labels for import vs export (with icons)"
+  },
+  "1.5.0": {
+    "de": "- Neues Gerät **Netz** für Homey Energy (Bezug/Einspeisung): `meter_power.imported` / `.exported`\n- Nach Pairing pro HKW: Geräte → E3DC → Netz hinzufügen",
+    "en": "- New **Grid meter** device for Homey Energy (import/export): `meter_power.imported` / `.exported`\n- Pair per HPS: Devices → E3DC → Grid meter"
+  },
+  "1.4.16": {
+    "de": "- Homey Energy: kWh-Werte via `meter_power` — HKW/Akku integrieren Leistung, Wallbox nutzt RSCP-Gesamtenergie\n- Bestehende Geräte erhalten `meter_power` automatisch beim App-Start",
+    "en": "- Homey Energy: kWh via `meter_power` — HPS/battery integrate power, wallbox uses RSCP total energy\n- Existing devices auto-gain `meter_power` on app start"
+  },
+  "1.4.15": {
+    "de": "- HKW-Kachel: doppelte „PV Leistung“ entfernt (Legacy-Capability `measure_pv_delivery` weg, nur noch `measure_power` für Homey Energy)",
+    "en": "- HPS tile: removed duplicate “PV power” (legacy `measure_pv_delivery` dropped; `measure_power` only for Homey Energy)"
+  },
+  "1.4.14": {
+    "de": "- Diagnosebericht nur noch unter HKW-Einstellungen → Diagnose (Support), nicht mehr auf der Gerätekachel",
+    "en": "- Diagnostic report only in HPS settings → Diagnosis (support), no longer on the device tile"
+  },
+  "1.4.13": {
+    "de": "- Homey Energy: Batteriemonitor aktualisiert `measure_power` jetzt bei jedem Live-Sync (nicht nur alle 40 s) — Batterie sollte nicht mehr „inaktiv“ sein\n- Flow WENN: eigene Trigger für Hausverbrauch, Batterieleistung und Netzleistung (Custom-Capabilities haben keine System-„changed“-Karten)\n- Smartmeter-Gerät: im Original-Repo nicht vorhanden — geplant für eine spätere Version (Homey Energy Bezug/Einspeisung)",
+    "en": "- Homey Energy: battery monitor now updates `measure_power` on every live sync (not only every 40s) — battery should no longer show as inactive\n- Flow WHEN: dedicated triggers for house consumption, battery power and grid power (custom capabilities lack system “changed” cards)\n- Smart meter device: not in original repo — planned for a later release (Homey Energy import/export)"
+  },
+  "1.4.12": {
+    "de": "- Diagnose-Export für Support: HKW-Einstellungen → „Diagnose (Support)“ + Flow-Karte „Diagnosebericht erstellen“ (Token für Benachrichtigung)\n- Keine Passwörter im Bericht; letzte Sync-Ereignisse und Live-Werte",
+    "en": "- Diagnostic export for support: HPS settings → “Diagnosis (support)” + flow card “Create diagnostic report” (token for notifications)\n- No passwords in report; recent sync events and live values"
+  },
+  "1.4.11": {
+    "de": "- Homey Energy (ab 12.4.5): HKW liefert wieder `measure_power` (= PV) für Solar/Leistungs-Kachel\n- Batteriemonitor: Geräteklasse `battery` + `homeBattery` + Lade-/Entladeleistung\n- Legacy-Wallbox-Sensoren am HKW entfernt (eigene Wallbox-Geräte); Flow-Trigger robuster registriert",
+    "en": "- Homey Energy (12.4.5+): HPS exposes `measure_power` (= PV) for solar/main power tile\n- Battery monitor: `battery` class + `homeBattery` + charge/discharge power\n- Removed legacy wallbox sensors on HPS (use wallbox devices); more robust flow trigger registration"
+  },
+  "1.4.10": {
+    "de": "- Crash-Fix: Sync-Schleife bricht nicht mehr ab bei fehlenden Geräte-Settings oder Verarbeitungsfehlern\n- Fehlerlogs zeigen lesbare Meldungen statt „[object Object]“",
+    "en": "- Crash fix: sync loop no longer dies on missing device store settings or processing errors\n- Error logs show readable messages instead of “[object Object]”"
+  },
+  "1.4.9": {
+    "de": "- Wallbox-Kachel: doppelte Leistungsanzeige entfernt (`measure_wallbox_consumption` weg, nur noch `measure_power`)",
+    "en": "- Wallbox tile: removed duplicate power sensor (`measure_wallbox_consumption`; keep `measure_power` only)"
+  },
+  "1.4.8": {
+    "de": "- Wallbox-Kachel: Laden + Sonnenmodus nur noch als Status-Sensor (kein Tippen mehr)\n- Flow: Laden freigeben/sperren, Sonnenmodus ein/aus mit RSCP-Rücklesen (kein Doppelbefehl)\n- Flow WENN: Sonnenmodus an/aus, Laden freigegeben/gesperrt — für Benachrichtigungen ohne Durchlauf",
+    "en": "- Wallbox tile: charging + sun mode as read-only status sensors (no tap)\n- Flow actions: allow/block charging, sun on/off with RSCP read-back (no duplicate commands)\n- Flow IF cards: sun/charging state — branch flows before notifications"
+  },
+  "1.4.7": {
+    "de": "- Wallbox: Laden + Sonnenmodus als zwei Buttons auf einer Seite (ohne evcharger_charging, kein Extra-Tab)",
+    "en": "- Wallbox: charging and sun mode as two buttons on one page (no evcharger_charging, no extra tab)"
+  },
+  "1.4.6": {
+    "de": "- Wallbox: Sonnenmodus als Button statt Toggle – kein Dropdown mehr, Laden + Sonnenmodus gleichzeitig sichtbar",
+    "en": "- Wallbox: sun mode as button instead of toggle – no dropdown, charging and sun mode visible together"
+  },
+  "1.4.5": {
+    "de": "- Wallbox-Kachel: System-Capability „evcharger_charging“ statt Custom-Toggle (kein Dropdown mehr)\n- Ladestatus „evcharger_charging_state“; Sonnenmodus als eigener Toggle mit Solar-Icon",
+    "en": "- Wallbox tile: system capability “evcharger_charging” instead of custom toggle (no more dropdown)\n- Charging state via “evcharger_charging_state”; sun mode as separate toggle with solar icon"
+  },
+  "1.4.4": {
+    "de": "- Wallbox-Kachel: Schalter „Laden freigegeben“ und „Sonnenmodus“ mit RSCP-Rücklesen (EXTERN_DATA_ALG)\n- Toggle-Zustand wird beim Poll aktualisiert; kurze Sperre nach manuellem Umschalten gegen Flackern",
+    "en": "- Wallbox tile: “Charging allowed” and “Sun mode” toggles with RSCP read-back (EXTERN_DATA_ALG)\n- Toggle state refreshed on each poll; brief guard after manual changes to avoid flicker"
+  },
+  "1.4.3": {
+    "de": "- Ladepriorität „Batterie zuerst“: deaktiviert Batterieentladung im Sonnenmodus automatisch (wie E3/DC-Portal)\n- Batterie Entladegrenze: Erfolg per Rücklesen verifiziert",
+    "en": "- Charging priority “battery first”: auto-disables sun-mode battery discharge (like E3/DC portal)\n- Battery discharge limit: success verified via read-back"
+  },
+  "1.4.2": {
+    "de": "- Flow-Karte „Batterie Entladegrenze“ (statt „Bis Ladezustand“)",
+    "en": "- Flow card renamed to “Battery discharge limit” (was “Down to state of charge”)"
+  },
+  "1.4.1": {
+    "de": "- Wallbox Ladepriorisierung: Bezeichnungen wie in der E3/DC-Maske (Batterie/Wallbox zuerst, Erlaubt/Unterbunden, Bis Ladezustand)",
+    "en": "- Wallbox charging priority: labels aligned with E3/DC portal (battery/wallbox first, allowed/prevented, down to SOC)"
+  },
+  "1.4.0": {
+    "de": "- Wallbox/Speicher: Flow-Karten für Speicher→Auto, Auto vor Speicher, Entladegrenze % und Speicher im Mischmodus sperren\n- RSCP-Steuerung über EMS-Tags (python-e3dc / rscp2mqtt)",
+    "en": "- Wallbox/battery: flow cards for battery-to-car, car-before-battery, discharge limit % and block battery in mixed mode\n- RSCP control via EMS tags (python-e3dc / rscp2mqtt)"
+  },
+  "1.3.0": {
+    "de": "- Wallbox Flow: Laden starten, Laden stoppen, Sonnenmodus ein/aus\n- RSCP-Steuerung über WBTag REQ_SET_EXTERN (wie ioBroker e3dc-rscp)\n- Bestehende Karte „Lade-Stromstärke setzen“ bleibt erhalten",
+    "en": "- Wallbox flow actions: start charging, stop charging, sun mode on/off\n- RSCP control via WBTag REQ_SET_EXTERN (aligned with ioBroker e3dc-rscp)\n- Existing \"Set charging current\" card retained"
+  },
+  "1.2.0": {
+    "de": "- Community Fork (Copiis) des nicht mehr gepflegten Original-Repos\n- Wallbox: Klasse auf 'evcharger' geändert, Standard-Capability 'measure_power' hinzugefügt (bessere Integration in Homey Energy)\n- Wallbox-Steuerung: Neue Flow-Action 'Set wallbox charging current' (Stromstärke + Modus via RSCP)\n- Erweiterte Wallbox-Doku und Hinweise zu Sun-Mode / Ladestrom\n- Metadaten (Author, Links, Support) auf den Fork aktualisiert\n- Vorbereitung für weitere Wallbox-Features (Energie, detaillierter Status, erweiterte Modi)",
+    "en": "- Community fork (Copiis) of the unmaintained original repo\n- Wallbox: changed class to 'evcharger', added standard 'measure_power' capability (better Homey Energy integration)\n- Wallbox control: new Flow Action 'Set wallbox charging current' (current + mode via RSCP)\n- Expanded wallbox docs and notes on Sun mode / charge current\n- Updated metadata (author, links, support) to point to the fork\n- Preparation for richer wallbox features (energy counters, detailed status, more modes)"
+  },
+  "0.5.0": {
+    "en": "Initial release"
+  },
+  "0.5.1": {
+    "en": "Initial release"
+  },
+  "0.6.0": {
+    "de": "- Firmwareversion wird angezeigt\n- WENN Karte: Firmware hat sich geändert\n- Reconnect Problem behoben\n- Lade- und Entladesystem kann vollständig über verschieden WENN, DANN und UND Karten gesteuert werden\n- Vorzeichen für den Batteriestrom wurde geändert. Negative Werte bedeuten, dass die Batterie entladen wird und positive Werte bedeuten, dass die Batterie geladen wird",
+    "en": "- Firmware version is displayed\n- IF card: Firmware has changed\n- Reconnect problem fixed\n- Charging and discharging system can be fully controlled via different IF, THEN and AND cards\n- Sign for battery current has been changed. Negative values mean that the battery is being discharged and positive values mean that the battery is being charged"
+  },
+  "0.7.0": {
+    "de": "- Anzeige Restladezeit/Restentladezeit\n- Karten zur Steuerung der Notstromfunktion\n- Neues Device um die Batteriedaten zu überwachen",
+    "en": "- Display of remaining charging time/remaining discharge time\n- Cards for controlling the emergency power function\n- New device to monitor the battery data"
+  },
+  "0.7.1": {
+    "en": "- Fixed wrong charging time"
+  },
+  "0.8.0": {
+    "de": "- Livedatenanzeige der angeschlossenen Wallboxen",
+    "en": "- Live data display of the connected wallboxes"
+  },
+  "1.0.0": {
+    "de": "public release",
+    "en": "public release"
+  },
+  "1.0.1": {
+    "de": "- Bug gefixt, dass die Einstellungen beim Hinzufügen des Devices nicht übernommen wurden",
+    "en": "- Bug fixed that the settings were not applied when adding the device"
+  },
+  "1.0.2": {
+    "de": "- Gefixt: Aktivierung des Debug Modus schlägt fehlt",
+    "en": "- Fixed: Activation of debug mode fails"
+  },
+  "1.0.3": {
+    "de": "- Gefixt: Auslesen der Batteriekapazität bei S10X Hauskraftwerken schlägt fehl",
+    "en": "- Fixed: Reading out the battery capacity of S10X home power stations fails"
+  },
+  "1.0.4": {
+    "de": "- Die Wartezeit, die die App auf eine Antwort vom Hauskraftwerk antwortet, kann in den Device Einstellungen angepasst werden",
+    "en": "- The time that the app waits for a response from the home power station can be adjusted in the device settings"
+  },
+  "1.0.5": {
+    "de": "- Hotfix: Neues Device konnten nicht hinzugefügt werden. Sorry!!",
+    "en": "- Hotfix: New devices could not be added. Sorry!!"
+  },
+  "1.1.0": {
+    "de": "- Unterstützung für externe Quellen\n- einfaches Übersichtswidget\n- Typos in der deutschen Übersetzung behoben",
+    "en": "- Added support for external sources\n- simple overview widget\n- Fixed typos in the German translation"
+  },
+  "1.2.1": {
+    "en": "Wallbox integration"
+  },
+  "1.8.25": {
+    "en": "Wallbox Ladeplaner: Endzeit-Unterstützung hinzugefügt (wie HKW), Force-Override für Pläne, bessere Voll-Erkennung via Power. Charging startet jetzt zuverlässig."
+  }
+}

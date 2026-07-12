@@ -1,0 +1,19 @@
+{
+  "type": "boolean",
+  "title": {
+    "en": "Charge plan active",
+    "de": "Ladeplan aktiv"
+  },
+  "titleTrue": {
+    "en": "Yes",
+    "de": "Ja"
+  },
+  "titleFalse": {
+    "en": "No",
+    "de": "Nein"
+  },
+  "getable": true,
+  "setable": false,
+  "uiComponent": "sensor",
+  "insights": false
+}

@@ -51,6 +51,21 @@ export class WallboxManager {
     return this.getLinkedWallboxDevices().length > 0;
   }
 
+  /** Returns true if any linked wallbox currently has an active Ladeplan (for tile visibility on HKW). */
+  hasActiveWallboxLadeplan(): boolean {
+    const linked = this.getLinkedWallboxDevices();
+    return linked.some((d: any) => {
+      if (typeof d.hasActivePlan === 'function') {
+        try {
+          return !!d.hasActivePlan();
+        } catch {
+          return false;
+        }
+      }
+      return false;
+    });
+  }
+
   /**
    * Returns linked wallbox devices for this station.
    * Uses a short in-memory cache to avoid repeated getDriver().getDevices() + getStoreValue()

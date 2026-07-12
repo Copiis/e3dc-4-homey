@@ -65,6 +65,7 @@ export const WALLBOX_CAPABILITY_ORDER = [
   'measure_wallbox_solarshare',
   'measure_vehicle_soc',
   'measure_wallbox_discharge_soc',
+  'wallbox_ladeplan_active',
   'wallbox_plugged',
   'measure_wallbox_max_current',
   'measure_wallbox_phases',
@@ -107,6 +108,7 @@ export const HKW_CAPABILITY_ORDER = [
   'meter_power',
   'diagnostic_report',
   'firmware_version',
+  'wallbox_ladeplan_active',
 ] as const;
 
 function sameOrder(current: string[], target: string[]): boolean {
