@@ -188,12 +188,13 @@ async function loadPlans() {
       let details = displayAction;
       if (p.current) details += ` ${p.current}A`;
 
-      let dischargeLine = '';
+      let dischargePart = '';
+      let dischargeNote = '';
       if (typeof p.dischargeSoc === 'number' && !isNaN(p.dischargeSoc)) {
-        dischargeLine = `
+        dischargePart = ` • Entladen bis ${p.dischargeSoc}%`;
+        dischargeNote = `
           <div class="small" style="color:#9cf; margin-top:1px;">
-            Hausakku entladen bis ${p.dischargeSoc}% 
-            <span style="color:#888;">(wird nach Plan-Ende auf Ursprungswert zurückgesetzt)</span>
+            (wird nach Plan-Ende auf Ursprungswert zurückgesetzt)
           </div>`;
       }
 
@@ -202,8 +203,8 @@ async function loadPlans() {
           <strong>${new Date(p.start).toLocaleString()}</strong>
           <button onclick="del(${i})" style="background:#c33; padding:1px 6px; font-size:10px; width: auto;">✕</button>
         </div>
-        <div class="small">${details} → ${end}</div>
-        ${dischargeLine}
+        <div class="small">${details}${dischargePart} → ${end}</div>
+        ${dischargeNote}
       `;
       if (c) c.appendChild(d);
     });
