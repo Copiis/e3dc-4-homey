@@ -40,8 +40,12 @@ export class WallboxScheduleExecutor {
           info.savedDischargeSoc = current;
         }
         try {
-          await this.device.setDischargeBatteryUntil(s.dischargeSoc);
-          this.device.log?.(`[WallboxLadeplan] set dischargeSoc=${s.dischargeSoc}% (previous=${current ?? 'n/a'}%) for plan ${id}`);
+          const setOk = await this.device.setDischargeBatteryUntil(s.dischargeSoc);
+          if (setOk) {
+            this.device.log?.(`[WallboxLadeplan] set dischargeSoc=${s.dischargeSoc}% (previous=${current ?? 'n/a'}%) for plan ${id} — ok`);
+          } else {
+            this.device.log?.(`[WallboxLadeplan] set dischargeSoc=${s.dischargeSoc}% (previous=${current ?? 'n/a'}%) for plan ${id} — set returned false (E3DC may have ignored or delayed)`);
+          }
         } catch (e) {
           this.device.error('Schedule dischargeSoc apply failed: ' + formatError(e));
         }
@@ -86,8 +90,12 @@ export class WallboxScheduleExecutor {
     // Restore original discharge value if this plan had overridden it
     if (info && typeof info.savedDischargeSoc === 'number') {
       try {
-        await this.device.setDischargeBatteryUntil(info.savedDischargeSoc);
-        this.device.log?.(`[WallboxLadeplan] restored original dischargeSoc=${info.savedDischargeSoc}% after plan ended`);
+        const setOk = await this.device.setDischargeBatteryUntil(info.savedDischargeSoc);
+        if (setOk) {
+          this.device.log?.(`[WallboxLadeplan] restored original dischargeSoc=${info.savedDischargeSoc}% after plan ended — ok`);
+        } else {
+          this.device.log?.(`[WallboxLadeplan] restored original dischargeSoc=${info.savedDischargeSoc}% after plan ended — set returned false`);
+        }
       } catch (e) {
         this.device.error('Schedule dischargeSoc restore failed: ' + formatError(e));
       }
