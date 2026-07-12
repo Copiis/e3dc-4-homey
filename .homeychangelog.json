@@ -1,4 +1,8 @@
 {
+  "1.8.45": {
+    "de": "- **Sichtbarkeit Ladepläne auf Kacheln:** Neuer Sensor „Ladeplan aktiv“ auf der HKW-Kachel (zeigt HKW-Ladepläne) und auf der Wallbox-Kachel (zeigt Wallbox-Ladepläne).\n- Wenn ein Wallbox-Ladeplan aktiv ist, wird der Titel der „Batterie entladen bis“-Anzeige auf der Wallbox-Kachel dynamisch auf „... (durch Ladeplan)“ geändert.\n- Icon (Uhr) für die neuen Sensoren hinzugefügt.\n- Reihenfolge auf der HKW-Kachel: Ladeplan-Eintrag jetzt vor dem Firmware-Eintrag platziert.",
+    "en": "- **Ladeplan visibility on tiles:** New sensor \"Charge plan active\" on the HKW tile (for HKW Ladepläne) and on the Wallbox tile (for Wallbox Ladepläne).\n- When a Wallbox Ladeplan is active, the title of the \"Battery discharge until\" capability on the Wallbox tile is dynamically updated to \"... (by charge plan)\".\n- Added clock icon for the new sensors.\n- Ordering on the HKW tile: Ladeplan entry now placed before the firmware entry."
+  },
   "1.8.44": {
     "de": "- Entfernung der automatischen Willkommens-Meldung in der Zeitleiste nach App-Updates (\"Zeitleiste aktiv — ...\"). Die Meldung erschien nur einmal pro Version und wurde auf expliziten Wunsch entfernt.\n- Die eigentlichen Timeline-Einträge (HKW-Verbindung, Inselbetrieb, Firmware-Updates, Wallbox-Ereignisse etc.) bleiben weiterhin aktiv und können in den Einstellungen konfiguriert werden.",
     "en": "- Removed the automatic welcome notification in the timeline after app updates (\"Timeline active — ...\"). The message was shown only once per version and has been removed on explicit user request.\n- The actual timeline entries (HPS connection, island mode, firmware updates, wallbox events etc.) remain active and configurable in the settings."
