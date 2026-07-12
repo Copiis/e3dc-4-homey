@@ -26,6 +26,8 @@ export class WallboxScheduleExecutor {
       /** Discharge battery until % (global EMS). Snapshot original on plan start, restore on end. */
       setDischargeBatteryUntil(percent: number): Promise<boolean>;
       getCurrentDischargeBatteryUntil(): number | undefined;
+      /** Invalidate the WallboxManager EMS cache after we change the value (prevents stale cache overwriting the tile). */
+      invalidateAssociatedEmsCache?(): void;
     }
   ) {}
 
@@ -46,6 +48,8 @@ export class WallboxScheduleExecutor {
           } else {
             this.device.log?.(`[WallboxLadeplan] set dischargeSoc=${s.dischargeSoc}% (previous=${current ?? 'n/a'}%) for plan ${id} — set returned false (E3DC may have ignored or delayed)`);
           }
+          // Invalidate manager cache so the next live data poll does not push the old cached value
+          this.device.invalidateAssociatedEmsCache?.();
         } catch (e) {
           this.device.error('Schedule dischargeSoc apply failed: ' + formatError(e));
         }
@@ -96,6 +100,8 @@ export class WallboxScheduleExecutor {
         } else {
           this.device.log?.(`[WallboxLadeplan] restored original dischargeSoc=${info.savedDischargeSoc}% after plan ended — set returned false`);
         }
+        // Invalidate so subsequent live polls use the fresh (restored) value
+        this.device.invalidateAssociatedEmsCache?.();
       } catch (e) {
         this.device.error('Schedule dischargeSoc restore failed: ' + formatError(e));
       }

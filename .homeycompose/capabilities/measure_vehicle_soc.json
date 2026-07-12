@@ -2,7 +2,7 @@
   "type": "number",
   "title": {
     "en": "Vehicle SOC",
-    "de": "Fahrzeug-Ladezustand"
+    "de": "Fahrzeug-SOC"
   },
   "getable": true,
   "setable": false,

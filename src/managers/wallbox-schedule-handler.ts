@@ -36,6 +36,8 @@ export class WallboxScheduleHandler {
       /** For Wallbox Ladeplan dischargeSoc support: apply new value and read current for snapshot/restore. */
       setDischargeBatteryUntil(percent: number): Promise<boolean>;
       getCurrentDischargeBatteryUntil(): number | undefined;
+      /** Invalidate manager cache after deliberate change so live polls don't push stale value. */
+      invalidateAssociatedEmsCache?(): void;
     }
   ) {
     this.store = new WallboxScheduleStore(device);

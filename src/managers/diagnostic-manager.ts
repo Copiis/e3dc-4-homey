@@ -46,7 +46,7 @@ export class DiagnosticManager {
     this.publishDiagnosticReport().catch(() => {});
   }
 
-  recordSyncSuccess(result: LiveData): void {
+  recordSyncSuccess(result: LiveData, cloudVehicleSoc?: number): void {
     const hadSyncError = this.lastSyncResult === 'error';
     this.lastSyncAt = new Date();
     this.lastSyncResult = 'ok';
@@ -68,6 +68,7 @@ export class DiagnosticManager {
       wallboxAlgHex: wallboxDiag?.algHex,
       wallboxChargePlanSoc: wallboxDiag?.chargePlanSoc,
       wallboxChargePlanText: wallboxDiag?.chargePlanText,
+      cloudVehicleSoc,
     };
   }
 
@@ -191,6 +192,7 @@ export class DiagnosticManager {
       wallboxChargePlanSoc: this.lastSnapshot.wallboxChargePlanSoc,
       wallboxChargePlanText: this.lastSnapshot.wallboxChargePlanText,
       detailedDiagnosticsEnabled: this.isDetailedDiagnosticsEnabled(),
+      cloudVehicleSoc: this.lastSnapshot.cloudVehicleSoc,
     };
   }
 }

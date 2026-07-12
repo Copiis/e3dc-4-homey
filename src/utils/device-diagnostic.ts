@@ -43,6 +43,7 @@ export interface DiagnosticSnapshot {
     wallboxChargePlanSoc?: number;
     wallboxChargePlanText?: string;
     detailedDiagnosticsEnabled?: boolean;
+    cloudVehicleSoc?: number;
 }
 
 /** Persisted analysis events — append-only; oldest trimmed only above this count. */
@@ -190,6 +191,9 @@ export class DeviceDiagnostic {
             lines.push('');
             lines.push('Wallbox (letzter Sync / last sync):');
             lines.push(`  Fahrzeug-SOC / vehicle SOC: ${formatPct(snapshot.wallboxSocPercent)}`);
+            if (snapshot.cloudVehicleSoc !== undefined) {
+                lines.push(`  Cloud-Fallback SOC: ${formatPct(snapshot.cloudVehicleSoc)}`);
+            }
             lines.push(`  Stecker / plugged: ${formatBool(snapshot.wallboxPlugged)}`);
             lines.push(`  RSCP socRaw: ${formatRaw(snapshot.wallboxSocRaw)}`);
             lines.push(`  RSCP algPrecharge: ${formatRaw(snapshot.wallboxAlgPrecharge)}`);

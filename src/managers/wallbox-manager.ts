@@ -121,6 +121,16 @@ export class WallboxManager {
   }
 
   /**
+   * Invalidate the EMS settings cache. Call this after deliberately changing
+   * a global EMS setting (e.g. dischargeBatteryUntil from a Wallbox Ladeplan)
+   * so that the next live data poll will re-read the fresh value instead of
+   * pushing a stale cached value (which caused flickering on the tile).
+   */
+  invalidateEmsSettingsCache(): void {
+    this.emsSettingsCache = null;
+  }
+
+  /**
    * Sync EMS settings (battery priority etc.) to linked wallboxes.
    * Uses 5-minute in-memory cache to avoid calling readWallboxEmsSettings (4 RSCP reads)
    * on every single live data poll.

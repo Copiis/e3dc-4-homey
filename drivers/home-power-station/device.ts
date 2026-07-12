@@ -94,6 +94,8 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
   private powerModeManager: PowerModeManager | null = null
   private diagnosticManager: DiagnosticManager | null = null
 
+  lastCloudVehicleSoc?: number;
+
   // Dynamically attached value-changed and event triggers (populated by FlowCardManager)
   // Declared here so the class structurally satisfies IHpsDevice without casts.
   firmwareChangedTrigger?: SimpleValueChangedTrigger<string>;
@@ -344,6 +346,17 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
     }, this)
     return api
   }
+
+  /**
+   * Called by Wallbox Ladepläne when they change the global "Batterie entladen bis" value.
+   * This forces the WallboxManager to drop its 5-minute EMS settings cache on the next
+   * live data poll, preventing it from overwriting the just-set plan value (or restore)
+   * with a stale cached original value → eliminates the flickering on the wallbox tile.
+   */
+  invalidateWallboxEmsSettingsCache(): void {
+    this.wallboxManager?.invalidateEmsSettingsCache?.();
+  }
+
   async sync() {
     if (this.liveDataPoller) {
       const data = await this.liveDataPoller.forceFetch();
@@ -382,7 +395,7 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
       setPlantPowerState(stationId, buildPowerStateFromLiveData(result, agg.wallboxPower, agg.wallboxSolarShare, agg.hasWallbox));
       this.capabilityManager?.updateLinkedGridMeter(result)
       this.capabilityManager?.handleAvailability();
-      this.diagnosticManager?.recordSyncSuccess(result)
+      this.diagnosticManager?.recordSyncSuccess(result, this.lastCloudVehicleSoc)
       this.capabilityManager?.updateLinkedBattery(result)
       this.capabilityManager?.updateBatteryDataIfNeeded?.();
     } catch (e) {
@@ -413,6 +426,7 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
     };
 
     const cloudSoc = await this.e3dcCloudClient.fetchVehicleSocFallback(cloudConfig);
+    this.lastCloudVehicleSoc = cloudSoc;
     if (cloudSoc === undefined) {
       this.log('E3DC Cloud: no plausible vehicle SOC available from cloud (portal may have issues)');
       return;
@@ -426,10 +440,11 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
         const store = wb.getStoreValue?.('settings');
         if (!store || String(store.stationId) !== String(this.getData().id)) continue;
 
-        const currentLocal = Number(wb.getCapabilityValue?.('measure_vehicle_soc')) || 0;
-        const isPlausibleLocal = currentLocal > 0 && currentLocal <= 100;
+        const source = (wb as any).lastSocSource || 'none';
+        const isFromLocal = source === 'local';
 
-        if (!isPlausibleLocal) {
+        // Refresh from cloud if we don't have fresh local data (even if cap currently shows an old plausible fallback value)
+        if (!isFromLocal) {
           if (typeof wb.applyCloudVehicleSoc === 'function') {
             wb.applyCloudVehicleSoc(cloudSoc);
           } else {

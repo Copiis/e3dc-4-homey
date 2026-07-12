@@ -60,7 +60,7 @@
     "measure_vehicle_soc": {
       "title": {
         "en": "Vehicle SOC",
-        "de": "Fahrzeug-Ladezustand"
+        "de": "Fahrzeug-SOC"
       },
       "units": {
         "en": "%",

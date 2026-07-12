@@ -471,7 +471,10 @@ class WallboxDevice extends Homey.Device implements Wallbox {
    * System-wide: minimum home battery SOC before allowing car charging.
    */
   async setDischargeBatteryUntil(percent: number): Promise<boolean> {
-    return this.emsSettingsManager.setDischargeBatteryUntil(percent);
+    const result = await this.emsSettingsManager.setDischargeBatteryUntil(percent);
+    // Invalidate cache so the tile shows the new value immediately and future polls don't revert to stale cache
+    this.invalidateAssociatedEmsCache();
+    return result;
   }
 
   /**
@@ -481,6 +484,23 @@ class WallboxDevice extends Homey.Device implements Wallbox {
   getCurrentDischargeBatteryUntil(): number | undefined {
     const v = this.getCapabilityValue('measure_wallbox_discharge_soc');
     return typeof v === 'number' ? v : undefined;
+  }
+
+  /**
+   * Invalidate the global EMS settings cache on the associated HKW.
+   * Called after a Ladeplan changes the discharge limit so the tile does not
+   * get overwritten by a stale cached value on the next live data poll.
+   */
+  invalidateAssociatedEmsCache(): void {
+    // Find the HKW and tell it to drop its EMS cache
+    const config: WallboxConfig = this.getStoreValue('settings');
+    if (!config?.stationId) return;
+
+    const hpsDevices = this.homey.drivers.getDriver('home-power-station').getDevices() as any[];
+    const station = hpsDevices.find((d: any) => d.getId && d.getId() === config.stationId);
+    if (station && typeof station.invalidateWallboxEmsSettingsCache === 'function') {
+      station.invalidateWallboxEmsSettingsCache();
+    }
   }
 
   /**
