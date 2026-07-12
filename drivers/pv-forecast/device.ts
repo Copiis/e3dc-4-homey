@@ -359,13 +359,14 @@ class PvForecastDevice extends Homey.Device {
       const trimStart = nowMs - 10 * 3600 * 1000;
       history = history.filter(p => p.ts >= trimStart);
 
-      // === NEUE REGEL (alte Regeln vollständig gelöscht) ===
-      // Erst ab 12 Uhr mittags fängt die App an, anhand der bereits stattgefundenen
-      // PV-Erzeugung + Kurve in den Insights (Steilheit/Flachheit der Kurve)
-      // und dem geschätzten Produktionsende den Landepunkt der Tagesproduktion
-      // zu schätzen. Dies geschieht ca. jede halbe Stunde.
+      // === NEUE REGEL FÜR PV-ERTRAGSVORHERSAGE ===
+      // Die Schätzung der angepassten Prognose (Landepunkt der Tagesproduktion)
+      // beginnt SPÄTESTENS mittags (12 Uhr) ODER SPÄTESTENS nachdem 3 kWh produziert wurden.
+      // Danach wird ca. alle 30 Minuten anhand der Produktionskurve (Steilheit/Flachheit)
+      // und dem geschätzten Produktionsende neu geschätzt.
       let adjustedKwh = baselineKwh;
       const localHour = getLocalHour(timezone, nowMs);
+      const shouldStartEstimation = localHour >= 12 || actualKwh >= 3.0;
 
       // Sicherstellen dass dayState ein Objekt ist
       let workingDayState: PvForecastDayState = dayState || {
@@ -375,10 +376,10 @@ class PvForecastDevice extends Homey.Device {
         lastWeatherFetchMs: nowMs,
       };
 
-      if (localHour >= 12) {
+      if (shouldStartEstimation) {
         const lastEstimate = workingDayState.lastAdjustedEstimateMs ?? 0;
 
-        // ca. alle 30 Minuten neu rechnen
+        // ca. alle 30 Minuten neu rechnen (auch wenn der Start früher durch 3 kWh ausgelöst wurde)
         if (!lastEstimate || (nowMs - lastEstimate) >= 25 * 60 * 1000) {
           const repHours = segmentInputs[0]?.hours || [];
           const estimatedEndMs = estimateProductionEndMs(repHours, nowMs);
