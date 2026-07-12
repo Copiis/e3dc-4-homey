@@ -6,6 +6,9 @@ export interface TriggeredWallboxScheduleInfo {
   action: string;
   /** If the plan overrode the global "Batterie entladen bis", this holds the value that was active right before the override. */
   savedDischargeSoc?: number;
+  savedBatteryToCar?: boolean;
+  savedBatteryBeforeCar?: boolean;
+  savedMixBlocked?: boolean;
 }
 
 /**
@@ -28,6 +31,13 @@ export class WallboxScheduleExecutor {
       getCurrentDischargeBatteryUntil(): number | undefined;
       /** Invalidate the WallboxManager EMS cache after we change the value (prevents stale cache overwriting the tile). */
       invalidateAssociatedEmsCache?(): void;
+      /** Post to Homey timeline for important plan actions like global setting changes. */
+      postTimelineNotification?(excerpt: string): void;
+      setBatteryToCar(enabled: boolean): Promise<boolean>;
+      setBatteryBeforeCar(enabled: boolean): Promise<boolean>;
+      setDisableBatteryAtMixMode(enabled: boolean): Promise<boolean>;
+      getCapabilityValue(key: string): unknown;
+      globalEmsOverrideManager?: { applyOverrides(planId: string, overrides: any): Promise<void>; restoreOverrides(planId: string): Promise<void>; };
     }
   ) {}
 
@@ -35,24 +45,15 @@ export class WallboxScheduleExecutor {
     try {
       const info: TriggeredWallboxScheduleInfo = { action: s.action };
 
-      // === DISCHARGE SOC OVERRIDE (user requirement: must restore original after plan ends) ===
-      if (typeof s.dischargeSoc === 'number' && s.dischargeSoc >= 0 && s.dischargeSoc <= 100) {
-        const current = this.device.getCurrentDischargeBatteryUntil();
-        if (typeof current === 'number' && current !== s.dischargeSoc) {
-          info.savedDischargeSoc = current;
-        }
-        try {
-          const setOk = await this.device.setDischargeBatteryUntil(s.dischargeSoc);
-          if (setOk) {
-            this.device.log?.(`[WallboxLadeplan] set dischargeSoc=${s.dischargeSoc}% (previous=${current ?? 'n/a'}%) for plan ${id} — ok`);
-          } else {
-            this.device.log?.(`[WallboxLadeplan] set dischargeSoc=${s.dischargeSoc}% (previous=${current ?? 'n/a'}%) for plan ${id} — set returned false (E3DC may have ignored or delayed)`);
-          }
-          // Invalidate manager cache so the next live data poll does not push the old cached value
-          this.device.invalidateAssociatedEmsCache?.();
-        } catch (e) {
-          this.device.error('Schedule dischargeSoc apply failed: ' + formatError(e));
-        }
+      // Delegate ALL global EMS overrides (discharge + priorities) to the central manager
+      const planOverrides: any = {};
+      if (typeof s.dischargeSoc === 'number') planOverrides.dischargeBatteryUntilPercent = s.dischargeSoc;
+      if (s.batteryToCar !== undefined) planOverrides.batteryToCarAllowed = s.batteryToCar;
+      if (s.batteryBeforeCar !== undefined) planOverrides.batteryBeforeCar = s.batteryBeforeCar;
+      if (s.batteryDischargeMixBlocked !== undefined) planOverrides.batteryDischargeMixBlocked = s.batteryDischargeMixBlocked;
+
+      if (Object.keys(planOverrides).length > 0 && this.device.globalEmsOverrideManager) {
+        await this.device.globalEmsOverrideManager.applyOverrides(id, planOverrides);
       }
 
       if (s.action === 'allow') {
@@ -78,7 +79,7 @@ export class WallboxScheduleExecutor {
    * the original value is restored. This fulfills the requirement that after a wallbox
    * Ladeplan ends, user-configured "Batterie entladen bis" is put back.
    */
-  async revertActionForInfo(info: TriggeredWallboxScheduleInfo | undefined, force = true) {
+  async revertActionForInfo(id: string, info: TriggeredWallboxScheduleInfo | undefined, force = true) {
     const action = info?.action ?? '';
 
     if (action === 'allow') {
@@ -91,20 +92,9 @@ export class WallboxScheduleExecutor {
       await this.device.applySunMode(true, undefined, force);
     }
 
-    // Restore original discharge value if this plan had overridden it
-    if (info && typeof info.savedDischargeSoc === 'number') {
-      try {
-        const setOk = await this.device.setDischargeBatteryUntil(info.savedDischargeSoc);
-        if (setOk) {
-          this.device.log?.(`[WallboxLadeplan] restored original dischargeSoc=${info.savedDischargeSoc}% after plan ended — ok`);
-        } else {
-          this.device.log?.(`[WallboxLadeplan] restored original dischargeSoc=${info.savedDischargeSoc}% after plan ended — set returned false`);
-        }
-        // Invalidate so subsequent live polls use the fresh (restored) value
-        this.device.invalidateAssociatedEmsCache?.();
-      } catch (e) {
-        this.device.error('Schedule dischargeSoc restore failed: ' + formatError(e));
-      }
+    // Restore using the central manager
+    if (this.device.globalEmsOverrideManager && id) {
+      await this.device.globalEmsOverrideManager.restoreOverrides(id);
     }
   }
 
@@ -114,9 +104,9 @@ export class WallboxScheduleExecutor {
    */
   async revertAction(actionOrInfo: string | TriggeredWallboxScheduleInfo, force = true) {
     if (typeof actionOrInfo === 'string') {
-      await this.revertActionForInfo({ action: actionOrInfo }, force);
+      await this.revertActionForInfo('', { action: actionOrInfo }, force);
     } else {
-      await this.revertActionForInfo(actionOrInfo, force);
+      await this.revertActionForInfo('', actionOrInfo, force);
     }
   }
 

@@ -16,5 +16,5 @@
   "setable": false,
   "uiComponent": "sensor",
   "insights": false,
-  "icon": "/assets/images/clock.svg"
+  "icon": "/assets/images/date-range.svg"
 }

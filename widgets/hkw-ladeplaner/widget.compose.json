@@ -4,7 +4,7 @@
     "de": "HKW Ladeplaner"
   },
   "transparent": false,
-  "height": 380,
+  "height": 310,
   "settings": [
     {
       "id": "plantId",

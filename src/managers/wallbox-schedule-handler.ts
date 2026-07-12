@@ -38,6 +38,13 @@ export class WallboxScheduleHandler {
       getCurrentDischargeBatteryUntil(): number | undefined;
       /** Invalidate manager cache after deliberate change so live polls don't push stale value. */
       invalidateAssociatedEmsCache?(): void;
+      /** For timeline notifications on plan-driven global changes. */
+      postTimelineNotification?(excerpt: string): void;
+      setBatteryToCar(enabled: boolean): Promise<boolean>;
+      setBatteryBeforeCar(enabled: boolean): Promise<boolean>;
+      setDisableBatteryAtMixMode(enabled: boolean): Promise<boolean>;
+      getCapabilityValue(key: string): unknown;
+      globalEmsOverrideManager?: any;
     }
   ) {
     this.store = new WallboxScheduleStore(device);
@@ -65,7 +72,10 @@ export class WallboxScheduleHandler {
 
     let schedules = this.store.getSchedules();
 
-    this.store.revertDeleted(schedules, (info) => this.executor.revertAction(info, true));
+    this.store.revertDeleted(schedules, async (id, info) => {
+      const infoObj = typeof info === 'string' ? { action: info } : info;
+      await this.executor.revertActionForInfo(id, infoObj, true);
+    });
 
     if (schedules.length === 0) return;
 
@@ -111,7 +121,7 @@ export class WallboxScheduleHandler {
           await this.executor.stopForUntilFull();
           // Ensure discharge restore even for untilFull plans (use the info we already fetched)
           if (info?.savedDischargeSoc !== undefined) {
-            await this.executor.revertActionForInfo(info, true).catch(e => this.device.error('untilFull discharge restore: ' + e));
+            await this.executor.revertActionForInfo(id, info, true).catch(e => this.device.error('untilFull discharge restore: ' + e));
           }
           this.store.deleteTriggered(id);
           plansToRemove.push(id);
@@ -137,7 +147,7 @@ export class WallboxScheduleHandler {
       for (const [id, info] of triggered) {
         if (!ids.has(id)) {
           // Use rich info so that dischargeSoc override gets properly restored to original value
-          await this.executor.revertActionForInfo(info, true).catch(e => this.device.error('Auto-clean revert: ' + e));
+          await this.executor.revertActionForInfo(id, info, true).catch(e => this.device.error('Auto-clean revert: ' + e));
           this.store.deleteTriggered(id);
         }
       }
@@ -162,7 +172,7 @@ export class WallboxScheduleHandler {
       for (const [id, info] of triggered.entries()) {
         if (!newIds.has(id)) {
           this.device.log(`[WallboxLadeplan] Manually deleted ${id} — reverting (incl. discharge restore if any)`);
-          await this.executor.revertActionForInfo(info, true).catch(e => this.device.error('onSettings revert error: ' + e));
+          await this.executor.revertActionForInfo(id, info, true).catch(e => this.device.error('onSettings revert error: ' + e));
           this.store.deleteTriggered(id);
         }
       }
@@ -177,5 +187,22 @@ export class WallboxScheduleHandler {
 
   hasActivePlan(): boolean {
     return this.store.getTriggered().size > 0;
+  }
+
+  /** Returns a short human-readable summary of currently active plans, e.g. "Laden 11A • Entladen bis 35%" */
+  getActivePlanSummary(): string | null {
+    if (!this.hasActivePlan()) return null;
+    const triggered = this.store.getTriggered();
+    const schedules = this.store.getSchedules();
+    const parts: string[] = [];
+    for (const s of schedules) {
+      const id = this.validator.getId(s);
+      if (!triggered.has(id)) continue;
+      let part = s.action === 'allow' ? 'Laden' : (s.action || '');
+      if (s.current) part += ` ${s.current}A`;
+      if (typeof s.dischargeSoc === 'number') part += ` • Entladen bis ${s.dischargeSoc}%`;
+      parts.push(part);
+    }
+    return parts.length > 0 ? parts.join(' | ') : null;
   }
 }

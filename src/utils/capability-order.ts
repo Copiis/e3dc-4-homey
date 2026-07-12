@@ -66,6 +66,7 @@ export const WALLBOX_CAPABILITY_ORDER = [
   'measure_vehicle_soc',
   'measure_wallbox_discharge_soc',
   'wallbox_ladeplan_active',
+  'wallbox_ladeplan_summary',
   'wallbox_plugged',
   'measure_wallbox_max_current',
   'measure_wallbox_phases',

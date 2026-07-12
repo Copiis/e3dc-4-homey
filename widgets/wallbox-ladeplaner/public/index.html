@@ -1,21 +1,21 @@
 <html>
 <head>
   <style>
-    body { margin: 0; padding: 6px; font-family: system-ui; color: #fff; background: transparent; font-size: 12px; }
-    .header { font-size: 13px; font-weight: 600; text-align: center; margin-bottom: 6px; }
-    .section { background: #222; border-radius: 6px; padding: 6px; margin-bottom: 6px; }
-    .label { font-size: 10px; color: #aaa; margin: 2px 0; }
-    input, select { background: #111; border: 1px solid #444; color: #fff; padding: 3px; border-radius: 3px; width: 100%; font-size: 11px; }
-    .row { display: flex; gap: 6px; margin-bottom: 4px; }
+    body { margin: 0; padding: 4px; font-family: system-ui; color: #fff; background: transparent; font-size: 18px; }
+    .header { font-size: 18px; font-weight: 600; text-align: center; margin-bottom: 4px; }
+    .section { background: #222; border-radius: 6px; padding: 4px; margin-bottom: 2px; }
+    .label { font-size: 16px; color: #aaa; margin: 1px 0; }
+    input, select { background: #111; border: 1px solid #444; color: #fff; padding: 2px 3px; border-radius: 3px; width: 100%; font-size: 18px; }
+    .row { display: flex; gap: 6px; margin-bottom: 2px; }
     .row > div { flex: 1; }
     .dates-row { align-items: flex-start; }
     .date-col { display: flex; flex-direction: column; }
-    .date-col .label { margin-bottom: 2px; }
-    button { background: #2a5; border: none; color: #fff; padding: 4px 8px; border-radius: 3px; font-size: 11px; cursor: pointer; width: 100%; }
-    .plan { background: #333; padding: 4px; border-radius: 3px; margin-bottom: 3px; font-size: 11px; }
+    .date-col .label { margin-bottom: 1px; }
+    button { background: #2a5; border: none; color: #fff; padding: 5px 8px; border-radius: 3px; font-size: 18px; cursor: pointer; width: 100%; }
+    .plan { background: #333; padding: 3px 4px; border-radius: 3px; margin-bottom: 2px; font-size: 17px; }
     .plan-header { display: flex; justify-content: space-between; }
-    .small { font-size: 9px; color: #888; }
-    .checkbox { display: flex; align-items: center; gap: 4px; font-size: 10px; white-space: nowrap; }
+    .small { font-size: 15px; color: #888; }
+    .checkbox { display: flex; align-items: center; gap: 4px; font-size: 17px; white-space: nowrap; }
     input:disabled {
       opacity: 0.5;
       cursor: not-allowed;
@@ -25,7 +25,7 @@
 <body>
 <div class="header">Wallbox Ladeplaner</div>
 
-<div style="background:#3a2; color:#fff; font-size:9px; padding:3px 5px; border-radius:3px; margin-bottom:6px; line-height:1.25;">
+<div style="background:#3a2; color:#fff; font-size:8px; padding:2px 4px; border-radius:3px; margin-bottom:4px; line-height:1.2;">
   <strong>Hinweis:</strong> Aktive Pläne haben Vorrang. Flows für Charging/Sun/Current werden ignoriert, solange ein Plan läuft.<br>
   Bei „Hausakku entladen bis“ wird der Wert nur temporär gesetzt und nach Plan-Ende automatisch auf den ursprünglichen Wert zurückgesetzt.
 </div>
@@ -43,8 +43,9 @@
       <input type="datetime-local" id="end">
     </div>
   </div>
-  <div class="checkbox" style="margin-top:2px; margin-bottom:4px; white-space: nowrap;">
-    <input type="checkbox" id="until-full"> <span style="white-space: nowrap;">Bis voll (bei längerer Leistungsabnahme)</span>
+  <div class="checkbox" style="margin-top:2px; margin-bottom:2px; margin-left:0; white-space: nowrap; display: flex; justify-content: space-between; align-items: center; width: 100%;">
+    <span style="white-space: nowrap;">Bis voll</span>
+    <input type="checkbox" id="until-full">
   </div>
 
   <div class="row">
@@ -64,20 +65,17 @@
   <div class="row">
     <div>
       <div class="label">Entlade Hausakku bis %</div>
-      <input type="number" id="discharge-soc" value="90" min="0" max="100">
-      <div class="small" style="color:#9cf; margin-top:2px; line-height:1.2;">
+      <input type="number" id="discharge-soc" value="100" min="0" max="100">
+      <div class="small" style="color:#9cf; margin-top:1px; line-height:1.15;">
         Nur für die Dauer dieses Plans. Der ursprüngliche Wert wird nach Ablauf automatisch wiederhergestellt.
       </div>
     </div>
   </div>
-
-  <button onclick="addPlan()" style="margin-top:4px">Plan hinzufügen</button>
 </div>
 
-<div class="section">
-  <div class="label">Aktive Pläne</div>
-  <div id="plans"></div>
-</div>
+<button onclick="addPlan()" style="margin-top:3px; margin-bottom:2px">Plan hinzufügen</button>
+
+<div id="plans" style="margin-top: 0; max-height: 40px; overflow-y: auto; display: none;"></div>
 
 <script>
 let Homey = null;
@@ -86,7 +84,7 @@ let wallboxes = [];
 
 function onHomeyReady(h) {
   Homey = h;
-  Homey.ready({ height: 400 });
+  Homey.ready({ height: 480 });
 
   const s = Homey.getSettings();
   plantId = s.plantId && s.plantId.id ? s.plantId.id : s.plantId;
@@ -177,7 +175,9 @@ async function loadPlans() {
       return true;
     });
     if (c) {
-      c.innerHTML = plans.length ? '' : '<div class="small">Keine Pläne</div>';
+      c.innerHTML = plans.length ? '' : '';
+      c.style.display = plans.length > 0 ? 'block' : 'none';
+      c.style.marginTop = plans.length > 0 ? '4px' : '0';
     }
 
     plans.forEach((p, i) => {

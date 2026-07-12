@@ -78,13 +78,13 @@ export class WallboxScheduleStore {
     await this.device.setSettings({ schedules: JSON.stringify(schedules) }).catch(() => {});
   }
 
-  revertDeleted(schedules: WallboxSchedule[], revertAction: (info: TriggeredWallboxScheduleInfo | string) => Promise<void>) {
+  revertDeleted(schedules: WallboxSchedule[], revertAction: (id: string, info: TriggeredWallboxScheduleInfo | string) => Promise<void>) {
     const currentIds = new Set(schedules.map(s => s.id || (s.start + '_' + s.action)));
     for (const [id, info] of this.triggeredWallboxSchedules.entries()) {
       if (!currentIds.has(id)) {
         const action = info.action;
         this.device.log(`Wallbox schedule ${id} manually deleted, reverting action ${action}${info.savedDischargeSoc !== undefined ? ' + discharge restore' : ''}`);
-        revertAction(info).catch(e =>
+        revertAction(id, info).catch(e =>
           this.device.error('Error reverting deleted schedule: ' + formatError(e))
         );
         this.deleteTriggered(id);

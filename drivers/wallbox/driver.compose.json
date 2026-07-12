@@ -10,6 +10,7 @@
     "measure_vehicle_soc",
     "measure_wallbox_discharge_soc",
     "wallbox_ladeplan_active",
+    "wallbox_ladeplan_summary",
     "wallbox_plugged",
     "measure_wallbox_max_current",
     "measure_wallbox_phases",
@@ -93,6 +94,14 @@
       "title": {
         "en": "Charge plan active",
         "de": "Ladeplan aktiv"
+      },
+      "preventInsights": true,
+      "preventTag": true
+    },
+    "wallbox_ladeplan_summary": {
+      "title": {
+        "en": "Active charge plan",
+        "de": "Aktiver Ladeplan"
       },
       "preventInsights": true,
       "preventTag": true

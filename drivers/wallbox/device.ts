@@ -21,6 +21,7 @@ import {
 import {ensureCapabilities} from '../../src/utils/energy-capability-migration';
 import { RunListener } from '../../src/cards/run-listener';
 import { WallboxEmsSettingsManager } from '../../src/managers/wallbox-ems-settings-manager';
+import { GlobalEmsOverrideManager } from '../../src/managers/global-ems-override-manager';
 
 const WALLBOX_LEGACY_CAPABILITIES = [
   'evcharger_charging',
@@ -94,6 +95,7 @@ class WallboxDevice extends Homey.Device implements Wallbox {
   private scheduleHandler!: WallboxScheduleHandler;
   private chargingManager!: WallboxChargingManager;
   private emsSettingsManager!: WallboxEmsSettingsManager;
+  globalEmsOverrideManager!: GlobalEmsOverrideManager;
 
 
   /**
@@ -133,6 +135,9 @@ class WallboxDevice extends Homey.Device implements Wallbox {
     this.scheduleHandler = new WallboxScheduleHandler(this);
     this.scheduleHandler.start();
 
+    // Re-apply after handler is ready so summary and active are set correctly from start
+    this.applyLadeplanTileVisibility().catch(() => {});
+
     this.chargingManager = new WallboxChargingManager(
       { log: (m: string) => this.log(m), error: (m: string) => this.error(m) },
       () => this.getApi(),
@@ -141,6 +146,7 @@ class WallboxDevice extends Homey.Device implements Wallbox {
       this.homey,
     );
     this.emsSettingsManager = new WallboxEmsSettingsManager(this as any);
+    this.globalEmsOverrideManager = new GlobalEmsOverrideManager(this as any);
   }
 
 
@@ -191,6 +197,9 @@ class WallboxDevice extends Homey.Device implements Wallbox {
     // Ensure new plan indicator capability for existing devices
     if (!this.hasCapability('wallbox_ladeplan_active')) {
       await this.addCapability('wallbox_ladeplan_active').catch(() => {});
+    }
+    if (!this.hasCapability('wallbox_ladeplan_summary')) {
+      await this.addCapability('wallbox_ladeplan_summary').catch(() => {});
     }
     await this.applyLadeplanTileVisibility();
 
@@ -244,6 +253,16 @@ class WallboxDevice extends Homey.Device implements Wallbox {
         await this.setCapabilityValue('wallbox_ladeplan_active', hasActivePlan);
       } catch (e) {
         this.error('Failed to set wallbox_ladeplan_active: ' + formatError(e));
+      }
+    }
+
+    // Set informative summary string (e.g. "Laden 11A • Entladen bis 35%")
+    if (this.hasCapability('wallbox_ladeplan_summary')) {
+      try {
+        const summary = this.scheduleHandler?.getActivePlanSummary?.() || null;
+        await this.setCapabilityValue('wallbox_ladeplan_summary', summary || (hasActivePlan ? 'Ladeplan aktiv' : ''));
+      } catch (e) {
+        this.error('Failed to set wallbox_ladeplan_summary: ' + formatError(e));
       }
     }
 

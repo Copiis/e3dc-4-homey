@@ -24,6 +24,10 @@ export interface WallboxSchedule {
   untilVehicleSoc?: number;
   /** Optional: when plan activates, set "Batterie entladen bis" (home battery min SOC for EV) to this %. Must be restored on plan end. */
   dischargeSoc?: number;
+  /** Optional overrides for other global EMS settings (with snapshot/restore). */
+  batteryToCar?: boolean;
+  batteryBeforeCar?: boolean;
+  batteryDischargeMixBlocked?: boolean;
 }
 
 export interface Wallbox extends InternalDevice{

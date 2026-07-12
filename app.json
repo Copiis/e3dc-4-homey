@@ -1,7 +1,7 @@
 {
   "_comment": "This file is generated. Please edit .homeycompose/app.json instead.",
   "id": "de.jnkconsulting.e3dc.v2",
-  "version": "1.8.45",
+  "version": "1.8.46",
   "compatibility": ">=12.4.5",
   "sdk": 3,
   "brandColor": "#7AB31B",
@@ -1173,6 +1173,7 @@
         "measure_vehicle_soc",
         "measure_wallbox_discharge_soc",
         "wallbox_ladeplan_active",
+        "wallbox_ladeplan_summary",
         "wallbox_plugged",
         "measure_wallbox_max_current",
         "measure_wallbox_phases",
@@ -1241,6 +1242,14 @@
           "title": {
             "en": "Charge plan active",
             "de": "Ladeplan aktiv"
+          },
+          "preventInsights": true,
+          "preventTag": true
+        },
+        "wallbox_ladeplan_summary": {
+          "title": {
+            "en": "Active charge plan",
+            "de": "Aktiver Ladeplan"
           },
           "preventInsights": true,
           "preventTag": true
@@ -3225,7 +3234,7 @@
         "de": "HKW Ladeplaner"
       },
       "transparent": false,
-      "height": 380,
+      "height": 310,
       "settings": [
         {
           "id": "plantId",
@@ -3303,7 +3312,7 @@
         "de": "Wallbox Ladeplaner"
       },
       "transparent": false,
-      "height": 400,
+      "height": 480,
       "settings": [
         {
           "id": "plantId",
@@ -3441,7 +3450,7 @@
       "setable": false,
       "uiComponent": "sensor",
       "insights": false,
-      "icon": "/assets/images/clock.svg"
+      "icon": "/assets/images/date-range.svg"
     },
     "measure_autarky": {
       "type": "number",
@@ -4076,7 +4085,19 @@
       "setable": false,
       "uiComponent": "sensor",
       "insights": false,
-      "icon": "/assets/images/clock.svg"
+      "icon": "/assets/images/date-range.svg"
+    },
+    "wallbox_ladeplan_summary": {
+      "type": "string",
+      "title": {
+        "en": "Active charge plan",
+        "de": "Aktiver Ladeplan"
+      },
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "insights": false,
+      "icon": "/assets/images/date-range.svg"
     },
     "wallbox_plug_locked": {
       "type": "boolean",

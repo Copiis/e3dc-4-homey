@@ -1,21 +1,20 @@
 <html>
 <head>
   <style>
-    body { margin: 0; padding: 8px; font-family: system-ui, sans-serif; color: #fff; background: transparent; font-size: 13px; }
-    .header { font-size: 14px; font-weight: 600; margin-bottom: 8px; text-align: center; }
-    .section { background: #222; border-radius: 8px; padding: 8px; margin-bottom: 8px; }
-    .label { font-size: 11px; color: #aaa; margin-bottom: 4px; }
-    input, select { background: #111; border: 1px solid #444; color: #fff; padding: 4px; border-radius: 4px; width: 100%; box-sizing: border-box; }
-    .row { display: flex; gap: 8px; margin-bottom: 6px; }
+    body { margin: 0; padding: 4px; font-family: system-ui, sans-serif; color: #fff; background: transparent; font-size: 18px; }
+    .header { font-size: 18px; font-weight: 600; margin-bottom: 4px; text-align: center; }
+    .section { background: #222; border-radius: 6px; padding: 4px; margin-bottom: 2px; }
+    .label { font-size: 16px; color: #aaa; margin-bottom: 2px; }
+    input, select { background: #111; border: 1px solid #444; color: #fff; padding: 2px 3px; border-radius: 3px; width: 100%; box-sizing: border-box; font-size: 17px; }
+    .row { display: flex; gap: 6px; margin-bottom: 2px; }
     .row > div { flex: 1; }
     .dates-row { align-items: flex-start; flex-wrap: nowrap; }
     .date-col { display: flex; flex-direction: column; }
-    .date-col .label { margin-bottom: 2px; }
-    button { background: #2a5; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; }
-    .plan { background: #333; padding: 6px; border-radius: 4px; margin-bottom: 4px; font-size: 12px; }
+    .date-col .label { margin-bottom: 1px; }
+    button { background: #2a5; color: white; border: none; padding: 5px 8px; border-radius: 3px; cursor: pointer; font-size: 17px; width: 100%; }
+    .plan { background: #333; padding: 3px 4px; border-radius: 3px; margin-bottom: 2px; font-size: 16px; }
     .plan-header { display: flex; justify-content: space-between; }
-    .small { font-size: 10px; color: #888; }
-    .until { color: #4ade80; }
+    .small { font-size: 14px; color: #888; }
     input:disabled {
       opacity: 0.5;
       cursor: not-allowed;
@@ -25,7 +24,7 @@
 <body>
 <div class="header">HKW Ladeplaner</div>
 
-<div style="background:#3a2; color:#fff; font-size:10px; padding:4px 6px; border-radius:4px; margin-bottom:8px; line-height:1.3;">
+<div style="background:#3a2; color:#fff; font-size:8px; padding:2px 4px; border-radius:3px; margin-bottom:4px; line-height:1.2;">
   <strong>Achtung:</strong> Aktive Ladepläne haben Vorrang vor Flows. Solange ein Plan läuft, werden Flow-Befehle für Power-Modi ignoriert.
 </div>
 
@@ -41,10 +40,12 @@
       <input type="datetime-local" id="end">
     </div>
   </div>
-  <div style="margin-top:4px; display:flex; align-items:center; gap:4px; white-space: nowrap;">
+  <div style="margin-top:1px; display:flex; align-items:center; gap:4px; white-space: nowrap; justify-content: space-between;">
+    <div style="display:flex; align-items:center; gap:4px;">
+      <span style="white-space: nowrap;">Bis SOC</span>
+      <input type="number" id="soc" value="95" min="50" max="100" style="width:60px"> %
+    </div>
     <input type="checkbox" id="until-soc">
-    <span style="white-space: nowrap;">Bis SOC</span>
-    <input type="number" id="soc" value="95" min="50" max="100" style="width:60px"> %
   </div>
 
   <div class="row">
@@ -61,14 +62,11 @@
       <input type="number" id="power" value="3000" step="100">
     </div>
   </div>
-
-  <button onclick="addPlan()" style="width:100%; margin-top:4px">Plan hinzufügen</button>
 </div>
 
-<div class="section">
-  <div class="label">Aktive Pläne <span id="plant-debug" class="small" style="color:#888"></span></div>
-  <div id="plans"></div>
-</div>
+<button onclick="addPlan()" style="width:100%; margin-top:1px; margin-bottom:1px">Plan hinzufügen</button>
+
+<div id="plans" style="max-height: 40px; overflow-y: auto; display: none;"></div>
 
 <script>
 let Homey = null;
@@ -76,7 +74,7 @@ let plantId = null;
 
 async function onHomeyReady(h) {
   Homey = h;
-  Homey.ready({ height: 380 });
+  Homey.ready({ height: 310 });
 
   const settings = Homey.getSettings();
   let storedId = settings.plantId && settings.plantId.id ? settings.plantId.id : settings.plantId;
@@ -178,9 +176,12 @@ async function loadPlans() {
     container.innerHTML = '';
 
     if (plans.length === 0) {
-      container.innerHTML = '<div class="small">Keine Pläne</div>';
+      container.style.display = 'none';
+      container.style.marginTop = '0';
       return;
     }
+    container.style.display = 'block';
+    container.style.marginTop = '4px';
 
     const modeLabels = {
       'charge': 'Laden',
