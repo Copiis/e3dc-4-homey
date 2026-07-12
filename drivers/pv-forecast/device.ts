@@ -431,7 +431,7 @@ class PvForecastDevice extends Homey.Device {
       }
       this.log(
         `PV forecast sync: surfaces=[${this.formatSegmentLog(settings.segments)}] total=${settings.totalKwp} kWp `
-        + `baseline=${baselineKwh} kWh adjusted=${forecast.adjustedKwh} kWh actual=${actualKwh} kWh `
+        + `baseline=${baselineKwh} kWh adjusted=${adjustedKwh} kWh actual=${actualKwh} kWh `
         + `correction=${forecast.correctionFactor}`,
       );
     } catch (e) {
