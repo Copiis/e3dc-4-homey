@@ -64,7 +64,7 @@
   <div class="row">
     <div>
       <div class="label">Entlade Hausakku bis %</div>
-      <input type="number" id="discharge-soc" value="90" min="5" max="100">
+      <input type="number" id="discharge-soc" value="90" min="0" max="100">
       <div class="small" style="color:#9cf; margin-top:2px; line-height:1.2;">
         Nur für die Dauer dieses Plans. Der ursprüngliche Wert wird nach Ablauf automatisch wiederhergestellt.
       </div>
@@ -189,7 +189,7 @@ async function loadPlans() {
       if (p.current) details += ` ${p.current}A`;
 
       let dischargeLine = '';
-      if (p.dischargeSoc) {
+      if (typeof p.dischargeSoc === 'number' && !isNaN(p.dischargeSoc)) {
         dischargeLine = `
           <div class="small" style="color:#9cf; margin-top:1px;">
             Hausakku entladen bis ${p.dischargeSoc}% 
@@ -221,7 +221,8 @@ async function addPlan() {
     const wbSel = document.getElementById('wallbox');
     const wallboxId = wbSel.value;
     const current = parseInt(document.getElementById('current').value);
-    const discharge = parseInt(document.getElementById('discharge-soc').value);
+    const dischargeInput = document.getElementById('discharge-soc').value;
+    const discharge = parseInt(dischargeInput, 10);
 
     if (!start || !wallboxId) return alert('Start und Wallbox nötig');
 
@@ -256,8 +257,8 @@ async function addPlan() {
       untilFull: until,
       untilVehicleSoc: until ? 95 : undefined,
       action,
-      current: current || undefined,
-      dischargeSoc: discharge || undefined
+      current: (typeof current === 'number' && !isNaN(current) && current >= 6) ? current : undefined,
+      dischargeSoc: (typeof discharge === 'number' && !isNaN(discharge) && discharge >= 0 && discharge <= 100) ? discharge : undefined
     };
 
     const msg = until
