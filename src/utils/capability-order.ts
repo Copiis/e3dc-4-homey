@@ -107,8 +107,8 @@ export const HKW_CAPABILITY_ORDER = [
   'charge_time',
   'meter_power',
   'diagnostic_report',
-  'firmware_version',
   'hkw_ladeplan_active',
+  'firmware_version',
 ] as const;
 
 function sameOrder(current: string[], target: string[]): boolean {

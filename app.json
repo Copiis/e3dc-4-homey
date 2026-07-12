@@ -318,8 +318,8 @@
         "meter_power",
         "charge_time",
         "diagnostic_report",
-        "firmware_version",
-        "hkw_ladeplan_active"
+        "hkw_ladeplan_active",
+        "firmware_version"
       ],
       "platforms": [
         "local"

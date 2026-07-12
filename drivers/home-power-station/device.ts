@@ -134,18 +134,18 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
       initialStoredSettings.timeout = configuredTimeout
       this.log('Migrating store to settings')
       this.setSettings(initialStoredSettings)
-          .then(value => {
+          .then(async value => {
             this.unsetStoreValue('settings').then()
             this.log('Starting process')
-            this.doInit()
+            await this.doInit()
           })
     }
     else {
       this.log('Starting process without migration')
-      this.doInit()
+      await this.doInit()
     }
   }
-  private doInit() {
+  private async doInit() {
     this.diagnosticManager?.loadDiagnosticAnalysisLog?.() || undefined
     const flowManager = new FlowCardManager(this);
     flowManager.setupActionCards();
@@ -167,6 +167,7 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
     if (!this.hasCapability('hkw_ladeplan_active')) {
       this.addCapability('hkw_ladeplan_active').catch(() => {});
     }
+    await reorderCapabilitiesIfNeeded(this, HKW_CAPABILITY_ORDER).catch(() => {});
 
     this.capabilityManager = new CapabilityManager(this, new EnergyMeterIntegrator(this));
     this.powerModeManager = new PowerModeManager(this, () => this.getApi(), this);
