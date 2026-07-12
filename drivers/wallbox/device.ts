@@ -57,6 +57,7 @@ class WallboxDevice extends Homey.Device implements Wallbox {
 
   // Last known good vehicle SOC (always prefer this when current data is implausible)
   private lastPlausibleVehicleSoc?: number;
+  private lastSocSource: 'local' | 'cloud' | 'none' = 'none';
 
   private async loadLastPlausibleSoc(): Promise<void> {
     try {
@@ -77,7 +78,7 @@ class WallboxDevice extends Homey.Device implements Wallbox {
     try {
       // Always show the hint in parentheses under the value, as the displayed
       // value is always the last known good one (or the best available).
-      const title = 'Fahrzeug-Ladezustand (letzter bekannter Wert)';
+      const title = 'Fahrzeug-SOC (letzter bekannter Wert)';
       await this.setCapabilityOptions('measure_vehicle_soc', {
         title,
         units: { en: '%', de: '%' },
@@ -110,6 +111,12 @@ class WallboxDevice extends Homey.Device implements Wallbox {
 
       await this.migrateCapabilities();
       await this.loadLastPlausibleSoc();
+
+      // Immediately set last known good SOC (from previous cloud or local) so the tile shows it right after init/restart
+      if (this.lastPlausibleVehicleSoc !== undefined && this.lastPlausibleVehicleSoc > 0) {
+        updateCapabilityValue('measure_vehicle_soc', this.lastPlausibleVehicleSoc, this, { force: true });
+        this.lastSocSource = 'cloud';
+      }
 
       // Always set the title with the "last known value" hint
       await this.updateVehicleSocTitle();
@@ -218,7 +225,7 @@ class WallboxDevice extends Homey.Device implements Wallbox {
    */
   async applyLadeplanTileVisibility(): Promise<void> {
     // Hide Ladeplan/EMS indicators only when no active plan.
-    // measure_wallbox_discharge_soc (Batterie entladen bis) is now always visible after Fahrzeug-Ladezustand.
+    // measure_wallbox_discharge_soc (Batterie entladen bis) is now always visible after Fahrzeug-SOC.
     const hasActivePlan = this.scheduleHandler ? this.scheduleHandler.hasActivePlan() : false;
     const ladeplanRelated = ['wallbox_battery_discharge_sun', 'wallbox_battery_discharge_mix'];
     const toHide = hasActivePlan
@@ -226,7 +233,7 @@ class WallboxDevice extends Homey.Device implements Wallbox {
       : [...WALLBOX_TILE_HIDDEN_CAPABILITIES, ...ladeplanRelated];
     await hideCapabilitiesFromTile(this, toHide);
 
-    // Always show "Batterie entladen bis" (after Fahrzeug-Ladezustand) on the main tile
+    // Always show "Batterie entladen bis" (after Fahrzeug-SOC) on the main tile
     if (this.hasCapability('measure_wallbox_discharge_soc')) {
       try {
         await this.setCapabilityOptions('measure_wallbox_discharge_soc', { uiComponent: 'sensor' });
@@ -296,20 +303,23 @@ class WallboxDevice extends Homey.Device implements Wallbox {
     let isLastKnown = false;
 
     if (isPlausible) {
-      // Fresh good value
+      // Fresh good value from local RSCP
       this.lastPlausibleVehicleSoc = socVal;
       this.saveLastPlausibleSoc(socVal).catch(() => {});
       valueToSet = socVal;
       isLastKnown = false;
+      this.lastSocSource = 'local';
     } else if (this.lastPlausibleVehicleSoc !== undefined) {
-      // Use last known
+      // Use last known (could be from previous cloud or local)
       valueToSet = this.lastPlausibleVehicleSoc;
       isLastKnown = true;
+      this.lastSocSource = 'cloud';
       this.log(`Vehicle SOC: showing last known value ${valueToSet}% (current data implausible)`);
     } else {
       // Nothing available
       valueToSet = 0;
       isLastKnown = false;
+      this.lastSocSource = 'none';
       this.log('Vehicle SOC: no plausible value available (showing 0)');
     }
 
@@ -465,6 +475,15 @@ class WallboxDevice extends Homey.Device implements Wallbox {
   }
 
   /**
+   * Returns the currently active "Batterie entladen bis" value (from last synced EMS settings / capability).
+   * Used by Wallbox Ladepläne to snapshot the original value before overriding for the plan duration.
+   */
+  getCurrentDischargeBatteryUntil(): number | undefined {
+    const v = this.getCapabilityValue('measure_wallbox_discharge_soc');
+    return typeof v === 'number' ? v : undefined;
+  }
+
+  /**
    * Called by HPS cloud fallback to set a plausible SOC from cloud.
    * Treats it as current value.
    */
@@ -472,6 +491,7 @@ class WallboxDevice extends Homey.Device implements Wallbox {
     if (socPercent > 0 && socPercent <= 100) {
       this.lastPlausibleVehicleSoc = socPercent;
       this.saveLastPlausibleSoc(socPercent).catch(() => {});
+      this.lastSocSource = 'cloud';
       updateCapabilityValue('measure_vehicle_soc', socPercent, this, { force: true });
       this.updateVehicleSocTitle().catch(() => {});
       this.log(`Applied cloud vehicle SOC ${socPercent}% (current value)`);

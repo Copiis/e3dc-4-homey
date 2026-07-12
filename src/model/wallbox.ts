@@ -22,6 +22,8 @@ export interface WallboxSchedule {
   current?: number;
   untilFull?: boolean;
   untilVehicleSoc?: number;
+  /** Optional: when plan activates, set "Batterie entladen bis" (home battery min SOC for EV) to this %. Must be restored on plan end. */
+  dischargeSoc?: number;
 }
 
 export interface Wallbox extends InternalDevice{

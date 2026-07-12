@@ -1,7 +1,7 @@
 import { WallboxSchedule } from '../model/wallbox';
 import { WallboxScheduleStore } from './wallbox-schedule/WallboxScheduleStore';
 import { WallboxScheduleValidator } from './wallbox-schedule/WallboxScheduleValidator';
-import { WallboxScheduleExecutor } from './wallbox-schedule/WallboxScheduleExecutor';
+import { WallboxScheduleExecutor, TriggeredWallboxScheduleInfo } from './wallbox-schedule/WallboxScheduleExecutor';
 
 /**
  * WallboxScheduleHandler (Koordinator)
@@ -33,6 +33,9 @@ export class WallboxScheduleHandler {
       applySunMode(enabled: boolean, maxCurrentA?: number, force?: boolean): Promise<unknown>;
       setCurrentLimit(maxCurrentA: number): Promise<unknown>;
       applyLadeplanTileVisibility(): Promise<void>;
+      /** For Wallbox Ladeplan dischargeSoc support: apply new value and read current for snapshot/restore. */
+      setDischargeBatteryUntil(percent: number): Promise<boolean>;
+      getCurrentDischargeBatteryUntil(): number | undefined;
     }
   ) {
     this.store = new WallboxScheduleStore(device);
@@ -60,7 +63,7 @@ export class WallboxScheduleHandler {
 
     let schedules = this.store.getSchedules();
 
-    this.store.revertDeleted(schedules, (action) => this.executor.revertAction(action, true));
+    this.store.revertDeleted(schedules, (info) => this.executor.revertAction(info, true));
 
     if (schedules.length === 0) return;
 
@@ -94,8 +97,8 @@ export class WallboxScheduleHandler {
     for (const s of schedules) {
       const id = this.validator.getId(s);
       if (!s.untilFull || !triggered.has(id)) continue;
-      const action = triggered.get(id);
-      if (action !== 'allow') continue;
+      const info = triggered.get(id);
+      if (info?.action !== 'allow') continue;
 
       if (absPower < this.validator.LOW_POWER_THRESHOLD) {
         if (!lowPowerState[id]) {
@@ -104,6 +107,10 @@ export class WallboxScheduleHandler {
         } else if (this.validator.shouldRemoveForUntilFull(absPower, lowPowerState[id], now)) {
           this.device.log(`[WallboxLadeplan] untilFull reached for ${id}`);
           await this.executor.stopForUntilFull();
+          // Ensure discharge restore even for untilFull plans (use the info we already fetched)
+          if (info?.savedDischargeSoc !== undefined) {
+            await this.executor.revertActionForInfo(info, true).catch(e => this.device.error('untilFull discharge restore: ' + e));
+          }
           this.store.deleteTriggered(id);
           plansToRemove.push(id);
         }
@@ -125,9 +132,10 @@ export class WallboxScheduleHandler {
     if (valid.length < schedules.length) {
       const triggered = this.store.getTriggered();
       const ids = new Set(valid.map(s => this.validator.getId(s)));
-      for (const [id, action] of triggered) {
+      for (const [id, info] of triggered) {
         if (!ids.has(id)) {
-          await this.executor.revertAction(action, true).catch(e => this.device.error('Auto-clean revert: ' + e));
+          // Use rich info so that dischargeSoc override gets properly restored to original value
+          await this.executor.revertActionForInfo(info, true).catch(e => this.device.error('Auto-clean revert: ' + e));
           this.store.deleteTriggered(id);
         }
       }
@@ -149,10 +157,10 @@ export class WallboxScheduleHandler {
       const fresh = this.store.parseSchedules(json);
       const newIds = new Set(fresh.map(s => this.validator.getId(s)));
       const triggered = this.store.getTriggered();
-      for (const [id, action] of triggered.entries()) {
+      for (const [id, info] of triggered.entries()) {
         if (!newIds.has(id)) {
-          this.device.log(`[WallboxLadeplan] Manually deleted ${id} — reverting`);
-          await this.executor.revertAction(action, true).catch(e => this.device.error('onSettings revert error: ' + e));
+          this.device.log(`[WallboxLadeplan] Manually deleted ${id} — reverting (incl. discharge restore if any)`);
+          await this.executor.revertActionForInfo(info, true).catch(e => this.device.error('onSettings revert error: ' + e));
           this.store.deleteTriggered(id);
         }
       }
