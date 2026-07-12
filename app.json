@@ -319,7 +319,7 @@
         "charge_time",
         "diagnostic_report",
         "firmware_version",
-        "wallbox_ladeplan_active"
+        "hkw_ladeplan_active"
       ],
       "platforms": [
         "local"
@@ -349,10 +349,10 @@
           "preventInsights": true,
           "preventTag": true
         },
-        "wallbox_ladeplan_active": {
+        "hkw_ladeplan_active": {
           "title": {
-            "en": "Wallbox charge plan active",
-            "de": "Wallbox-Ladeplan aktiv"
+            "en": "Charge plan active",
+            "de": "Ladeplan aktiv"
           },
           "preventInsights": true,
           "preventTag": true
@@ -3423,6 +3423,26 @@
       "icon": "/assets/images/info.svg",
       "insights": false
     },
+    "hkw_ladeplan_active": {
+      "type": "boolean",
+      "title": {
+        "en": "Charge plan active",
+        "de": "Ladeplan aktiv"
+      },
+      "titleTrue": {
+        "en": "Yes",
+        "de": "Ja"
+      },
+      "titleFalse": {
+        "en": "No",
+        "de": "Nein"
+      },
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "insights": false,
+      "icon": "/assets/images/clock.svg"
+    },
     "measure_autarky": {
       "type": "number",
       "title": {
@@ -4055,7 +4075,8 @@
       "getable": true,
       "setable": false,
       "uiComponent": "sensor",
-      "insights": false
+      "insights": false,
+      "icon": "/assets/images/clock.svg"
     },
     "wallbox_plug_locked": {
       "type": "boolean",

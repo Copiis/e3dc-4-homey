@@ -14,7 +14,7 @@
     "charge_time",
     "diagnostic_report",
     "firmware_version",
-    "wallbox_ladeplan_active"
+    "hkw_ladeplan_active"
   ],
   "platforms": [
     "local"
@@ -44,10 +44,10 @@
       "preventInsights": true,
       "preventTag": true
     },
-    "wallbox_ladeplan_active": {
+    "hkw_ladeplan_active": {
       "title": {
-        "en": "Wallbox charge plan active",
-        "de": "Wallbox-Ladeplan aktiv"
+        "en": "Charge plan active",
+        "de": "Ladeplan aktiv"
       },
       "preventInsights": true,
       "preventTag": true

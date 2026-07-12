@@ -108,7 +108,7 @@ export const HKW_CAPABILITY_ORDER = [
   'meter_power',
   'diagnostic_report',
   'firmware_version',
-  'wallbox_ladeplan_active',
+  'hkw_ladeplan_active',
 ] as const;
 
 function sameOrder(current: string[], target: string[]): boolean {

@@ -161,11 +161,11 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
       this,
       () => this.getApi(),
     )
-    // initial status for wallbox plan indicator on HKW tile
-    this.updateWallboxLadeplanStatus()
+    // initial status for HKW Ladeplan indicator on HKW tile
+    this.updateHkwLadeplanStatus()
 
-    if (!this.hasCapability('wallbox_ladeplan_active')) {
-      this.addCapability('wallbox_ladeplan_active').catch(() => {});
+    if (!this.hasCapability('hkw_ladeplan_active')) {
+      this.addCapability('hkw_ladeplan_active').catch(() => {});
     }
 
     this.capabilityManager = new CapabilityManager(this, new EnergyMeterIntegrator(this));
@@ -211,11 +211,11 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
     return !!state?.scheduleId;
   }
 
-  /** Updates the wallbox_ladeplan_active capability based on linked wallbox devices. */
-  private updateWallboxLadeplanStatus() {
-    if (!this.hasCapability('wallbox_ladeplan_active')) return;
-    const active = this.wallboxManager?.hasActiveWallboxLadeplan?.() ?? false;
-    this.setCapabilityValue('wallbox_ladeplan_active', active).catch(() => {});
+  /** Updates the hkw_ladeplan_active capability when an HKW Ladeplan (EMS schedule) is active. */
+  private updateHkwLadeplanStatus() {
+    if (!this.hasCapability('hkw_ladeplan_active')) return;
+    const active = this.hasActivePlan();
+    this.setCapabilityValue('hkw_ladeplan_active', active).catch(() => {});
   }
 
   asSimple(): SimpleClass {
@@ -401,7 +401,7 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
       this.capabilityManager?.handleManualChargeStateChanges(result)
       this.capabilityManager?.handleEmergencyPowerStateChanges(result)
       this.wallboxManager?.handleWallboxData(result)
-      this.updateWallboxLadeplanStatus()
+      this.updateHkwLadeplanStatus()
 
       // Optional cloud fallback for vehicle SOC (when local RSCP reports 0)
       this.applyCloudVehicleSocFallback().catch(e => this.error('Cloud fallback error: ' + formatError(e)))
