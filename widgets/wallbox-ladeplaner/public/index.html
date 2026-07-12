@@ -26,7 +26,8 @@
 <div class="header">Wallbox Ladeplaner</div>
 
 <div style="background:#3a2; color:#fff; font-size:9px; padding:3px 5px; border-radius:3px; margin-bottom:6px; line-height:1.25;">
-  <strong>Hinweis:</strong> Aktive Pläne haben Vorrang. Flows für Charging/Sun/Current werden ignoriert, solange ein Plan läuft.
+  <strong>Hinweis:</strong> Aktive Pläne haben Vorrang. Flows für Charging/Sun/Current werden ignoriert, solange ein Plan läuft.<br>
+  Bei „Hausakku entladen bis“ wird der Wert nur temporär gesetzt und nach Plan-Ende automatisch auf den ursprünglichen Wert zurückgesetzt.
 </div>
 
 <div class="section">
@@ -64,6 +65,9 @@
     <div>
       <div class="label">Entlade Hausakku bis %</div>
       <input type="number" id="discharge-soc" value="90" min="5" max="100">
+      <div class="small" style="color:#9cf; margin-top:2px; line-height:1.2;">
+        Nur für die Dauer dieses Plans. Der ursprüngliche Wert wird nach Ablauf automatisch wiederhergestellt.
+      </div>
     </div>
   </div>
 
@@ -181,12 +185,25 @@ async function loadPlans() {
       d.className = 'plan';
       const end = p.untilFull ? 'bis voll (Leistung)' : (p.end ? new Date(p.end).toLocaleString() : '');
       const displayAction = p.action === 'allow' ? 'Laden' : p.action;
+      let details = displayAction;
+      if (p.current) details += ` ${p.current}A`;
+
+      let dischargeLine = '';
+      if (p.dischargeSoc) {
+        dischargeLine = `
+          <div class="small" style="color:#9cf; margin-top:1px;">
+            Hausakku entladen bis ${p.dischargeSoc}% 
+            <span style="color:#888;">(wird nach Plan-Ende auf Ursprungswert zurückgesetzt)</span>
+          </div>`;
+      }
+
       d.innerHTML = `
         <div class="plan-header">
           <strong>${new Date(p.start).toLocaleString()}</strong>
           <button onclick="del(${i})" style="background:#c33; padding:1px 6px; font-size:10px; width: auto;">✕</button>
         </div>
-        <div class="small">${displayAction} ${p.current ? p.current+'A' : ''} ${p.dischargeSoc ? 'Entlade bis '+p.dischargeSoc+'%' : ''} → ${end}</div>
+        <div class="small">${details} → ${end}</div>
+        ${dischargeLine}
       `;
       if (c) c.appendChild(d);
     });
