@@ -27,11 +27,11 @@ import {formatError} from '../../src/utils/error-utils';
 import {
   calculateMultiSegmentPvForecast,
   estimateDailyProductionLandingPoint,
-  estimateProductionEndMs,
   getLocalHour,
   localDateString,
   roundKwh,
 } from '../../src/utils/pv-forecast-calculator';
+import { fetchSunsetMs } from '../../src/services/open-meteo-forecast';
 import {
   PV_SEGMENT_SETTING_PREFIXES,
   pvForecastConfigHash,
@@ -53,6 +53,8 @@ class PvForecastDevice extends Homey.Device {
   private loopId: NodeJS.Timeout | null = null;
   private syncErrorCount = 0;
   private cachedWeather: WeatherCache = {};
+  /** Cached sunset for the current local day to avoid repeated API calls */
+  private cachedSunset: { localDate: string; sunsetMs: number } | null = null;
 
   /**
    * Initialisiert die PV-Prognose.
@@ -333,6 +335,23 @@ class PvForecastDevice extends Homey.Device {
         };
       });
 
+      // Sonnenuntergang holen und Produktionsende immer 3 Stunden davor setzen.
+      // Das ist zuverlässiger als die letzte Irradiance-Stunde aus dem Forecast.
+      const coords = await this.resolveCoordinates(settings);
+      let estimatedEndMs = nowMs + 4 * 3600 * 1000; // Fallback
+      if (coords) {
+        const todayForSun = localDateString(timezone, nowMs);
+        if (!this.cachedSunset || this.cachedSunset.localDate !== todayForSun) {
+          const sunsetMs = await fetchSunsetMs(coords.latitude, coords.longitude, timezone, nowMs);
+          if (sunsetMs && sunsetMs > nowMs) {
+            this.cachedSunset = { localDate: todayForSun, sunsetMs };
+          }
+        }
+        if (this.cachedSunset?.sunsetMs) {
+          estimatedEndMs = this.cachedSunset.sunsetMs - 3 * 3600 * 1000;
+        }
+      }
+
       const actualKwh = await this.readActualPvTodayKwh(station, timezone);
 
       // Reine Baseline (Ursprungsprognose) aus dem Wetter-Modell
@@ -359,14 +378,18 @@ class PvForecastDevice extends Homey.Device {
       const trimStart = nowMs - 10 * 3600 * 1000;
       history = history.filter(p => p.ts >= trimStart);
 
-      // === NEUE REGEL FÜR PV-ERTRAGSVORHERSAGE ===
-      // Die Schätzung der angepassten Prognose (Landepunkt der Tagesproduktion)
-      // beginnt SPÄTESTENS mittags (12 Uhr) ODER SPÄTESTENS nachdem 3 kWh produziert wurden.
-      // Danach wird ca. alle 30 Minuten anhand der Produktionskurve (Steilheit/Flachheit)
-      // und dem geschätzten Produktionsende neu geschätzt.
+      // === REGEL FÜR ANGEPASSTE PV-PROGNOSE (Landepunkt) ===
+      // Schätzung erfolgt NUR ab 12 Uhr (Mittag) und dann im 1-Stunden-Intervall.
+      // (Die frühere 3-kWh-Ist-Produktions-Bedingung wurde entfernt.)
+      // Wir kombinieren:
+      //   1. Kurven-Extrapolation aus der tatsächlichen Produktionshistorie (letzte ~3h Steigung)
+      //   2. "Forecast-guided": actual + (verbleibende Baseline aus Open-Meteo) * beobachteter Korrekturfaktor
+      // Der Hybrid + Caps im Endzeit- und LandingPoint-Algorithmus soll verhindern,
+      // dass die angepasste Prognose über das realistische Tagesziel hinausschießt
+      // (häufiges Problem, wenn Produktionsende im Forecast zu spät geschätzt wird).
       let adjustedKwh = baselineKwh;
       const localHour = getLocalHour(timezone, nowMs);
-      const shouldStartEstimation = localHour >= 12 || actualKwh >= 3.0;
+      const shouldStartEstimation = localHour >= 12;
 
       // Sicherstellen dass dayState ein Objekt ist
       let workingDayState: PvForecastDayState = dayState || {
@@ -379,16 +402,31 @@ class PvForecastDevice extends Homey.Device {
       if (shouldStartEstimation) {
         const lastEstimate = workingDayState.lastAdjustedEstimateMs ?? 0;
 
-        // ca. alle 30 Minuten neu rechnen (auch wenn der Start früher durch 3 kWh ausgelöst wurde)
-        if (!lastEstimate || (nowMs - lastEstimate) >= 25 * 60 * 1000) {
-          const repHours = segmentInputs[0]?.hours || [];
-          const estimatedEndMs = estimateProductionEndMs(repHours, nowMs);
+        // Alle 1 Stunde neu rechnen (nur ab Mittag)
+        if (!lastEstimate || (nowMs - lastEstimate) >= 60 * 60 * 1000) {
+          // estimatedEndMs wurde oben bereits als sunset - 3h berechnet
 
-          adjustedKwh = estimateDailyProductionLandingPoint(
+          const curveEstimate = estimateDailyProductionLandingPoint(
             history,
             nowMs,
             estimatedEndMs
           );
+
+          // Hybrid-Schutz gegen Overshooting:
+          // Die reine Kurven-Extrapolation (Steigung * verbleibende Zeit) kann stark überschießen,
+          // wenn das geschätzte Produktionsende zu spät liegt oder die Steigung aus der Mittagszeit kommt.
+          // Deshalb berechnen wir zusätzlich eine "forecast-guided" Schätzung:
+          //   actual + (verbleibende Baseline aus dem Wettermodell) * beobachteter Faktor
+          // und nehmen den konservativeren Wert.
+          const expectedSoFar = forecast.expectedKwhSoFar || 0;
+          const remainingBaseline = Math.max(0, baselineKwh - expectedSoFar);
+          const corr = forecast.correctionFactor || 1;
+          const safeFactor = Math.max(0.75, Math.min(1.35, corr));
+          const guided = actualKwh + remainingBaseline * safeFactor;
+
+          // Curve darf nicht viel über die wettermodell-geführte Schätzung hinausgehen
+          adjustedKwh = Math.min(curveEstimate, Math.max(guided, actualKwh * 1.05));
+          adjustedKwh = Math.max(adjustedKwh, actualKwh);
 
           workingDayState = {
             ...workingDayState,

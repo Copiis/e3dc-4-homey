@@ -25,7 +25,7 @@ export interface PvForecastDayState {
   adjustedKwh?: number;
   actualKwh?: number;
   lastWeatherFetchMs: number;
-  /** Timestamp of last curve-based adjusted estimate (only after 12:00) */
+  /** Timestamp of last curve-based adjusted estimate (only after 12:00 / Mittag, 1h Intervall) */
   lastAdjustedEstimateMs?: number;
   /** Historical production points for curve analysis (ts + cumulative kWh today) */
   productionHistory?: Array<{ ts: number; kwh: number }>;

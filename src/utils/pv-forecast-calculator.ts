@@ -100,8 +100,8 @@ export function calculateMultiSegmentPvForecast(
     correctionFactor = Math.max(CORRECTION_MIN, Math.min(CORRECTION_MAX, correctionFactor));
   }
 
-  // Neue Regel: Die angepasste Prognose (Kurven-Schätzung) wird ab 12 Uhr mittags
-  // im Device anhand der Insights-Produktionskurve berechnet.
+  // Die angepasste Prognose (Kurven-Schätzung) wird ab 12 Uhr mittags
+  // (nur noch, nicht mehr bei >=3 kWh Ist) im Device anhand der Insights-Produktionskurve berechnet.
   // Hier liefern wir als adjusted immer die reine Baseline (Ursprungsprognose).
   const adjustedKwhValue = baselineKwh;
 
@@ -129,9 +129,9 @@ export function calculatePvForecast(inputs: PvForecastInputs): PvForecastResult 
     correctionFactor = Math.max(CORRECTION_MIN, Math.min(CORRECTION_MAX, correctionFactor));
   }
 
-  // Alte Regeln gelöscht.
-  // Neue Regel (ab 12:00 mittags): Kurvenbasierte Schätzung der Endsumme
-  // erfolgt im Device anhand der Produktionskurve aus den Insights.
+  // Kurvenbasierte Schätzung der Endsumme (angepasste Prognose)
+  // erfolgt im Device — aber nur ab 12:00 mittags (im 1h-Intervall).
+  // Hier: reine Baseline zurückgeben.
   const adjustedKwhValue = baselineKwh;
 
   return {
@@ -167,26 +167,35 @@ export function getLocalHour(timezone: string, nowMs = Date.now()): number {
   );
 }
 
-/** Geschätztes Ende der PV-Produktion anhand der Forecast-Stunden (letzte relevante Einstrahlung) */
+/** Geschätztes Ende der PV-Produktion anhand der Forecast-Stunden (letzte relevante Einstrahlung)
+ * Konservativer gemacht, um Overshooting der angepassten Prognose zu vermeiden:
+ * - Niedrigerer Schwellwert
+ * - Kürzerer Puffer
+ * - Harte Obergrenze für Remaining (max 5h)
+ */
 export function estimateProductionEndMs(hours: HourlyIrradiance[], nowMs: number): number {
   if (!hours || hours.length === 0) {
-    return nowMs + 5 * 3600 * 1000;
+    return nowMs + 4 * 3600 * 1000;
   }
   // Letzte Stunde mit spürbarer Einstrahlung (produziert noch)
+  // Niedrigerer Schwellwert + kürzerer Puffer, damit das Ende nicht zu optimistisch ist.
   for (let i = hours.length - 1; i >= 0; i--) {
-    if ((hours[i].globalTiltedIrradianceWm2 || 0) > 25) {
-      return hourTimestampMs(hours[i].time) + 45 * 60 * 1000;
+    if ((hours[i].globalTiltedIrradianceWm2 || 0) > 15) {
+      const candidate = hourTimestampMs(hours[i].time) + 30 * 60 * 1000;
+      // Nie mehr als ~5 Stunden in die Zukunft projizieren
+      return Math.min(candidate, nowMs + 5 * 3600 * 1000);
     }
   }
-  return nowMs + 4 * 3600 * 1000;
+  return Math.min(nowMs + 3.5 * 3600 * 1000, nowMs + 5 * 3600 * 1000);
 }
 
 /**
- * Neue Regel ab 12 Uhr mittags:
  * Schätzt den Landepunkt (finale kWh der Tagesproduktion) anhand
- * der bisherigen Produktionskurve (Steilheit/Flachheit aus den letzten relevanten Punkten)
- * + geschätztem Produktionsende.
- * Wird im Device nur alle ~30 Minuten aufgerufen.
+ * der Produktionskurve der letzten Stunden + geschätztem Ende.
+ *
+ * Wichtig: Im aufrufenden Code wird das Ergebnis zusätzlich gegen eine
+ * "forecast-guided" Schätzung geclamped, weil reine lineare Extrapolation
+ * bei unsicherem Produktionsende leicht überschießt.
  */
 export function estimateDailyProductionLandingPoint(
   history: Array<{ ts: number; kwh: number }>,
@@ -221,7 +230,11 @@ export function estimateDailyProductionLandingPoint(
   }
 
   const ratePerHour = (last.kwh - first.kwh) / deltaHours; // Steigung der Kurve
-  const remainingHours = Math.max(0.2, (estimatedEndMs - nowMs) / 3600000);
+
+  // Wichtig: Remaining stark begrenzen. Auch wenn estimateProductionEndMs zu spät liegt,
+  // extrapolieren wir nicht linear über viele Stunden (Produktionsrate fällt zum Abend hin).
+  const rawRemaining = (estimatedEndMs - nowMs) / 3600000;
+  const remainingHours = Math.max(0.2, Math.min(3.5, rawRemaining));
 
   let final = last.kwh + ratePerHour * remainingHours;
 
