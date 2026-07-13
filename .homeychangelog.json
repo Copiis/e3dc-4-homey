@@ -1,7 +1,7 @@
 {
   "1.8.48": {
     "de": "- **Kosmetik PV-Prognose:** Die Capability-Titel wurden angepasst. „PV-Prognose (Ursprung)“ heißt jetzt einfach „PV-Prognose“. Die nachberechnete Prognose heißt jetzt „PV-Prognose (nachberechnet)“ (vorher „angepasst“).",
-    "en": "- **PV forecast cosmetic:** Capability titles updated. \"PV forecast (Ursprung)\" is now simply \"PV forecast\". The recalculated forecast is now called \"PV forecast (nachberechnet)\" (previously \"adjusted\")."
+    "en": "- **PV forecast cosmetic:** Capability titles updated. \"PV forecast (original)\" is now simply \"PV forecast\". The recalculated forecast is now called \"PV forecast (recalculated)\" (previously \"adjusted\")."
   },
   "1.8.47": {
     "de": "- **PV-Vorhersage:** Die Berechnung der angepassten Prognose (Kurven-Schätzung / Landepunkt) startet jetzt **nur noch ab 12 Uhr mittags**. Der frühere zusätzliche Trigger bei 3 kWh Ist-Produktion wurde entfernt. Neuberechnung jetzt im festen 1-Stunden-Intervall (vorher ~25–30 Min). Führt zu einer stabileren und weniger sprunghaften angepassten Tagesprognose am Nachmittag.",
