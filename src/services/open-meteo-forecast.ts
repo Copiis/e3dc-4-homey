@@ -62,3 +62,55 @@ export async function fetchTodayTiltedIrradianceForecast(
     hours,
   };
 }
+
+interface OpenMeteoDailyResponse {
+  daily?: {
+    time?: string[];
+    sunset?: string[];
+  };
+  timezone?: string;
+}
+
+/**
+ * Holt den Sonnenuntergang für den aktuellen Tag (lokal in der Zeitzone).
+ * Gibt die Sunset-Zeit als Timestamp zurück (ms seit Epoch) oder null bei Fehler.
+ */
+export async function fetchSunsetMs(
+  latitude: number,
+  longitude: number,
+  timezone: string,
+  nowMs = Date.now()
+): Promise<number | null> {
+  try {
+    const params = new URLSearchParams({
+      latitude: String(latitude),
+      longitude: String(longitude),
+      daily: 'sunset',
+      timezone,
+      forecast_days: '1',
+    });
+
+    const url = `https://api.open-meteo.com/v1/forecast?${params.toString()}`;
+    const response = await fetch(url, {
+      headers: { Accept: 'application/json' },
+    });
+    if (!response.ok) {
+      return null;
+    }
+
+    const body = (await response.json()) as OpenMeteoDailyResponse;
+    const sunsets = body.daily?.sunset ?? [];
+    if (sunsets.length === 0 || !sunsets[0]) {
+      return null;
+    }
+
+    // Format ist z.B. "2026-07-12T21:18" in der angegebenen Zeitzone
+    const sunsetDate = new Date(sunsets[0]);
+    if (isNaN(sunsetDate.getTime())) {
+      return null;
+    }
+    return sunsetDate.getTime();
+  } catch {
+    return null;
+  }
+}
