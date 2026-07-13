@@ -3776,8 +3776,8 @@
     "measure_pv_forecast_adjusted": {
       "type": "number",
       "title": {
-        "en": "PV forecast (adjusted)",
-        "de": "PV-Prognose (angepasst)"
+        "en": "PV forecast (recalculated)",
+        "de": "PV-Prognose (nachberechnet)"
       },
       "getable": true,
       "setable": false,
@@ -3793,8 +3793,8 @@
     "measure_pv_forecast_baseline": {
       "type": "number",
       "title": {
-        "en": "PV forecast (baseline)",
-        "de": "PV-Prognose (Ursprung)"
+        "en": "PV forecast",
+        "de": "PV-Prognose"
       },
       "getable": true,
       "setable": false,

@@ -1,8 +1,8 @@
 {
   "type": "number",
   "title": {
-    "en": "PV forecast (adjusted)",
-    "de": "PV-Prognose (angepasst)"
+    "en": "PV forecast (recalculated)",
+    "de": "PV-Prognose (nachberechnet)"
   },
   "getable": true,
   "setable": false,

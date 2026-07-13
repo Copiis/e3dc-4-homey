@@ -1,8 +1,8 @@
 {
   "type": "number",
   "title": {
-    "en": "PV forecast (baseline)",
-    "de": "PV-Prognose (Ursprung)"
+    "en": "PV forecast",
+    "de": "PV-Prognose"
   },
   "getable": true,
   "setable": false,

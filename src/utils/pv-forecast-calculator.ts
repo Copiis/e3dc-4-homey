@@ -100,9 +100,9 @@ export function calculateMultiSegmentPvForecast(
     correctionFactor = Math.max(CORRECTION_MIN, Math.min(CORRECTION_MAX, correctionFactor));
   }
 
-  // Die angepasste Prognose (Kurven-Schätzung) wird ab 12 Uhr mittags
+  // Die nachberechnete Prognose (Kurven-Schätzung) wird ab 12 Uhr mittags
   // (nur noch, nicht mehr bei >=3 kWh Ist) im Device anhand der Insights-Produktionskurve berechnet.
-  // Hier liefern wir als adjusted immer die reine Baseline (Ursprungsprognose).
+  // Hier liefern wir als adjusted immer die reine Baseline.
   const adjustedKwhValue = baselineKwh;
 
   return {
@@ -129,7 +129,7 @@ export function calculatePvForecast(inputs: PvForecastInputs): PvForecastResult 
     correctionFactor = Math.max(CORRECTION_MIN, Math.min(CORRECTION_MAX, correctionFactor));
   }
 
-  // Kurvenbasierte Schätzung der Endsumme (angepasste Prognose)
+  // Kurvenbasierte Schätzung der Endsumme (nachberechnete Prognose)
   // erfolgt im Device — aber nur ab 12:00 mittags (im 1h-Intervall).
   // Hier: reine Baseline zurückgeben.
   const adjustedKwhValue = baselineKwh;

@@ -378,14 +378,14 @@ class PvForecastDevice extends Homey.Device {
       const trimStart = nowMs - 10 * 3600 * 1000;
       history = history.filter(p => p.ts >= trimStart);
 
-      // === REGEL FÜR ANGEPASSTE PV-PROGNOSE (Landepunkt) ===
+      // === REGEL FÜR NACHBERECHNUNG DER PV-PROGNOSE (Landepunkt) ===
       // Schätzung erfolgt NUR ab 12 Uhr (Mittag) und dann im 1-Stunden-Intervall.
       // (Die frühere 3-kWh-Ist-Produktions-Bedingung wurde entfernt.)
       // Wir kombinieren:
       //   1. Kurven-Extrapolation aus der tatsächlichen Produktionshistorie (letzte ~3h Steigung)
       //   2. "Forecast-guided": actual + (verbleibende Baseline aus Open-Meteo) * beobachteter Korrekturfaktor
       // Der Hybrid + Caps im Endzeit- und LandingPoint-Algorithmus soll verhindern,
-      // dass die angepasste Prognose über das realistische Tagesziel hinausschießt
+      // dass die nachberechnete Prognose über das realistische Tagesziel hinausschießt
       // (häufiges Problem, wenn Produktionsende im Forecast zu spät geschätzt wird).
       let adjustedKwh = baselineKwh;
       const localHour = getLocalHour(timezone, nowMs);
