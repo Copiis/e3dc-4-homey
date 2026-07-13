@@ -1,4 +1,8 @@
 {
+  "1.8.49": {
+    "de": "- **Kosmetik PV-Prognose:** Die Capability-Titel wurden angepasst. „PV-Prognose (Ursprung)“ heißt jetzt einfach „PV-Prognose“. Die nachberechnete Prognose heißt jetzt „PV-Prognose (nachberechnet)“ (vorher „angepasst“).",
+    "en": "- **PV forecast cosmetic:** Capability titles updated. \"PV forecast (original)\" is now simply \"PV forecast\". The recalculated forecast is now called \"PV forecast (recalculated)\" (previously \"adjusted\")."
+  },
   "1.8.48": {
     "de": "- **Kosmetik PV-Prognose:** Die Capability-Titel wurden angepasst. „PV-Prognose (Ursprung)“ heißt jetzt einfach „PV-Prognose“. Die nachberechnete Prognose heißt jetzt „PV-Prognose (nachberechnet)“ (vorher „angepasst“).",
     "en": "- **PV forecast cosmetic:** Capability titles updated. \"PV forecast (original)\" is now simply \"PV forecast\". The recalculated forecast is now called \"PV forecast (recalculated)\" (previously \"adjusted\")."
