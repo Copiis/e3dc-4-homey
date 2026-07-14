@@ -102,7 +102,6 @@
     <line id="flow-battery-house" x1="250" y1="140" x2="200" y2="140" class="flow-line" data-color="#7AB31B"/>
     <line id="flow-house-battery" x1="200" y1="144" x2="250" y2="144" class="flow-line" data-color="#7AB31B"/>
     <line id="flow-house-wallbox" x1="160" y1="166" x2="160" y2="226" class="flow-line" data-color="#8b6cc1"/>
-    <line id="flow-pv-wallbox" x1="96" y1="44" x2="96" y2="226" class="flow-line" data-color="#e6a817"/>
     <g id="flow-dots"></g>
 
     <!-- Oben: PV — Icon links, Werte rechts in der Box -->
@@ -334,14 +333,12 @@
     setWidgetText('grid-label', 'Netz');
 
     const pvToHouseW = Math.max(0, Math.min(d.pvPower, d.consumption));
-    const pvToWallboxW = Math.max(0, d.wallboxSolarShare);
     const pvToHouse = pvToHouseW > (settings.flowThreshold || 30);
-    const pvToWallbox = pvToWallboxW > (settings.flowThreshold || 30);
 
     const houseToGridW = Math.max(0, d.gridPower);     // export (positive gridPower)
     const gridToHouseW = Math.max(0, -d.gridPower);    // import (negative gridPower)
     const houseToBatteryW = Math.max(0, d.batteryPower);
-    const houseToWallboxW = Math.max(0, d.wallboxPower - d.wallboxSolarShare);
+    const houseToWallboxW = Math.max(0, d.wallboxPower);
     const houseToGrid = houseToGridW > (settings.flowThreshold || 30);
     const houseToBattery = houseToBatteryW > (settings.flowThreshold || 30);
     const houseToWallbox = houseToWallboxW > (settings.flowThreshold || 30);
@@ -359,10 +356,8 @@
     // Hide wallbox node + lines if not present
     const wallboxNode = document.getElementById('node-wallbox');
     const wallboxLine1 = document.getElementById('flow-house-wallbox');
-    const wallboxLine2 = document.getElementById('flow-pv-wallbox');
     if (wallboxNode) wallboxNode.style.display = showWallbox ? '' : 'none';
     if (wallboxLine1) wallboxLine1.style.display = showWallbox ? '' : 'none';
-    if (wallboxLine2) wallboxLine2.style.display = showWallbox ? '' : 'none';
 
     // Hide battery node + lines if not present
     const batteryNode = document.getElementById('node-battery');
@@ -389,8 +384,7 @@
     setFlowLine('flow-house-grid', houseToGrid, false, houseToGridW);
     setFlowLine('flow-battery-house', batteryToHouse, false, Math.max(0, -d.batteryPower));
     setFlowLine('flow-house-battery', houseToBattery, false, chargeSplit.fromGridW);
-    setFlowLine('flow-house-wallbox', houseToWallbox && !pvToWallbox && showWallbox, false, d.wallboxPower);
-    setFlowLine('flow-pv-wallbox', pvToWallbox && showWallbox, false, d.wallboxSolarShare);
+    setFlowLine('flow-house-wallbox', houseToWallbox && showWallbox, false, d.wallboxPower);
   }
 
   function formatW(w) {
