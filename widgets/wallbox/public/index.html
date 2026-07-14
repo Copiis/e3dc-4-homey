@@ -151,6 +151,21 @@
       padding: 2px 5px;
     }
 
+    /* Gray out Sonnenmodus discharge buttons when Ladepriorität = Batterie zuerst */
+    .toggle-btn.disabled {
+      opacity: 0.45;
+      background: #444;
+      border-color: #555;
+      color: #888;
+      pointer-events: none;
+      cursor: default;
+    }
+    .toggle-btn.disabled.active {
+      background: #555;
+      border-color: #666;
+      color: #aaa;
+    }
+
     .ladeprio-section {
       margin-top: 1px !important;
       margin-bottom: 1px !important;
@@ -271,6 +286,22 @@
     let lastDischargeSun = null;
     let lastDischargeMix = null;
     const LADEPRIO_COOLDOWN_MS = 120000; // 2 minutes — covers propagation delays to E3DC reads
+
+    /**
+     * Enable/disable (gray out) the "Im Sonnenmodus" discharge buttons.
+     * According to E3DC logic: Sonnenmodus discharge is only relevant/allowed
+     * when Ladepriorität = "Wallbox zuerst".
+     * When "Batterie zuerst", gray out the buttons (no interaction).
+     */
+    function updateSunButtonsDisabled(isBatteryFirst) {
+      const sunAllow = document.getElementById('sun-allow');
+      const sunBlock = document.getElementById('sun-block');
+      if (!sunAllow || !sunBlock) return;
+
+      const disabled = !!isBatteryFirst;
+      sunAllow.classList.toggle('disabled', disabled);
+      sunBlock.classList.toggle('disabled', disabled);
+    }
 
     function onHomeyReady(Homey) {
       // Signal ready immediately so it doesn't load forever
@@ -404,6 +435,7 @@
           prioWallbox.classList.remove('active');
           lastPrioBatteryFirst = true;
           lastLadePrioSet = Date.now();
+          updateSunButtonsDisabled(true);  // gray out Sonnenmodus buttons
 
           try {
             await Homey.api('POST', '/set-priority', { stationId: currentStationId, batteryFirst: true });
@@ -426,6 +458,7 @@
           prioBattery.classList.remove('active');
           lastPrioBatteryFirst = false;
           lastLadePrioSet = Date.now();
+          updateSunButtonsDisabled(false);  // enable Sonnenmodus buttons
 
           try {
             await Homey.api('POST', '/set-priority', { stationId: currentStationId, batteryFirst: false });
@@ -445,6 +478,7 @@
       if (sunAllow) {
         sunAllow.onclick = async () => {
           if (!currentStationId) return;
+          if (sunAllow.classList.contains('disabled')) return; // not allowed when Batterie zuerst
           sunAllow.classList.add('active');
           sunBlock.classList.remove('active');
           lastDischargeSun = true;
@@ -462,6 +496,7 @@
       if (sunBlock) {
         sunBlock.onclick = async () => {
           if (!currentStationId) return;
+          if (sunBlock.classList.contains('disabled')) return; // not allowed when Batterie zuerst
           sunBlock.classList.add('active');
           sunAllow.classList.remove('active');
           lastDischargeSun = false;
@@ -599,15 +634,20 @@
 
         const prioBat = document.getElementById('prio-battery');
         const prioWb = document.getElementById('prio-wallbox');
+        let isBatteryFirst;
         if (prioBat && prioWb) {
-          let isBat;
           if (isRecent && lastPrioBatteryFirst !== null) {
-            isBat = lastPrioBatteryFirst;
+            isBatteryFirst = lastPrioBatteryFirst;
           } else {
-            isBat = !!wb.priorityBatteryFirst;
+            isBatteryFirst = !!wb.priorityBatteryFirst;
           }
-          prioBat.classList.toggle('active', isBat);
-          prioWb.classList.toggle('active', !isBat);
+          prioBat.classList.toggle('active', isBatteryFirst);
+          prioWb.classList.toggle('active', !isBatteryFirst);
+        }
+
+        // Apply disabled state for Sonnenmodus buttons based on current priority
+        if (isBatteryFirst !== undefined) {
+          updateSunButtonsDisabled(isBatteryFirst);
         }
 
         const sunAllow = document.getElementById('sun-allow');
