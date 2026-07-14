@@ -1,4 +1,8 @@
 {
+  "1.8.53": {
+    "de": "- **HKW-Widget:** Batterie-Symbol und zugehörige Texte feinjustiert (mehrere Positionsanpassungen). Wallbox-Icon exakt auf Breite des PV-Moduls gebracht (Proportionen erhalten). Texte von PV, Haus und Wallbox horizontal exakt ausgerichtet.",
+    "en": "- **HKW widget:** Battery symbol and its texts fine-tuned (multiple position adjustments). Wallbox icon width matched exactly to PV module (proportions preserved). Texts for PV, house and wallbox horizontally aligned."
+  },
   "1.8.52": {
     "de": "- **HKW-Widget:** Wallbox-Icon jetzt exakt so breit wie das PV-Modul (Proportionen erhalten). Texte von PV, Haus und Wallbox horizontal exakt ausgerichtet.",
     "en": "- **HKW widget:** Wallbox icon now exactly the same width as the PV module (proportions preserved). Texts for PV, house and wallbox horizontally aligned."
