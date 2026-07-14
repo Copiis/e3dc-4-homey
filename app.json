@@ -3301,6 +3301,18 @@
         "setDischargeUntil": {
           "method": "POST",
           "path": "/set-discharge-until"
+        },
+        "setPriority": {
+          "method": "POST",
+          "path": "/set-priority"
+        },
+        "setBatteryDischargeSun": {
+          "method": "POST",
+          "path": "/set-battery-discharge-sun"
+        },
+        "setBatteryDischargeMix": {
+          "method": "POST",
+          "path": "/set-battery-discharge-mix"
         }
       },
       "id": "wallbox"

@@ -123,6 +123,36 @@
       color: #fff;
       font-weight: 500;
     }
+
+    .toggle-btn {
+      background: #333;
+      color: #fff;
+      border: 1px solid #555;
+      border-radius: 4px;
+      padding: 3px 8px;
+      font-size: 12px;
+      cursor: pointer;
+      flex: 1;
+      text-align: center;
+    }
+    .toggle-btn.active {
+      background: #5BC244;
+      color: #fff;
+      border-color: #5BC244;
+    }
+    .toggle-btn.small {
+      padding: 2px 5px;
+      font-size: 10px;
+    }
+    .set-btn {
+      background: #5BC244;
+      color: #fff;
+      border: none;
+      border-radius: 2px;
+      cursor: pointer;
+      font-size: 10px;
+      padding: 1px 4px;
+    }
   </style>
 </head>
 <body>
@@ -149,29 +179,60 @@
       </div>
     </div>
 
+    <!-- Ladepriorisierung matching the E3DC settings UI -->
+    <div class="ladeprio-section" style="margin-top:6px; margin-bottom:4px;">
+      <div style="font-size:12px; font-weight:600; margin-bottom:3px; color:#ccc;">Ladepriorisierung</div>
+      <div style="background:#222; border-radius:6px; padding:4px; margin-bottom:4px;">
+        <div style="font-size:11px; color:#aaa; margin-bottom:2px;">Ladepriorität (Nur im Sonnenmodus)</div>
+        <div style="display:flex; gap:4px;">
+          <button id="prio-battery" class="toggle-btn" style="flex:1; font-size:12px; padding:3px 6px;">Batterie zuerst</button>
+          <button id="prio-wallbox" class="toggle-btn" style="flex:1; font-size:12px; padding:3px 6px;">Wallbox zuerst</button>
+        </div>
+      </div>
+
+      <div style="background:#222; border-radius:6px; padding:4px;">
+        <div style="font-size:11px; font-weight:600; color:#ccc; margin-bottom:3px;">Batterieentladung durch Wallbox</div>
+
+        <div style="display:flex; align-items:center; justify-content:space-between; font-size:11px; margin-bottom:3px;">
+          <span>Im Sonnenmodus</span>
+          <div style="display:flex; gap:4px;">
+            <button id="sun-allow" class="toggle-btn small">Erlaubt</button>
+            <button id="sun-block" class="toggle-btn small">Unterbunden</button>
+          </div>
+        </div>
+
+        <div style="display:flex; align-items:center; justify-content:space-between; font-size:11px; margin-bottom:3px;">
+          <span>Bis Ladezustand</span>
+          <div style="display:flex; align-items:center; gap:3px;">
+            <input id="discharge-input" type="number" min="0" max="100" step="1" style="width:42px; font-size:12px; padding:1px 3px;"> %
+            <button id="set-discharge" class="set-btn" style="font-size:10px; padding:1px 4px;">Setzen</button>
+          </div>
+        </div>
+
+        <div style="display:flex; align-items:center; justify-content:space-between; font-size:11px;">
+          <span style="line-height:1.1;">Im Mischmodus und während Haltezeit und Zeitfunktion</span>
+          <div style="display:flex; gap:4px;">
+            <button id="mix-allow" class="toggle-btn small">Erlaubt</button>
+            <button id="mix-block" class="toggle-btn small">Unterbunden</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="values">
       <div class="value-row"><span class="v-label">Leistung</span><span id="power" class="v-value">-</span></div>
       <div class="value-row"><span class="v-label">Solaranteil</span><span id="solarshare" class="v-value">-</span></div>
       <div class="value-row"><span class="v-label">Fahrzeug SOC</span><span id="vehicle-soc" class="v-value">-</span></div>
-      <div class="value-row">
-        <span class="v-label">Batterie entladen bis</span>
-        <span id="discharge-soc" class="v-value">-</span>
-        <input id="discharge-input" type="number" min="0" max="100" step="1" style="width:50px; font-size:12px;"> %
-        <button id="set-discharge" style="background:#5BC244; color:#fff; font-size:11px; padding:1px 4px; border:none; border-radius:2px; cursor:pointer;">Setzen</button>
-      </div>
       <div class="value-row"><span class="v-label">Eingesteckt</span><span id="plugged" class="v-value">-</span></div>
       <div class="value-row">
         <span class="v-label">Max Ladestrom</span>
         <span id="max-current" class="v-value">-</span>
-        <input id="current-input" type="number" min="6" max="32" step="1" style="width:40px; font-size:12px;"> A
-        <button id="set-current" style="background:#5BC244; color:#fff; font-size:11px; padding:1px 4px; border:none; border-radius:2px; cursor:pointer;">Setzen</button>
+        <input id="current-input" type="number" min="6" max="32" step="1" style="width:40px; font-size:11px; padding:1px;"> A
+        <button id="set-current" class="set-btn" style="font-size:10px; padding:1px 3px;">Setzen</button>
       </div>
       <div class="value-row"><span class="v-label">Phasen</span><span id="phases" class="v-value">-</span></div>
       <div class="value-row"><span class="v-label">Stecker verriegelt</span><span id="plug-locked" class="v-value">-</span></div>
       <div class="value-row"><span class="v-label">Schuko</span><span id="schuko" class="v-value">-</span></div>
-      <div class="value-row"><span class="v-label">Priorität Batterie zuerst</span><span id="priority-battery" class="v-value">-</span></div>
-      <div class="value-row"><span class="v-label">Batterie entladen bei Sonne</span><span id="battery-sun" class="v-value">-</span></div>
-      <div class="value-row"><span class="v-label">Batterie entladen Mix</span><span id="battery-mix" class="v-value">-</span></div>
     </div>
 
     <div id="info" class="info"></div>
@@ -309,6 +370,76 @@
           setDischargeBtn.textContent = origText || 'Setzen';
         };
       }
+
+      // Ladepriorisierung toggles (interactive like E3DC settings)
+      const prioBattery = document.getElementById('prio-battery');
+      const prioWallbox = document.getElementById('prio-wallbox');
+      if (prioBattery) {
+        prioBattery.onclick = async () => {
+          if (!currentStationId) return;
+          try {
+            await Homey.api('POST', '/set-priority', { stationId: currentStationId, batteryFirst: true });
+            await sync(Homey, currentStationId);
+          } catch (e) {
+            console.error(e);
+            alert('Fehler: ' + (e.message || e));
+          }
+        };
+      }
+      if (prioWallbox) {
+        prioWallbox.onclick = async () => {
+          if (!currentStationId) return;
+          try {
+            await Homey.api('POST', '/set-priority', { stationId: currentStationId, batteryFirst: false });
+            await sync(Homey, currentStationId);
+          } catch (e) {
+            console.error(e);
+            alert('Fehler: ' + (e.message || e));
+          }
+        };
+      }
+
+      const sunAllow = document.getElementById('sun-allow');
+      const sunBlock = document.getElementById('sun-block');
+      if (sunAllow) {
+        sunAllow.onclick = async () => {
+          if (!currentStationId) return;
+          try {
+            await Homey.api('POST', '/set-battery-discharge-sun', { stationId: currentStationId, allowed: true });
+            await sync(Homey, currentStationId);
+          } catch (e) { alert('Fehler: ' + (e.message || e)); }
+        };
+      }
+      if (sunBlock) {
+        sunBlock.onclick = async () => {
+          if (!currentStationId) return;
+          try {
+            await Homey.api('POST', '/set-battery-discharge-sun', { stationId: currentStationId, allowed: false });
+            await sync(Homey, currentStationId);
+          } catch (e) { alert('Fehler: ' + (e.message || e)); }
+        };
+      }
+
+      const mixAllow = document.getElementById('mix-allow');
+      const mixBlock = document.getElementById('mix-block');
+      if (mixAllow) {
+        mixAllow.onclick = async () => {
+          if (!currentStationId) return;
+          try {
+            await Homey.api('POST', '/set-battery-discharge-mix', { stationId: currentStationId, allowed: true });
+            await sync(Homey, currentStationId);
+          } catch (e) { alert('Fehler: ' + (e.message || e)); }
+        };
+      }
+      if (mixBlock) {
+        mixBlock.onclick = async () => {
+          if (!currentStationId) return;
+          try {
+            await Homey.api('POST', '/set-battery-discharge-mix', { stationId: currentStationId, allowed: false });
+            await sync(Homey, currentStationId);
+          } catch (e) { alert('Fehler: ' + (e.message || e)); }
+        };
+      }
     }
 
     async function resolvePlantId(Homey) {
@@ -381,15 +512,36 @@
         setEl('power', wb.power !== undefined ? `${Math.round(wb.power)} W` : '-');
         setEl('solarshare', wb.solarShare !== undefined ? `${Math.round(wb.solarShare)} %` : '-');
         setEl('vehicle-soc', (wb.vehicleSoc !== null && wb.vehicleSoc !== undefined) ? `${wb.vehicleSoc} %` : '-');
-        setEl('discharge-soc', (wb.dischargeSoc !== null && wb.dischargeSoc !== undefined) ? `${wb.dischargeSoc} %` : '-');
         setEl('plugged', wb.plugged ? 'Ja' : 'Nein');
         setEl('max-current', wb.maxCurrent !== undefined ? `${wb.maxCurrent} A` : '-');
         setEl('phases', wb.phases !== undefined ? String(wb.phases) : '-');
         setEl('plug-locked', wb.plugLocked ? 'Ja' : 'Nein');
         setEl('schuko', wb.schuko ? 'Ja' : 'Nein');
-        setEl('priority-battery', wb.priorityBatteryFirst ? 'Ja' : 'Nein');
-        setEl('battery-sun', wb.batteryDischargeSun ? 'Ja' : 'Nein');
-        setEl('battery-mix', wb.batteryDischargeMix ? 'Ja' : 'Nein');
+
+        // Ladepriorisierung button states (matching E3DC "Ladepriorisierung" screen)
+        const prioBat = document.getElementById('prio-battery');
+        const prioWb = document.getElementById('prio-wallbox');
+        if (prioBat && prioWb) {
+          const isBat = !!wb.priorityBatteryFirst;
+          prioBat.classList.toggle('active', isBat);
+          prioWb.classList.toggle('active', !isBat);
+        }
+
+        const sunAllow = document.getElementById('sun-allow');
+        const sunBlock = document.getElementById('sun-block');
+        if (sunAllow && sunBlock) {
+          const allowed = !!wb.batteryDischargeSun;
+          sunAllow.classList.toggle('active', allowed);
+          sunBlock.classList.toggle('active', !allowed);
+        }
+
+        const mixAllow = document.getElementById('mix-allow');
+        const mixBlock = document.getElementById('mix-block');
+        if (mixAllow && mixBlock) {
+          const allowed = !!wb.batteryDischargeMix;
+          mixAllow.classList.toggle('active', allowed);
+          mixBlock.classList.toggle('active', !allowed);
+        }
 
         // Prefill interactive inputs
         const currIn = document.getElementById('current-input');

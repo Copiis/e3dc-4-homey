@@ -157,4 +157,71 @@ module.exports = {
 
     return { success: false, error: 'Wallbox not found for station' };
   },
+
+  async setPriority({ homey, body }) {
+    const stationId = body.stationId || body.plantId;
+    const batteryFirst = !!body.batteryFirst;
+    if (!stationId) return { success: false, error: 'Missing stationId' };
+
+    const wallboxDriver = homey.drivers.getDriver('wallbox');
+    const allWallboxes = wallboxDriver.getDevices();
+
+    for (const wb of allWallboxes) {
+      await wb.ready();
+      const settings = wb.getStoreValue('settings');
+      if (!settings || String(settings.stationId) !== String(stationId)) continue;
+      try {
+        await wb.setBatteryBeforeCar(batteryFirst);
+        return { success: true };
+      } catch (e) {
+        return { success: false, error: e.message || String(e) };
+      }
+    }
+    return { success: false, error: 'Wallbox not found for station' };
+  },
+
+  async setBatteryDischargeSun({ homey, body }) {
+    const stationId = body.stationId || body.plantId;
+    const allowed = !!body.allowed;
+    if (!stationId) return { success: false, error: 'Missing stationId' };
+
+    const wallboxDriver = homey.drivers.getDriver('wallbox');
+    const allWallboxes = wallboxDriver.getDevices();
+
+    for (const wb of allWallboxes) {
+      await wb.ready();
+      const settings = wb.getStoreValue('settings');
+      if (!settings || String(settings.stationId) !== String(stationId)) continue;
+      try {
+        await wb.setBatteryToCar(allowed);
+        return { success: true };
+      } catch (e) {
+        return { success: false, error: e.message || String(e) };
+      }
+    }
+    return { success: false, error: 'Wallbox not found for station' };
+  },
+
+  async setBatteryDischargeMix({ homey, body }) {
+    const stationId = body.stationId || body.plantId;
+    const allowed = !!body.allowed;
+    if (!stationId) return { success: false, error: 'Missing stationId' };
+
+    const wallboxDriver = homey.drivers.getDriver('wallbox');
+    const allWallboxes = wallboxDriver.getDevices();
+
+    for (const wb of allWallboxes) {
+      await wb.ready();
+      const settings = wb.getStoreValue('settings');
+      if (!settings || String(settings.stationId) !== String(stationId)) continue;
+      try {
+        // setDisableBatteryAtMixMode(true) = block (Unterbunden)
+        await wb.setDisableBatteryAtMixMode(!allowed);
+        return { success: true };
+      } catch (e) {
+        return { success: false, error: e.message || String(e) };
+      }
+    }
+    return { success: false, error: 'Wallbox not found for station' };
+  },
 };
