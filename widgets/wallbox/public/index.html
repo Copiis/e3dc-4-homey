@@ -530,7 +530,8 @@
           return single.id;
         }
         if (plants.length > 1) {
-          document.getElementById('info').textContent = 'Bitte HKW in Widget-Einstellungen auswählen.';
+          document.getElementById('info').textContent = 'Mehrere HKW gefunden – es wird das erste verwendet.';
+          return plants[0].id;
         }
       } catch (e) {
         console.error(e);
