@@ -457,6 +457,11 @@
         // Auto-select + persist when only one HKW (uniform behavior)
         Homey.setSettings({ plantId: single });
         return single;
+      } else if (plants.length > 1) {
+        // Auto to first, like wallbox widget (no settings picker anymore)
+        const first = plants[0];
+        Homey.setSettings({ plantId: first });
+        return first;
       }
       return { errorMsg: 'widget.info.no-plant-id' };
     }
