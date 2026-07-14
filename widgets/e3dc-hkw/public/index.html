@@ -138,9 +138,9 @@
 
     <!-- Netz — Blitz Symbol -->
     <g id="node-grid" transform="translate(10, 105)">
-      <!-- Lightning bolt (gelb) -->
-      <g transform="translate(12, 4)">
-        <path d="M 18 0 L 6 20 L 12 20 L 4 42 L 22 16 L 13 16 Z" fill="#E6A817" stroke="#E6A817" stroke-width="3" stroke-linejoin="round"/>
+      <!-- Lightning bolt (gelb, 30% größer) -->
+      <g transform="translate(10, 2)">
+        <path d="M 23 0 L 8 26 L 16 26 L 5 55 L 29 21 L 17 21 Z" fill="#E6A817" stroke="#E6A817" stroke-width="4" stroke-linejoin="round"/>
       </g>
       <!-- Wert auf dem Blitz -->
       <text id="grid-value" x="28" y="145" class="node-value" text-anchor="middle">0 W</text>
@@ -148,8 +148,8 @@
 
     <!-- Batterie — hochkant, 50% vergrößert -->
     <g id="node-battery" transform="translate(250, 70)">
-      <!-- Battery icon vertical -->
-      <g transform="translate(5, 0)">
+      <!-- Battery icon vertical (30% kleiner) -->
+      <g transform="translate(5, 0) scale(0.7)">
         <!-- body tall -->
         <rect x="0" y="0" width="75" height="150" rx="9" fill="none" stroke="#333" stroke-width="4.5"/>
         <!-- top cap -->
@@ -163,16 +163,16 @@
         <line x1="25.5" y1="9" x2="25.5" y2="141" stroke="#333" stroke-width="1.5" opacity="0.4"/>
         <line x1="49.5" y1="9" x2="49.5" y2="141" stroke="#333" stroke-width="1.5" opacity="0.4"/>
       </g>
-      <!-- Werte mittig im Symbol (skaliert) -->
-      <text id="battery-value" x="45" y="52" class="node-value" text-anchor="middle">0 W</text>
-      <text id="battery-soc" x="45" y="78" class="node-soc" text-anchor="middle">0%</text>
-      <text id="battery-charge-time" x="45" y="102" class="node-soc" text-anchor="middle">—</text>
+      <!-- Werte mittig im Symbol -->
+      <text id="battery-value" x="45" y="36" class="node-value" text-anchor="middle">0 W</text>
+      <text id="battery-soc" x="45" y="55" class="node-soc" text-anchor="middle">0%</text>
+      <text id="battery-charge-time" x="45" y="71" class="node-soc" text-anchor="middle">—</text>
     </g>
 
     <!-- Auto Symbol (besser), doppelt so groß, Wert mittig drauf -->
     <g id="node-wallbox" transform="translate(90, 215)">
-      <!-- Car icon (besseres Auto, lila) -->
-      <g transform="translate(0, 5)">
+      <!-- Car icon (besseres Auto, lila, 20% kleiner) -->
+      <g transform="translate(0, 5) scale(0.8)">
         <!-- body -->
         <rect x="0" y="10" width="140" height="36" rx="6" fill="#8B6CC1" stroke="#222" stroke-width="3"/>
         <!-- cabin/roof -->
@@ -187,7 +187,7 @@
         <circle cx="110" cy="48" r="6" fill="#666"/>
       </g>
       <!-- Wert mittig auf dem Auto -->
-      <text id="wallbox-value" x="70" y="30" class="node-value" text-anchor="middle">0 W</text>
+      <text id="wallbox-value" x="56" y="26" class="node-value" text-anchor="middle">0 W</text>
     </g>
   </svg>
 </div>
