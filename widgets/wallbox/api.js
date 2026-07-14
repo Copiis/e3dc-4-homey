@@ -24,6 +24,16 @@ module.exports = {
         continue;
       }
 
+      // Force fresh EMS settings read so Ladepriorisierung (priority, sun discharge, mix) are up to date
+      // This bypasses the 5min cache in wallbox-manager for widget users
+      try {
+        if (typeof wb.refreshEmsSettings === 'function') {
+          await wb.refreshEmsSettings();
+        }
+      } catch (e) {
+        // non-fatal
+      }
+
       const name = wb.getName();
       const charging = wb.getCapabilityValue('wallbox_charging') === true;
       const sunMode = wb.getCapabilityValue('wallbox_sun_mode') === true;

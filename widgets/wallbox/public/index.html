@@ -400,7 +400,8 @@
 
           try {
             await Homey.api('POST', '/set-priority', { stationId: currentStationId, batteryFirst: true });
-            await sync(Homey, currentStationId);
+            // Do not immediate sync here — optimistic state is set.
+            // Periodic sync (with forced EMS refresh) will confirm.
           } catch (e) {
             // revert on error
             prioBattery.classList.remove('active');
@@ -420,7 +421,8 @@
 
           try {
             await Homey.api('POST', '/set-priority', { stationId: currentStationId, batteryFirst: false });
-            await sync(Homey, currentStationId);
+            // Do not immediate sync here — optimistic state is set.
+            // Periodic sync (with forced EMS refresh) will confirm.
           } catch (e) {
             // revert on error
             prioWallbox.classList.remove('active');
@@ -436,19 +438,31 @@
       if (sunAllow) {
         sunAllow.onclick = async () => {
           if (!currentStationId) return;
+          sunAllow.classList.add('active');
+          sunBlock.classList.remove('active');
           try {
             await Homey.api('POST', '/set-battery-discharge-sun', { stationId: currentStationId, allowed: true });
-            await sync(Homey, currentStationId);
-          } catch (e) { alert('Fehler: ' + (e.message || e)); }
+            // optimistic + next periodic sync (with force refresh) will keep it
+          } catch (e) {
+            sunAllow.classList.remove('active');
+            sunBlock.classList.add('active');
+            alert('Fehler: ' + (e.message || e));
+          }
         };
       }
       if (sunBlock) {
         sunBlock.onclick = async () => {
           if (!currentStationId) return;
+          sunBlock.classList.add('active');
+          sunAllow.classList.remove('active');
           try {
             await Homey.api('POST', '/set-battery-discharge-sun', { stationId: currentStationId, allowed: false });
-            await sync(Homey, currentStationId);
-          } catch (e) { alert('Fehler: ' + (e.message || e)); }
+            // optimistic + next periodic sync (with force refresh) will keep it
+          } catch (e) {
+            sunBlock.classList.remove('active');
+            sunAllow.classList.add('active');
+            alert('Fehler: ' + (e.message || e));
+          }
         };
       }
 
@@ -457,19 +471,31 @@
       if (mixAllow) {
         mixAllow.onclick = async () => {
           if (!currentStationId) return;
+          mixAllow.classList.add('active');
+          mixBlock.classList.remove('active');
           try {
             await Homey.api('POST', '/set-battery-discharge-mix', { stationId: currentStationId, allowed: true });
-            await sync(Homey, currentStationId);
-          } catch (e) { alert('Fehler: ' + (e.message || e)); }
+            // optimistic + next periodic sync (with force refresh) will keep it
+          } catch (e) {
+            mixAllow.classList.remove('active');
+            mixBlock.classList.add('active');
+            alert('Fehler: ' + (e.message || e));
+          }
         };
       }
       if (mixBlock) {
         mixBlock.onclick = async () => {
           if (!currentStationId) return;
+          mixBlock.classList.add('active');
+          mixAllow.classList.remove('active');
           try {
             await Homey.api('POST', '/set-battery-discharge-mix', { stationId: currentStationId, allowed: false });
-            await sync(Homey, currentStationId);
-          } catch (e) { alert('Fehler: ' + (e.message || e)); }
+            // optimistic + next periodic sync (with force refresh) will keep it
+          } catch (e) {
+            mixBlock.classList.remove('active');
+            mixAllow.classList.add('active');
+            alert('Fehler: ' + (e.message || e));
+          }
         };
       }
     }
