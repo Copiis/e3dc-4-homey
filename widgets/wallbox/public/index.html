@@ -651,7 +651,7 @@
 
         // All values (excluding ladeplan active/summary and ladeenergie)
         setEl('power', wb.power !== undefined ? `${Math.round(wb.power)} W` : '-');
-        setEl('solarshare', wb.solarShare !== undefined ? `${Math.round(wb.solarShare)} %` : '-');
+        setEl('solarshare', wb.solarShare !== undefined ? `${Math.round(wb.solarShare)} W` : '-');
         setEl('vehicle-soc', (wb.vehicleSoc !== null && wb.vehicleSoc !== undefined) ? `${wb.vehicleSoc} %` : '-');
         setEl('plugged', wb.plugged ? 'Ja' : 'Nein');
         setEl('phases', wb.phases !== undefined ? String(wb.phases) : '-');
