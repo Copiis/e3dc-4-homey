@@ -453,7 +453,10 @@
     const wantedId = selectedPlantId(settings);
     if (wantedId == null) {
       if (plants.length === 1) {
-        return plants[0];
+        const single = plants[0];
+        // Auto-select + persist when only one HKW (uniform behavior)
+        Homey.setSettings({ plantId: single });
+        return single;
       }
       return { errorMsg: 'widget.info.no-plant-id' };
     }

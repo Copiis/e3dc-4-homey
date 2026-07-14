@@ -115,10 +115,7 @@ async function onHomeyReady(h) {
     plantId = matched.id;
   }
 
-  if (!plantId) {
-    document.body.innerHTML = '<div style="color:red;padding:10px">HKW auswählen</div>';
-    return;
-  }
+  // At this point plantId is guaranteed (either from storage or auto-selected for single HKW)
 
   // Disable end input when "Bis voll" checkbox is selected (like in HKW widget)
   const untilFullCb = document.getElementById('until-full');
