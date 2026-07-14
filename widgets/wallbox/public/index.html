@@ -57,8 +57,8 @@
 
     .circle.active {
       background: #1a2a1a;
-      border-color: #4ade80;
-      box-shadow: 0 0 12px rgba(74, 222, 128, 0.5);
+      border-color: #5BC244;
+      box-shadow: 0 0 12px rgba(91, 194, 68, 0.5);
     }
 
     .circle .icon {
@@ -93,7 +93,7 @@
     }
 
     .circle.active + .label {
-      color: #4ade80;
+      color: #5BC244;
     }
 
     .info {
@@ -157,14 +157,14 @@
         <span class="v-label">Batterie entladen bis</span>
         <span id="discharge-soc" class="v-value">-</span>
         <input id="discharge-input" type="number" min="0" max="100" step="1" style="width:50px; font-size:12px;"> %
-        <button id="set-discharge" style="font-size:11px; padding:1px 4px;">Set</button>
+        <button id="set-discharge" style="background:#5BC244; color:#fff; font-size:11px; padding:1px 4px; border:none; border-radius:2px; cursor:pointer;">Set</button>
       </div>
       <div class="value-row"><span class="v-label">Eingesteckt</span><span id="plugged" class="v-value">-</span></div>
       <div class="value-row">
         <span class="v-label">Max Ladestrom</span>
         <span id="max-current" class="v-value">-</span>
         <input id="current-input" type="number" min="6" max="32" step="1" style="width:40px; font-size:12px;"> A
-        <button id="set-current" style="font-size:11px; padding:1px 4px;">Set</button>
+        <button id="set-current" style="background:#5BC244; color:#fff; font-size:11px; padding:1px 4px; border:none; border-radius:2px; cursor:pointer;">Set</button>
       </div>
       <div class="value-row"><span class="v-label">Phasen</span><span id="phases" class="v-value">-</span></div>
       <div class="value-row"><span class="v-label">Stecker verriegelt</span><span id="plug-locked" class="v-value">-</span></div>

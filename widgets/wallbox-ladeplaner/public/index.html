@@ -10,7 +10,7 @@
     .dates-row { align-items: flex-start; }
     .date-col { display: flex; flex-direction: column; }
     .date-col .label { margin-bottom: 1px; }
-    button { background: #2a5; border: none; color: #fff; padding: 5px 8px; border-radius: 3px; font-size: 18px; cursor: pointer; width: 100%; }
+    button { background: #5BC244; border: none; color: #fff; padding: 5px 8px; border-radius: 3px; font-size: 18px; cursor: pointer; width: 100%; }
     .plan { background: #333; padding: 3px 4px; border-radius: 3px; margin-bottom: 2px; font-size: 17px; }
     .plan-header { display: flex; justify-content: space-between; }
     .small { font-size: 15px; color: #888; }
@@ -275,7 +275,7 @@ async function loadPlans() {
       d.innerHTML = `
         <div class="plan-header">
           <strong>${new Date(p.start).toLocaleString()}</strong>
-          <button onclick="del(${i})" style="background:#c33; padding:1px 6px; font-size:10px; width: auto;">✕</button>
+          <button onclick="del(${i})" style="background:#5BC244; padding:1px 6px; font-size:10px; width: auto;">✕</button>
         </div>
         <div class="small">${details}${dischargePart} → ${end}</div>
         ${dischargeNote}

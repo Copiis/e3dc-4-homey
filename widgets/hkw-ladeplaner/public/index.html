@@ -10,7 +10,7 @@
     .dates-row { align-items: flex-start; flex-wrap: nowrap; }
     .date-col { display: flex; flex-direction: column; }
     .date-col .label { margin-bottom: 1px; }
-    button { background: #2a5; color: white; border: none; padding: 5px 8px; border-radius: 3px; cursor: pointer; font-size: 17px; width: 100%; }
+    button { background: #5BC244; color: white; border: none; padding: 5px 8px; border-radius: 3px; cursor: pointer; font-size: 17px; width: 100%; }
     .plan { background: #333; padding: 3px 4px; border-radius: 3px; margin-bottom: 2px; font-size: 16px; }
     .plan-header { display: flex; justify-content: space-between; }
     .small { font-size: 14px; color: #888; }
@@ -196,7 +196,7 @@ async function loadPlans() {
       div.innerHTML = `
         <div class="plan-header">
           <strong>${new Date(p.start).toLocaleString()}</strong>
-          <button onclick="removePlan(${i})" style="background:#c33; padding:1px 6px; font-size:10px">✕</button>
+          <button onclick="removePlan(${i})" style="background:#5BC244; padding:1px 6px; font-size:10px">✕</button>
         </div>
         <div class="small">${displayMode} @ ${p.powerW || 0}W → ${endInfo}</div>
       `;
