@@ -106,7 +106,6 @@
 
     <!-- PV — Wert mittig auf dem Symbol -->
     <g id="node-pv" transform="translate(124, 5)">
-      <text id="pv-value" x="36" y="28" class="node-value" text-anchor="middle">0 W</text>
       <!-- Solar panels icon (deutlicheres Panel mit Gitter) -->
       <g transform="translate(0, 10)">
         <rect x="0" y="0" width="72" height="52" rx="4" fill="#E6A817" stroke="#222" stroke-width="2"/>
@@ -119,6 +118,8 @@
         <rect x="50" y="28" width="18" height="18" fill="none" stroke="#333" stroke-width="1.2"/>
 
       </g>
+      <!-- Wert nach vorne gebracht (hinter dem Icon war er unsichtbar) -->
+      <text id="pv-value" x="36" y="28" class="node-value" text-anchor="middle">0 W</text>
     </g>
 
     <!-- Haus — einfach, zentriert, Wert mittig -->
@@ -133,7 +134,7 @@
         <rect x="32" y="25" width="16" height="22" fill="#222"/>
       </g>
       <!-- Verbrauch sauber unter dem Haus -->
-      <text id="house-value" x="57" y="19" class="node-value" text-anchor="middle">0 W</text>
+      <text id="house-value" x="57" y="26" class="node-value" text-anchor="middle">0 W</text>
     </g>
 
     <!-- Netz — Blitz Symbol -->
@@ -169,21 +170,21 @@
       <text id="battery-charge-time" x="34" y="71" class="node-soc" text-anchor="middle">—</text>
     </g>
 
-    <!-- Charging Pile / Ladestation (Wallbox Symbol) -->
+    <!-- Wallbox Symbol -->
     <g id="node-wallbox" transform="translate(110, 215)">
-      <!-- Verkleinert (ca. 60%) -->
-      <g transform="translate(32, 25) scale(0.6)">
-        <!-- Hauptgehäuse der Ladestation -->
-        <rect x="0" y="10" width="95" height="85" rx="8" fill="#8B6CC1" stroke="#222" stroke-width="4"/>
-        <!-- Oberer Kopf / Anschluss -->
-        <rect x="10" y="0" width="75" height="18" rx="4" fill="#8B6CC1" stroke="#222" stroke-width="3"/>
-        <!-- Blitz-Symbol (mittig) -->
-        <path d="M 35 25 L 25 48 L 35 48 L 30 70 L 58 42 L 45 42 Z" fill="#222"/>
-        <!-- Standfuß -->
-        <rect x="15" y="92" width="65" height="7" rx="2" fill="#222"/>
+      <!-- Typisches Wallbox-Gehäuse (rechteckig, wandmontiert) -->
+      <g transform="translate(15, 8)">
+        <!-- Hauptgehäuse -->
+        <rect x="0" y="0" width="100" height="65" rx="7" fill="#8B6CC1" stroke="#222" stroke-width="4"/>
+        <!-- Ladeport-Bereich -->
+        <rect x="18" y="10" width="64" height="42" rx="4" fill="#222" opacity="0.18" stroke="#222" stroke-width="2"/>
+        <!-- Blitz im Port -->
+        <path d="M38 18 L30 35 L38 35 L33 52 L55 30 L46 30 Z" fill="#222"/>
+        <!-- Status-LED / Kabelansatz -->
+        <circle cx="85" cy="22" r="4" fill="#222"/>
       </g>
-      <!-- Wert mittig auf der Ladestation -->
-      <text id="wallbox-value" x="48" y="52" class="node-value" text-anchor="middle">0 W</text>
+      <!-- Wert mittig auf der Wallbox -->
+      <text id="wallbox-value" x="50" y="42" class="node-value" text-anchor="middle">0 W</text>
     </g>
   </svg>
 </div>
