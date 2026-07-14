@@ -20,17 +20,6 @@
       color: #f0f0f0;
     }
 
-    .plant-title {
-      margin-bottom: var(--homey-su-1);
-      font-size: 16px;
-      text-align: center;
-      max-width: 100%;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      color: #f0f0f0;
-    }
-
     #flow-svg {
       width: 100%;
       max-width: 340px;
@@ -104,7 +93,6 @@
 
 <!-- Live Energy Flow -->
 <div id="flow-container" class="homey-widget hidden">
-  <div id="plant-title" class="homey-text-bold plant-title"></div>
   <svg id="flow-svg" viewBox="0 0 320 278" xmlns="http://www.w3.org/2000/svg">
     <!-- Fluss zwischen Box-Kanten; Werte liegen in den Boxen, nicht auf den Linien -->
     <line id="flow-pv-house" x1="160" y1="44" x2="160" y2="108" class="flow-line" data-color="#e6a817"/>
@@ -333,7 +321,6 @@
 
   function updateFlow(plant, settings, Homey) {
     const d = plant.powerState;
-    setWidgetText('plant-title', plant.name);
     setWidgetText('pv-value', formatW(d.pvPower));
     setWidgetText('house-value', formatW(d.consumption));
     setWidgetText('grid-value', formatW(Math.abs(d.gridPower)));
@@ -487,10 +474,6 @@
   function applyLiveVisibility(settings, data) {
     // With simplified settings (only flowThreshold), always show all values
     // (nodes are auto-hidden only via hasWallbox/hasBattery above)
-    const title = document.getElementById('plant-title');
-    if (title) {
-      title.style.display = '';
-    }
     // Values are always visible
   }
 

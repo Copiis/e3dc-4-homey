@@ -20,13 +20,6 @@
       gap: 4px;
     }
 
-    .header {
-      font-size: 14px;
-      color: #aaa;
-      text-align: center;
-      margin-bottom: 4px;
-    }
-
     .controls {
       display: flex;
       justify-content: center;
@@ -174,7 +167,6 @@
 </head>
 <body>
   <div class="widget-container">
-    <div id="header" class="header homey-text-bold"></div>
 
     <div class="controls">
       <!-- Laden -->
@@ -278,7 +270,6 @@
 
       resolvePlantId(Homey).then(plantId => {
         if (!plantId) {
-          document.getElementById('header').textContent = 'Kein HKW ausgewählt';
           document.getElementById('info').textContent = 'Widget-Einstellungen öffnen und Hauskraftwerk auswählen.';
           return;
         }
@@ -544,14 +535,11 @@
         const wallboxes = await Homey.api('GET', `/wallbox?stationId=${encodeURIComponent(plantId)}`);
 
         if (!wallboxes || wallboxes.length === 0) {
-          document.getElementById('header').textContent = 'Keine Wallbox gefunden';
           document.getElementById('info').textContent = 'Für das gewählte HKW ist keine Wallbox konfiguriert.';
           return;
         }
 
         const wb = wallboxes[0];
-
-        document.getElementById('header').textContent = wb.name || 'Wallbox';
 
         // Laden
         const ladenCircle = document.getElementById('laden-circle');
@@ -632,7 +620,6 @@
         if (info) info.textContent = '';
       } catch (err) {
         console.error(err);
-        document.getElementById('header').textContent = 'Fehler beim Laden';
         document.getElementById('info').textContent = 'API-Fehler. Widget-Einstellungen prüfen.';
       }
     }
