@@ -169,32 +169,22 @@
       <text id="battery-charge-time" x="34" y="71" class="node-soc" text-anchor="middle">—</text>
     </g>
 
-    <!-- VW Bus aus Tabler Icon (exakt übernommen, skaliert + angepasst) -->
+    <!-- VW Bus (Tabler filled icon-tabler-bus) -->
     <g id="node-wallbox" transform="translate(110, 215)">
-      <!-- Tabler bus icon – skaliert und mit Widget-Farben (lila Körper, dunkler Stroke) -->
-      <g transform="translate(6, 3) scale(5.6)">
-        <!-- Räder -->
-        <circle cx="6" cy="17" r="2" fill="#222"/>
-        <circle cx="18" cy="17" r="2" fill="#222"/>
-        <circle cx="6" cy="17" r="0.9" fill="#555"/>
-        <circle cx="18" cy="17" r="0.9" fill="#555"/>
+      <!-- Exakt das gefüllte Tabler Icon, skaliert und mit Widget-Farben -->
+      <g transform="translate(5, 2) scale(5.5)">
+        <!-- Hauptbus (exakter Pfad aus dem filled Icon) -->
+        <path d="M17 4c3.4 0 6 3.64 6 8v5a1 1 0 0 1 -1 1h-1.171a3.001 3.001 0 0 1 -5.658 0h-6.342a3.001 3.001 0 0 1 -5.658 0h-1.171a1 1 0 0 1 -1 -1v-11a2 2 0 0 1 2 -2zm-11 12a1 1 0 1 0 0 2a1 1 0 0 0 0 -2m12 0a1 1 0 1 0 0 2a1 1 0 0 0 0 -2m-.76 -9.989l1.068 4.989h2.636c-.313 -2.756 -1.895 -4.82 -3.704 -4.989m-11.24 -.011h-3v3h3zm5 0h-3v3h3zm4.191 0h-2.191v3h2.834z"
+              fill="#8B6CC1" stroke="#222" stroke-width="1" stroke-linejoin="round"/>
 
-        <!-- Haupt-Körper (gefüllt für Widget-Stil) -->
-        <path d="M4 17h-2v-11a1 1 0 0 1 1 -1h14a5 7 0 0 1 5 7v5h-2m-4 0h-8"
-              fill="#8B6CC1" stroke="#222" stroke-width="1.15" stroke-linecap="round" stroke-linejoin="round"/>
-
-        <!-- Front-Detail -->
-        <path d="M16 5l1.5 7l4.5 0" fill="none" stroke="#222" stroke-width="1.15" stroke-linecap="round" stroke-linejoin="round"/>
-
-        <!-- Horizontale Fensterlinie -->
-        <path d="M2 10l15 0" fill="none" stroke="#222" stroke-width="1.15" stroke-linecap="round" stroke-linejoin="round"/>
-
-        <!-- Vertikale Fenstertrenner -->
-        <path d="M7 5l0 5" fill="none" stroke="#222" stroke-width="1.15" stroke-linecap="round"/>
-        <path d="M12 5l0 5" fill="none" stroke="#222" stroke-width="1.15" stroke-linecap="round"/>
+        <!-- Räder dunkler (für bessere Sichtbarkeit) -->
+        <circle cx="6" cy="17" r="2.1" fill="#222"/>
+        <circle cx="18" cy="17" r="2.1" fill="#222"/>
+        <circle cx="6" cy="17" r="1" fill="#555"/>
+        <circle cx="18" cy="17" r="1" fill="#555"/>
       </g>
       <!-- Wert mittig auf dem Bus -->
-      <text id="wallbox-value" x="72" y="30" class="node-value" text-anchor="middle">0 W</text>
+      <text id="wallbox-value" x="72" y="29" class="node-value" text-anchor="middle">0 W</text>
     </g>
   </svg>
 </div>
