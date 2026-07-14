@@ -147,8 +147,8 @@
       border: none;
       border-radius: 4px;
       cursor: pointer;
-      font-size: 14px;
-      padding: 3px 6px;
+      font-size: 15px;
+      padding: 4px 8px;
     }
 
     /* Gray out Sonnenmodus discharge buttons when Ladepriorität = Batterie zuerst */
@@ -228,7 +228,7 @@
       <div style="background:#222; border-radius:6px; padding:4px;">
         <div style="font-size:14px; font-weight:600; color:#ccc; margin-bottom:3px;">Batterieentladung durch Wallbox</div>
 
-        <div style="display:flex; align-items:center; justify-content:space-between; font-size:13px; margin-bottom:1px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; font-size:13px;">
           <span>Im Sonnenmodus</span>
           <div style="display:flex; gap:4px;">
             <button id="sun-allow" class="toggle-btn small">Erlaubt</button>
@@ -236,7 +236,7 @@
           </div>
         </div>
 
-        <div style="display:flex; align-items:center; justify-content:space-between; font-size:13px; margin-bottom:1px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; font-size:13px; margin-top:1px; margin-bottom:1px;">
           <span>Bis Ladezustand</span>
           <div style="display:flex; align-items:center; gap:3px;">
             <input id="discharge-input" type="number" min="0" max="100" step="1" style="width:42px; font-size:14px; padding:1px 2px;"> %
