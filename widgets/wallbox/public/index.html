@@ -10,6 +10,7 @@
       height: 100%;
       display: flex;
       flex-direction: column;
+      font-size: 16px;
     }
 
     .widget-container {
@@ -20,7 +21,7 @@
     }
 
     .header {
-      font-size: 12px;
+      font-size: 14px;
       color: #aaa;
       text-align: center;
       margin-bottom: 4px;
@@ -80,14 +81,14 @@
 
     .label {
       margin-top: 6px;
-      font-size: 11px;
+      font-size: 13px;
       color: #ccc;
       text-align: center;
       line-height: 1.2;
     }
 
     .status {
-      font-size: 10px;
+      font-size: 12px;
       color: #888;
       margin-top: 2px;
     }
@@ -97,13 +98,13 @@
     }
 
     .info {
-      font-size: 10px;
+      font-size: 12px;
       color: #666;
       text-align: center;
       margin-top: auto;
     }
     .values {
-      font-size: 11px;
+      font-size: 13px;
       margin-top: 4px;
     }
     .value-row {
@@ -118,10 +119,12 @@
     }
     .v-label {
       color: #aaa;
+      font-size: 12px;
     }
     .v-value {
       color: #fff;
       font-weight: 500;
+      font-size: 13px;
     }
 
     .toggle-btn {
@@ -129,8 +132,8 @@
       color: #fff;
       border: 1px solid #555;
       border-radius: 4px;
-      padding: 3px 8px;
-      font-size: 12px;
+      padding: 4px 10px;
+      font-size: 13px;
       cursor: pointer;
       flex: 1;
       text-align: center;
@@ -141,8 +144,8 @@
       border-color: #5BC244;
     }
     .toggle-btn.small {
-      padding: 2px 5px;
-      font-size: 10px;
+      padding: 3px 6px;
+      font-size: 12px;
     }
     .set-btn {
       background: #5BC244;
@@ -150,8 +153,8 @@
       border: none;
       border-radius: 2px;
       cursor: pointer;
-      font-size: 10px;
-      padding: 1px 4px;
+      font-size: 11px;
+      padding: 2px 5px;
     }
   </style>
 </head>
@@ -181,19 +184,19 @@
 
     <!-- Ladepriorisierung matching the E3DC settings UI -->
     <div class="ladeprio-section" style="margin-top:6px; margin-bottom:4px;">
-      <div style="font-size:12px; font-weight:600; margin-bottom:3px; color:#ccc;">Ladepriorisierung</div>
+      <div style="font-size:14px; font-weight:600; margin-bottom:3px; color:#ccc;">Ladepriorisierung</div>
       <div style="background:#222; border-radius:6px; padding:4px; margin-bottom:4px;">
-        <div style="font-size:11px; color:#aaa; margin-bottom:2px;">Ladepriorität (Nur im Sonnenmodus)</div>
+        <div style="font-size:12px; color:#aaa; margin-bottom:2px;">Ladepriorität (Nur im Sonnenmodus)</div>
         <div style="display:flex; gap:4px;">
-          <button id="prio-battery" class="toggle-btn" style="flex:1; font-size:12px; padding:3px 6px;">Batterie zuerst</button>
-          <button id="prio-wallbox" class="toggle-btn" style="flex:1; font-size:12px; padding:3px 6px;">Wallbox zuerst</button>
+          <button id="prio-battery" class="toggle-btn" style="flex:1; font-size:13px; padding:4px 8px;">Batterie zuerst</button>
+          <button id="prio-wallbox" class="toggle-btn" style="flex:1; font-size:13px; padding:4px 8px;">Wallbox zuerst</button>
         </div>
       </div>
 
       <div style="background:#222; border-radius:6px; padding:4px;">
-        <div style="font-size:11px; font-weight:600; color:#ccc; margin-bottom:3px;">Batterieentladung durch Wallbox</div>
+        <div style="font-size:12px; font-weight:600; color:#ccc; margin-bottom:3px;">Batterieentladung durch Wallbox</div>
 
-        <div style="display:flex; align-items:center; justify-content:space-between; font-size:11px; margin-bottom:3px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; font-size:12px; margin-bottom:3px;">
           <span>Im Sonnenmodus</span>
           <div style="display:flex; gap:4px;">
             <button id="sun-allow" class="toggle-btn small">Erlaubt</button>
@@ -201,15 +204,15 @@
           </div>
         </div>
 
-        <div style="display:flex; align-items:center; justify-content:space-between; font-size:11px; margin-bottom:3px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; font-size:12px; margin-bottom:3px;">
           <span>Bis Ladezustand</span>
           <div style="display:flex; align-items:center; gap:3px;">
-            <input id="discharge-input" type="number" min="0" max="100" step="1" style="width:42px; font-size:12px; padding:1px 3px;"> %
-            <button id="set-discharge" class="set-btn" style="font-size:10px; padding:1px 4px;">Setzen</button>
+            <input id="discharge-input" type="number" min="0" max="100" step="1" style="width:42px; font-size:13px; padding:2px 3px;"> %
+            <button id="set-discharge" class="set-btn" style="font-size:11px; padding:2px 5px;">Setzen</button>
           </div>
         </div>
 
-        <div style="display:flex; align-items:center; justify-content:space-between; font-size:11px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; font-size:12px;">
           <span style="line-height:1.1;">Im Mischmodus und während Haltezeit und Zeitfunktion</span>
           <div style="display:flex; gap:4px;">
             <button id="mix-allow" class="toggle-btn small">Erlaubt</button>
@@ -227,8 +230,8 @@
       <div class="value-row">
         <span class="v-label">Max Ladestrom</span>
         <span id="max-current" class="v-value">-</span>
-        <input id="current-input" type="number" min="6" max="32" step="1" style="width:40px; font-size:11px; padding:1px;"> A
-        <button id="set-current" class="set-btn" style="font-size:10px; padding:1px 3px;">Setzen</button>
+        <input id="current-input" type="number" min="6" max="32" step="1" style="width:40px; font-size:13px; padding:2px;"> A
+        <button id="set-current" class="set-btn" style="font-size:11px; padding:2px 5px;">Setzen</button>
       </div>
       <div class="value-row"><span class="v-label">Phasen</span><span id="phases" class="v-value">-</span></div>
       <div class="value-row"><span class="v-label">Stecker verriegelt</span><span id="plug-locked" class="v-value">-</span></div>
