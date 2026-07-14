@@ -237,16 +237,15 @@
     </div>
 
     <div class="values">
-      <div class="value-row"><span class="v-label">Leistung</span><span id="power" class="v-value">-</span></div>
-      <div class="value-row"><span class="v-label">Solaranteil</span><span id="solarshare" class="v-value">-</span></div>
-      <div class="value-row"><span class="v-label">Fahrzeug SOC</span><span id="vehicle-soc" class="v-value">-</span></div>
-      <div class="value-row"><span class="v-label">Eingesteckt</span><span id="plugged" class="v-value">-</span></div>
       <div class="value-row">
-        <span class="v-label">Max Ladestrom</span>
-        <span id="max-current" class="v-value">-</span>
+        <span class="v-label">Leistung</span>
+        <span id="power" class="v-value">-</span>
         <input id="current-input" type="number" min="6" max="32" step="1" style="width:40px; font-size:13px; padding:2px;"> A
         <button id="set-current" class="set-btn" style="font-size:11px; padding:2px 5px;">Setzen</button>
       </div>
+      <div class="value-row"><span class="v-label">Solaranteil</span><span id="solarshare" class="v-value">-</span></div>
+      <div class="value-row"><span class="v-label">Fahrzeug SOC</span><span id="vehicle-soc" class="v-value">-</span></div>
+      <div class="value-row"><span class="v-label">Eingesteckt</span><span id="plugged" class="v-value">-</span></div>
       <div class="value-row"><span class="v-label">Phasen</span><span id="phases" class="v-value">-</span></div>
       <div class="value-row"><span class="v-label">Stecker verriegelt</span><span id="plug-locked" class="v-value">-</span></div>
       <div class="value-row"><span class="v-label">Schuko</span><span id="schuko" class="v-value">-</span></div>
@@ -530,7 +529,6 @@
         setEl('solarshare', wb.solarShare !== undefined ? `${Math.round(wb.solarShare)} %` : '-');
         setEl('vehicle-soc', (wb.vehicleSoc !== null && wb.vehicleSoc !== undefined) ? `${wb.vehicleSoc} %` : '-');
         setEl('plugged', wb.plugged ? 'Ja' : 'Nein');
-        setEl('max-current', wb.maxCurrent !== undefined ? `${wb.maxCurrent} A` : '-');
         setEl('phases', wb.phases !== undefined ? String(wb.phases) : '-');
         setEl('plug-locked', wb.plugLocked ? 'Ja' : 'Nein');
         setEl('schuko', wb.schuko ? 'Ja' : 'Nein');
