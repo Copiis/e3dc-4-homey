@@ -106,7 +106,7 @@
 
     <!-- PV — Wert mittig auf dem Symbol -->
     <g id="node-pv" transform="translate(124, 5)">
-      <text id="pv-value" x="36" y="8" class="node-value" text-anchor="middle">0 W</text>
+      <text id="pv-value" x="36" y="28" class="node-value" text-anchor="middle">0 W</text>
       <!-- Solar panels icon (deutlicheres Panel mit Gitter) -->
       <g transform="translate(0, 10)">
         <rect x="0" y="0" width="72" height="52" rx="4" fill="#E6A817" stroke="#222" stroke-width="2"/>
@@ -133,7 +133,7 @@
         <rect x="32" y="25" width="16" height="22" fill="#222"/>
       </g>
       <!-- Verbrauch sauber unter dem Haus -->
-      <text id="house-value" x="57" y="39" class="node-value" text-anchor="middle">0 W</text>
+      <text id="house-value" x="57" y="19" class="node-value" text-anchor="middle">0 W</text>
     </g>
 
     <!-- Netz — Blitz Symbol -->
@@ -171,8 +171,8 @@
 
     <!-- Charging Pile / Ladestation (Wallbox Symbol) -->
     <g id="node-wallbox" transform="translate(110, 215)">
-      <!-- Einfache, klare Ladestation mit Blitz -->
-      <g transform="translate(12, 5)">
+      <!-- Verkleinert (ca. 60%) -->
+      <g transform="translate(32, 25) scale(0.6)">
         <!-- Hauptgehäuse der Ladestation -->
         <rect x="0" y="10" width="95" height="85" rx="8" fill="#8B6CC1" stroke="#222" stroke-width="4"/>
         <!-- Oberer Kopf / Anschluss -->
@@ -183,7 +183,7 @@
         <rect x="15" y="92" width="65" height="7" rx="2" fill="#222"/>
       </g>
       <!-- Wert mittig auf der Ladestation -->
-      <text id="wallbox-value" x="48" y="65" class="node-value" text-anchor="middle">0 W</text>
+      <text id="wallbox-value" x="48" y="52" class="node-value" text-anchor="middle">0 W</text>
     </g>
   </svg>
 </div>
