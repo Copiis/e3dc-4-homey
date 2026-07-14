@@ -169,22 +169,21 @@
       <text id="battery-charge-time" x="34" y="71" class="node-soc" text-anchor="middle">—</text>
     </g>
 
-    <!-- VW Bus (Tabler filled icon-tabler-bus) -->
+    <!-- Charging Pile / Ladestation (Wallbox Symbol) -->
     <g id="node-wallbox" transform="translate(110, 215)">
-      <!-- Exakt das gefüllte Tabler Icon, skaliert und mit Widget-Farben -->
-      <g transform="translate(5, 2) scale(5.5)">
-        <!-- Hauptbus (exakter Pfad aus dem filled Icon) -->
-        <path d="M17 4c3.4 0 6 3.64 6 8v5a1 1 0 0 1 -1 1h-1.171a3.001 3.001 0 0 1 -5.658 0h-6.342a3.001 3.001 0 0 1 -5.658 0h-1.171a1 1 0 0 1 -1 -1v-11a2 2 0 0 1 2 -2zm-11 12a1 1 0 1 0 0 2a1 1 0 0 0 0 -2m12 0a1 1 0 1 0 0 2a1 1 0 0 0 0 -2m-.76 -9.989l1.068 4.989h2.636c-.313 -2.756 -1.895 -4.82 -3.704 -4.989m-11.24 -.011h-3v3h3zm5 0h-3v3h3zm4.191 0h-2.191v3h2.834z"
-              fill="#8B6CC1" stroke="#222" stroke-width="1" stroke-linejoin="round"/>
-
-        <!-- Räder dunkler (für bessere Sichtbarkeit) -->
-        <circle cx="6" cy="17" r="2.1" fill="#222"/>
-        <circle cx="18" cy="17" r="2.1" fill="#222"/>
-        <circle cx="6" cy="17" r="1" fill="#555"/>
-        <circle cx="18" cy="17" r="1" fill="#555"/>
+      <!-- Einfache, klare Ladestation mit Blitz -->
+      <g transform="translate(12, 5)">
+        <!-- Hauptgehäuse der Ladestation -->
+        <rect x="0" y="10" width="95" height="85" rx="8" fill="#8B6CC1" stroke="#222" stroke-width="4"/>
+        <!-- Oberer Kopf / Anschluss -->
+        <rect x="10" y="0" width="75" height="18" rx="4" fill="#8B6CC1" stroke="#222" stroke-width="3"/>
+        <!-- Blitz-Symbol (mittig) -->
+        <path d="M 35 25 L 25 48 L 35 48 L 30 70 L 58 42 L 45 42 Z" fill="#222"/>
+        <!-- Standfuß -->
+        <rect x="15" y="92" width="65" height="7" rx="2" fill="#222"/>
       </g>
-      <!-- Wert mittig auf dem Bus -->
-      <text id="wallbox-value" x="72" y="29" class="node-value" text-anchor="middle">0 W</text>
+      <!-- Wert mittig auf der Ladestation -->
+      <text id="wallbox-value" x="48" y="65" class="node-value" text-anchor="middle">0 W</text>
     </g>
   </svg>
 </div>
