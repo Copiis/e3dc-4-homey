@@ -5,6 +5,16 @@
   },
   "transparent": false,
   "height": 310,
+  "settings": [
+    {
+      "id": "plantId",
+      "type": "autocomplete",
+      "title": {
+        "de": "Hauskraftwerk",
+        "en": "Home power plant"
+      }
+    }
+  ],
   "api": {
     "readHomePowerPlants": {
       "method": "GET",
