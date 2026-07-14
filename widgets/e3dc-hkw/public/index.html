@@ -119,7 +119,7 @@
 
       </g>
       <!-- Wert nach vorne gebracht (hinter dem Icon war er unsichtbar) -->
-      <text id="pv-value" x="36" y="28" class="node-value" text-anchor="middle">0 W</text>
+      <text id="pv-value" x="43" y="35" class="node-value" text-anchor="middle">0 W</text>
     </g>
 
     <!-- Haus — einfach, zentriert, Wert mittig -->
@@ -134,7 +134,7 @@
         <rect x="32" y="25" width="16" height="22" fill="#222"/>
       </g>
       <!-- Verbrauch sauber unter dem Haus -->
-      <text id="house-value" x="57" y="26" class="node-value" text-anchor="middle">0 W</text>
+      <text id="house-value" x="57" y="24" class="node-value" text-anchor="middle">0 W</text>
     </g>
 
     <!-- Netz — Blitz Symbol -->
@@ -165,26 +165,28 @@
         <line x1="49.5" y1="9" x2="49.5" y2="141" stroke="#333" stroke-width="1.5" opacity="0.4"/>
       </g>
       <!-- Werte mittig im Symbol -->
-      <text id="battery-value" x="34" y="36" class="node-value" text-anchor="middle">0 W</text>
-      <text id="battery-soc" x="34" y="55" class="node-soc" text-anchor="middle">0%</text>
-      <text id="battery-charge-time" x="34" y="71" class="node-soc" text-anchor="middle">—</text>
+      <text id="battery-value" x="31" y="36" class="node-value" text-anchor="middle">0 W</text>
+      <text id="battery-soc" x="31" y="55" class="node-soc" text-anchor="middle">0%</text>
+      <text id="battery-charge-time" x="31" y="71" class="node-soc" text-anchor="middle">—</text>
     </g>
 
-    <!-- Wallbox Symbol -->
+    <!-- Wallbox Symbol (standard) -->
     <g id="node-wallbox" transform="translate(110, 215)">
-      <!-- Typisches Wallbox-Gehäuse (rechteckig, wandmontiert) -->
-      <g transform="translate(15, 8)">
+      <!-- Standard Wallbox SVG (rechteckiges Gehäuse mit Port + Kabel) -->
+      <g transform="translate(15, 5)">
         <!-- Hauptgehäuse -->
-        <rect x="0" y="0" width="100" height="65" rx="7" fill="#8B6CC1" stroke="#222" stroke-width="4"/>
-        <!-- Ladeport-Bereich -->
-        <rect x="18" y="10" width="64" height="42" rx="4" fill="#222" opacity="0.18" stroke="#222" stroke-width="2"/>
+        <rect x="0" y="0" width="100" height="68" rx="5" fill="#8B6CC1" stroke="#222" stroke-width="4"/>
+        <!-- Port-Bereich -->
+        <rect x="12" y="8" width="48" height="50" rx="3" fill="#222" opacity="0.2" stroke="#222" stroke-width="2"/>
         <!-- Blitz im Port -->
-        <path d="M38 18 L30 35 L38 35 L33 52 L55 30 L46 30 Z" fill="#222"/>
-        <!-- Status-LED / Kabelansatz -->
-        <circle cx="85" cy="22" r="4" fill="#222"/>
+        <path d="M22 15 L15 32 L23 32 L18 48 L38 26 L28 26 Z" fill="#222"/>
+        <!-- Kabel -->
+        <path d="M60 30 Q85 35 82 55" fill="none" stroke="#222" stroke-width="5" stroke-linecap="round"/>
+        <!-- Stecker -->
+        <rect x="75" y="50" width="14" height="10" rx="2" fill="#222"/>
       </g>
       <!-- Wert mittig auf der Wallbox -->
-      <text id="wallbox-value" x="50" y="42" class="node-value" text-anchor="middle">0 W</text>
+      <text id="wallbox-value" x="50" y="38" class="node-value" text-anchor="middle">0 W</text>
     </g>
   </svg>
 </div>
