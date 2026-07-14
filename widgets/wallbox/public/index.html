@@ -253,7 +253,6 @@
           <option value="15">15</option>
           <option value="16">16</option>
         </select> A
-        <button id="set-current" class="set-btn" style="font-size:11px; padding:2px 5px;">Setzen</button>
       </div>
       <div class="value-row"><span class="v-label">Solaranteil</span><span id="solarshare" class="v-value">-</span></div>
       <div class="value-row"><span class="v-label">Fahrzeug SOC</span><span id="vehicle-soc" class="v-value">-</span></div>
@@ -349,20 +348,16 @@
         };
       }
 
-      // Set buttons for interactive values
-      const setCurrentBtn = document.getElementById('set-current');
+      // Ampere-Auswahl als Dropdown (automatisch anwenden bei Änderung)
       const currentInput = document.getElementById('current-input');
-      if (setCurrentBtn && currentInput) {
-        setCurrentBtn.onclick = async () => {
+      if (currentInput) {
+        currentInput.onchange = async () => {
           if (!currentStationId) return;
           const val = parseInt(currentInput.value, 10);
-          if (isNaN(val) || val < 6 || val > 32) {
-            alert('Max Ladestrom muss zwischen 6 und 32 A sein.');
+          if (isNaN(val) || val < 6 || val > 16) {
+            alert('Max Ladestrom muss zwischen 6 und 16 A sein.');
             return;
           }
-          setCurrentBtn.disabled = true;
-          const origText = setCurrentBtn.textContent;
-          setCurrentBtn.textContent = '...';
           try {
             await Homey.api('POST', '/set-max-current', { stationId: currentStationId, maxCurrentA: val });
             await sync(Homey, currentStationId);
@@ -370,8 +365,6 @@
             console.error(e);
             alert('Fehler beim Setzen: ' + (e.message || e));
           }
-          setCurrentBtn.disabled = false;
-          setCurrentBtn.textContent = origText || 'Setzen';
         };
       }
 
@@ -625,7 +618,12 @@
 
         // Prefill interactive inputs
         const currIn = document.getElementById('current-input');
-        if (currIn && wb.maxCurrent !== undefined) currIn.value = wb.maxCurrent;
+        if (currIn && wb.maxCurrent !== undefined) {
+          let v = wb.maxCurrent;
+          if (v < 6) v = 6;
+          if (v > 16) v = 16;
+          currIn.value = v;
+        }
         const disIn = document.getElementById('discharge-input');
         if (disIn && wb.dischargeSoc !== undefined) disIn.value = wb.dischargeSoc;
 
