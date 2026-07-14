@@ -95,18 +95,17 @@
 <!-- Live Energy Flow -->
 <div id="flow-container" class="homey-widget hidden">
   <svg id="flow-svg" viewBox="0 0 320 278" xmlns="http://www.w3.org/2000/svg">
-    <!-- Fluss direkt in die Symbole -->
-    <line id="flow-pv-house" x1="160" y1="44" x2="160" y2="100" class="flow-line" data-color="#e6a817"/>
-    <line id="flow-grid-house" x1="70" y1="138" x2="115" y2="138" class="flow-line" data-color="#5b8def"/>
-    <line id="flow-house-grid" x1="115" y1="142" x2="70" y2="142" class="flow-line" data-color="#5b8def"/>
-    <line id="flow-battery-house" x1="250" y1="138" x2="207" y2="138" class="flow-line" data-color="#7AB31B"/>
-    <line id="flow-house-battery" x1="207" y1="142" x2="250" y2="142" class="flow-line" data-color="#7AB31B"/>
-    <line id="flow-house-wallbox" x1="160" y1="178" x2="160" y2="226" class="flow-line" data-color="#8b6cc1"/>
+    <!-- Fluss direkt in die Symbole (keine Boxen mehr) -->
+    <line id="flow-pv-house" x1="160" y1="44" x2="160" y2="108" class="flow-line" data-color="#e6a817"/>
+    <line id="flow-grid-house" x1="68" y1="130" x2="115" y2="130" class="flow-line" data-color="#5b8def"/>
+    <line id="flow-house-grid" x1="115" y1="134" x2="68" y2="134" class="flow-line" data-color="#5b8def"/>
+    <line id="flow-battery-house" x1="250" y1="130" x2="200" y2="130" class="flow-line" data-color="#7AB31B"/>
+    <line id="flow-house-battery" x1="200" y1="134" x2="250" y2="134" class="flow-line" data-color="#7AB31B"/>
+    <line id="flow-house-wallbox" x1="160" y1="140" x2="160" y2="226" class="flow-line" data-color="#8b6cc1"/>
     <g id="flow-dots"></g>
 
-    <!-- Oben: PV — Icon links, Werte rechts in der Box -->
-    <g id="node-pv" transform="translate(96, 8)">
-      <rect width="128" height="36" rx="6" class="node-box pv"/>
+    <!-- PV — Icon + Wert rechts -->
+    <g id="node-pv" transform="translate(100, 10)">
       <!-- Solar panels icon (deutlicheres Panel mit Gitter) -->
       <g transform="translate(8, 4)">
         <rect x="0" y="0" width="36" height="26" rx="2" fill="#E6A817" stroke="#222" stroke-width="1"/>
@@ -122,12 +121,11 @@
         <line x1="42" y1="1" x2="42" y2="0" stroke="#fff" stroke-width="0.8"/>
         <line x1="42" y1="9" x2="42" y2="10" stroke="#fff" stroke-width="0.8"/>
       </g>
-      <text id="pv-value" x="118" y="22" class="node-value" text-anchor="end">0 W</text>
+      <text id="pv-value" x="100" y="20" class="node-value" text-anchor="end">0 W</text>
     </g>
 
-    <!-- Mitte: Haus — groß genug für Wert INNEN im Kasten -->
-    <g id="node-house" transform="translate(115, 100)">
-      <rect width="92" height="78" rx="6" class="node-box house"/>
+    <!-- Haus — Icon + Wert innen -->
+    <g id="node-house" transform="translate(115, 95)">
       <!-- House icon (mit Schornstein + Antenne) -->
       <g transform="translate(28, 8)">
         <!-- roof -->
@@ -144,14 +142,13 @@
         <!-- window -->
         <rect x="6" y="5" width="4" height="4" fill="#fff" stroke="#222" stroke-width="0.4"/>
       </g>
-      <!-- Verbrauch INNEN im Haus-Kasten -->
-      <text id="house-value" x="46" y="52" class="node-value" text-anchor="middle">0 W</text>
+      <!-- Verbrauch direkt im Symbol -->
+      <text id="house-value" x="46" y="42" class="node-value" text-anchor="middle">0 W</text>
     </g>
 
-    <!-- Links: Netz — Symbol weiß, ohne Umrandung, Wert darunter -->
-    <g id="node-grid" transform="translate(6, 110)">
-      <rect width="62" height="54" rx="6" class="node-box grid" style="fill:none; stroke:none;"/>
-      <!-- Power pylon / Strommast (weiß für bessere Erkennung) -->
+    <!-- Netz — weißes Symbol, Wert darunter -->
+    <g id="node-grid" transform="translate(10, 105)">
+      <!-- Power pylon / Strommast (weiß) -->
       <g transform="translate(20, 4)">
         <!-- tower structure -->
         <line x1="5" y1="0" x2="5" y2="28" stroke="#fff" stroke-width="1.3"/>
@@ -168,12 +165,11 @@
         <line x1="11" y1="3" x2="14" y2="3" stroke="#ddd" stroke-width="0.7"/>
       </g>
       <!-- Wert direkt darunter -->
-      <text id="grid-value" x="31" y="48" class="node-value" text-anchor="middle">0 W</text>
+      <text id="grid-value" x="35" y="52" class="node-value" text-anchor="middle">0 W</text>
     </g>
 
-    <!-- Rechts: Batterie — flaches, zentriertes Symbol, Werte darunter mit Abstand -->
-    <g id="node-battery" transform="translate(250, 100)">
-      <rect width="62" height="70" rx="6" class="node-box battery"/>
+    <!-- Batterie — Symbol + Werte darunter -->
+    <g id="node-battery" transform="translate(245, 95)">
       <!-- Battery icon (klassisch + klarer) -->
       <g transform="translate(12, 4)">
         <!-- Battery body -->
@@ -189,15 +185,14 @@
         <line x1="13" y1="7" x2="13" y2="19" stroke="#333" stroke-width="0.5" opacity="0.4"/>
         <line x1="21" y1="7" x2="21" y2="19" stroke="#333" stroke-width="0.5" opacity="0.4"/>
       </g>
-      <!-- Werte mit mehr Abstand, keine Überlappung -->
-      <text id="battery-value" x="31" y="32" class="node-value" text-anchor="middle">0 W</text>
-      <text id="battery-soc" x="31" y="46" class="node-soc" text-anchor="middle">0%</text>
-      <text id="battery-charge-time" x="31" y="58" class="node-soc" text-anchor="middle">—</text>
+      <!-- Werte darunter -->
+      <text id="battery-value" x="28" y="38" class="node-value" text-anchor="middle">0 W</text>
+      <text id="battery-soc" x="28" y="52" class="node-soc" text-anchor="middle">0%</text>
+      <text id="battery-charge-time" x="28" y="64" class="node-soc" text-anchor="middle">—</text>
     </g>
 
-    <!-- Unten: Wallbox — Icon links, Werte rechts -->
+    <!-- Wallbox — Icon links, Wert rechts -->
     <g id="node-wallbox" transform="translate(84, 226)">
-      <rect width="152" height="36" rx="6" class="node-box wallbox"/>
       <!-- Wallbox / EV charger icon (besser erkennbarer Stecker) -->
       <g transform="translate(8, 3)">
         <!-- Wallbox-Gehäuse -->
@@ -215,7 +210,7 @@
         <!-- Erdung oben -->
         <rect x="34" y="7" width="2" height="2" fill="#fff"/>
       </g>
-      <text id="wallbox-value" x="142" y="22" class="node-value" text-anchor="end">0 W</text>
+      <text id="wallbox-value" x="130" y="20" class="node-value" text-anchor="end">0 W</text>
     </g>
   </svg>
 </div>
