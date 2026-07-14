@@ -102,6 +102,27 @@
       text-align: center;
       margin-top: auto;
     }
+    .values {
+      font-size: 11px;
+      margin-top: 4px;
+    }
+    .value-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1px 0;
+      border-bottom: 1px solid #333;
+    }
+    .value-row:last-child {
+      border-bottom: none;
+    }
+    .v-label {
+      color: #aaa;
+    }
+    .v-value {
+      color: #fff;
+      font-weight: 500;
+    }
   </style>
 </head>
 <body>
@@ -128,12 +149,37 @@
       </div>
     </div>
 
+    <div class="values">
+      <div class="value-row"><span class="v-label">Leistung</span><span id="power" class="v-value">-</span></div>
+      <div class="value-row"><span class="v-label">Solaranteil</span><span id="solarshare" class="v-value">-</span></div>
+      <div class="value-row"><span class="v-label">Fahrzeug SOC</span><span id="vehicle-soc" class="v-value">-</span></div>
+      <div class="value-row">
+        <span class="v-label">Batterie entladen bis</span>
+        <span id="discharge-soc" class="v-value">-</span>
+        <input id="discharge-input" type="number" min="0" max="100" step="1" style="width:50px; font-size:12px;"> %
+        <button id="set-discharge" style="font-size:11px; padding:1px 4px;">Set</button>
+      </div>
+      <div class="value-row"><span class="v-label">Eingesteckt</span><span id="plugged" class="v-value">-</span></div>
+      <div class="value-row">
+        <span class="v-label">Max Ladestrom</span>
+        <span id="max-current" class="v-value">-</span>
+        <input id="current-input" type="number" min="6" max="32" step="1" style="width:40px; font-size:12px;"> A
+        <button id="set-current" style="font-size:11px; padding:1px 4px;">Set</button>
+      </div>
+      <div class="value-row"><span class="v-label">Phasen</span><span id="phases" class="v-value">-</span></div>
+      <div class="value-row"><span class="v-label">Stecker verriegelt</span><span id="plug-locked" class="v-value">-</span></div>
+      <div class="value-row"><span class="v-label">Schuko</span><span id="schuko" class="v-value">-</span></div>
+      <div class="value-row"><span class="v-label">Priorität Batterie zuerst</span><span id="priority-battery" class="v-value">-</span></div>
+      <div class="value-row"><span class="v-label">Batterie entladen bei Sonne</span><span id="battery-sun" class="v-value">-</span></div>
+      <div class="value-row"><span class="v-label">Batterie entladen Mix</span><span id="battery-mix" class="v-value">-</span></div>
+    </div>
+
     <div id="info" class="info"></div>
   </div>
 
   <script type="text/javascript">
     const SYNC_INTERVAL = 8000;
-    const WIDGET_HEIGHT = 200;
+    const WIDGET_HEIGHT = 380;
 
     let currentStationId = null;
 
@@ -212,6 +258,57 @@
           }
         };
       }
+
+      // Set buttons for interactive values
+      const setCurrentBtn = document.getElementById('set-current');
+      const currentInput = document.getElementById('current-input');
+      if (setCurrentBtn && currentInput) {
+        setCurrentBtn.onclick = async () => {
+          if (!currentStationId) return;
+          const val = parseInt(currentInput.value, 10);
+          if (isNaN(val) || val < 6 || val > 32) {
+            alert('Max Ladestrom muss zwischen 6 und 32 A sein.');
+            return;
+          }
+          setCurrentBtn.disabled = true;
+          const origText = setCurrentBtn.textContent;
+          setCurrentBtn.textContent = '...';
+          try {
+            await Homey.api('POST', '/set-max-current', { stationId: currentStationId, maxCurrentA: val });
+            await sync(Homey, currentStationId);
+          } catch (e) {
+            console.error(e);
+            alert('Fehler beim Setzen: ' + (e.message || e));
+          }
+          setCurrentBtn.disabled = false;
+          setCurrentBtn.textContent = origText || 'Set';
+        };
+      }
+
+      const setDischargeBtn = document.getElementById('set-discharge');
+      const dischargeInput = document.getElementById('discharge-input');
+      if (setDischargeBtn && dischargeInput) {
+        setDischargeBtn.onclick = async () => {
+          if (!currentStationId) return;
+          const val = parseInt(dischargeInput.value, 10);
+          if (isNaN(val) || val < 0 || val > 100) {
+            alert('Batterie entladen bis muss zwischen 0 und 100 % sein.');
+            return;
+          }
+          setDischargeBtn.disabled = true;
+          const origText = setDischargeBtn.textContent;
+          setDischargeBtn.textContent = '...';
+          try {
+            await Homey.api('POST', '/set-discharge-until', { stationId: currentStationId, percent: val });
+            await sync(Homey, currentStationId);
+          } catch (e) {
+            console.error(e);
+            alert('Fehler beim Setzen: ' + (e.message || e));
+          }
+          setDischargeBtn.disabled = false;
+          setDischargeBtn.textContent = origText || 'Set';
+        };
+      }
     }
 
     async function resolvePlantId(Homey) {
@@ -250,44 +347,68 @@
           return;
         }
 
-        // Take the first wallbox
         const wb = wallboxes[0];
 
-        // Header
         document.getElementById('header').textContent = wb.name || 'Wallbox';
 
         // Laden
         const ladenCircle = document.getElementById('laden-circle');
         const ladenStatus = document.getElementById('laden-status');
-        if (wb.charging) {
-          ladenCircle.classList.add('active');
-          ladenStatus.textContent = 'An';
-        } else {
-          ladenCircle.classList.remove('active');
-          ladenStatus.textContent = 'Aus';
+        if (ladenCircle && ladenStatus) {
+          if (wb.charging) {
+            ladenCircle.classList.add('active');
+            ladenStatus.textContent = 'An';
+          } else {
+            ladenCircle.classList.remove('active');
+            ladenStatus.textContent = 'Aus';
+          }
         }
 
         // Sonnenmodus
         const sonneCircle = document.getElementById('sonne-circle');
         const sonneStatus = document.getElementById('sonne-status');
-        if (wb.sunMode) {
-          sonneCircle.classList.add('active');
-          sonneStatus.textContent = 'An';
-        } else {
-          sonneCircle.classList.remove('active');
-          sonneStatus.textContent = 'Aus';
+        if (sonneCircle && sonneStatus) {
+          if (wb.sunMode) {
+            sonneCircle.classList.add('active');
+            sonneStatus.textContent = 'An';
+          } else {
+            sonneCircle.classList.remove('active');
+            sonneStatus.textContent = 'Aus';
+          }
         }
 
-        // Optional info
+        // All values (excluding ladeplan active/summary and ladeenergie)
+        setEl('power', wb.power !== undefined ? `${Math.round(wb.power)} W` : '-');
+        setEl('solarshare', wb.solarShare !== undefined ? `${Math.round(wb.solarShare)} %` : '-');
+        setEl('vehicle-soc', (wb.vehicleSoc !== null && wb.vehicleSoc !== undefined) ? `${wb.vehicleSoc} %` : '-');
+        setEl('discharge-soc', (wb.dischargeSoc !== null && wb.dischargeSoc !== undefined) ? `${wb.dischargeSoc} %` : '-');
+        setEl('plugged', wb.plugged ? 'Ja' : 'Nein');
+        setEl('max-current', wb.maxCurrent !== undefined ? `${wb.maxCurrent} A` : '-');
+        setEl('phases', wb.phases !== undefined ? String(wb.phases) : '-');
+        setEl('plug-locked', wb.plugLocked ? 'Ja' : 'Nein');
+        setEl('schuko', wb.schuko ? 'Ja' : 'Nein');
+        setEl('priority-battery', wb.priorityBatteryFirst ? 'Ja' : 'Nein');
+        setEl('battery-sun', wb.batteryDischargeSun ? 'Ja' : 'Nein');
+        setEl('battery-mix', wb.batteryDischargeMix ? 'Ja' : 'Nein');
+
+        // Prefill interactive inputs
+        const currIn = document.getElementById('current-input');
+        if (currIn && wb.maxCurrent !== undefined) currIn.value = wb.maxCurrent;
+        const disIn = document.getElementById('discharge-input');
+        if (disIn && wb.dischargeSoc !== undefined) disIn.value = wb.dischargeSoc;
+
         const info = document.getElementById('info');
-        if (wb.power !== undefined) {
-          info.textContent = `${Math.round(wb.power)} W`;
-        }
+        if (info) info.textContent = '';
       } catch (err) {
         console.error(err);
         document.getElementById('header').textContent = 'Fehler beim Laden';
         document.getElementById('info').textContent = 'API-Fehler. Widget-Einstellungen prüfen.';
       }
+    }
+
+    function setEl(id, val) {
+      const el = document.getElementById(id);
+      if (el) el.textContent = val;
     }
   </script>
 </body>

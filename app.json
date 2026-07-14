@@ -3262,7 +3262,7 @@
         "de": "Wallbox"
       },
       "transparent": false,
-      "height": 200,
+      "height": 380,
       "settings": [
         {
           "id": "plantId",
@@ -3293,6 +3293,14 @@
         "log": {
           "method": "POST",
           "path": "/log"
+        },
+        "setMaxCurrent": {
+          "method": "POST",
+          "path": "/set-max-current"
+        },
+        "setDischargeUntil": {
+          "method": "POST",
+          "path": "/set-discharge-until"
         }
       },
       "id": "wallbox"

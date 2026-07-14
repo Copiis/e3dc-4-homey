@@ -29,6 +29,16 @@ module.exports = {
       const sunMode = wb.getCapabilityValue('wallbox_sun_mode') === true;
       const power = wb.getCapabilityValue('measure_power') || 0;
       const solarShare = wb.getCapabilityValue('measure_wallbox_solarshare') || 0;
+      const vehicleSoc = wb.getCapabilityValue('measure_vehicle_soc');
+      const dischargeSoc = wb.getCapabilityValue('measure_wallbox_discharge_soc');
+      const plugged = wb.getCapabilityValue('wallbox_plugged');
+      const maxCurrent = wb.getCapabilityValue('measure_wallbox_max_current');
+      const phases = wb.getCapabilityValue('measure_wallbox_phases');
+      const plugLocked = wb.getCapabilityValue('wallbox_plug_locked');
+      const schuko = wb.getCapabilityValue('wallbox_schuko');
+      const priorityBatteryFirst = wb.getCapabilityValue('wallbox_priority_battery_first');
+      const batteryDischargeSun = wb.getCapabilityValue('wallbox_battery_discharge_sun');
+      const batteryDischargeMix = wb.getCapabilityValue('wallbox_battery_discharge_mix');
 
       results.push({
         id: wb.getData().id,
@@ -37,6 +47,16 @@ module.exports = {
         sunMode,
         power,
         solarShare,
+        vehicleSoc,
+        dischargeSoc,
+        plugged,
+        maxCurrent,
+        phases,
+        plugLocked,
+        schuko,
+        priorityBatteryFirst,
+        batteryDischargeSun,
+        batteryDischargeMix,
       });
     }
 
@@ -78,5 +98,63 @@ module.exports = {
 
   async log({ homey, body }) {
     return homey.app.logFromWidget(body.widget, body.message);
+  },
+
+  async setMaxCurrent({ homey, body }) {
+    const stationId = body.stationId || body.plantId;
+    const maxCurrentA = parseInt(body.maxCurrentA, 10);
+
+    if (!stationId || !maxCurrentA || maxCurrentA < 6 || maxCurrentA > 32) {
+      return { success: false, error: 'Invalid stationId or maxCurrentA (6-32)' };
+    }
+
+    const wallboxDriver = homey.drivers.getDriver('wallbox');
+    const allWallboxes = wallboxDriver.getDevices();
+
+    for (const wb of allWallboxes) {
+      await wb.ready();
+      const settings = wb.getStoreValue('settings');
+      if (!settings || String(settings.stationId) !== String(stationId)) {
+        continue;
+      }
+
+      try {
+        await wb.setCurrentLimit(maxCurrentA);
+        return { success: true };
+      } catch (e) {
+        return { success: false, error: e.message || String(e) };
+      }
+    }
+
+    return { success: false, error: 'Wallbox not found for station' };
+  },
+
+  async setDischargeUntil({ homey, body }) {
+    const stationId = body.stationId || body.plantId;
+    const percent = parseInt(body.percent, 10);
+
+    if (!stationId || isNaN(percent) || percent < 0 || percent > 100) {
+      return { success: false, error: 'Invalid stationId or percent (0-100)' };
+    }
+
+    const wallboxDriver = homey.drivers.getDriver('wallbox');
+    const allWallboxes = wallboxDriver.getDevices();
+
+    for (const wb of allWallboxes) {
+      await wb.ready();
+      const settings = wb.getStoreValue('settings');
+      if (!settings || String(settings.stationId) !== String(stationId)) {
+        continue;
+      }
+
+      try {
+        await wb.setDischargeBatteryUntil(percent);
+        return { success: true };
+      } catch (e) {
+        return { success: false, error: e.message || String(e) };
+      }
+    }
+
+    return { success: false, error: 'Wallbox not found for station' };
   },
 };
