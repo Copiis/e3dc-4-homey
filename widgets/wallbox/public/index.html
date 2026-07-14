@@ -166,6 +166,17 @@
       color: #aaa;
     }
 
+    /* Gray out "Bis Ladezustand" input + button when Sonnenmodus discharge is "Unterbunden" */
+    #discharge-input.disabled,
+    .set-btn.disabled {
+      opacity: 0.45;
+      background: #333;
+      border-color: #555;
+      color: #888;
+      pointer-events: none;
+      cursor: default;
+    }
+
     .ladeprio-section {
       margin-top: 1px !important;
       margin-bottom: 1px !important;
@@ -303,6 +314,23 @@
       sunBlock.classList.toggle('disabled', disabled);
     }
 
+    /**
+     * Gray out "Bis Ladezustand" (input + Setzen button) when Sonnenmodus
+     * discharge is set to "Unterbunden".
+     * The SOC limit only applies when battery discharge in sun mode is allowed.
+     */
+    function updateDischargeUntilDisabled(isSunAllowed) {
+      const input = document.getElementById('discharge-input');
+      const btn = document.getElementById('set-discharge');
+      if (!input || !btn) return;
+
+      const disabled = !isSunAllowed;  // Unterbunden => gray out
+      input.classList.toggle('disabled', disabled);
+      btn.classList.toggle('disabled', disabled);
+      input.disabled = disabled;
+      btn.disabled = disabled;
+    }
+
     function onHomeyReady(Homey) {
       // Signal ready immediately so it doesn't load forever
       Homey.ready({ height: WIDGET_HEIGHT });
@@ -403,6 +431,7 @@
       if (setDischargeBtn && dischargeInput) {
         setDischargeBtn.onclick = async () => {
           if (!currentStationId) return;
+          if (dischargeInput.disabled) return;  // grayed out when Sonnenmodus is Unterbunden
           const val = parseInt(dischargeInput.value, 10);
           if (isNaN(val) || val < 0 || val > 100) {
             alert('Batterie entladen bis muss zwischen 0 und 100 % sein.');
@@ -436,6 +465,7 @@
           lastPrioBatteryFirst = true;
           lastLadePrioSet = Date.now();
           updateSunButtonsDisabled(true);  // gray out Sonnenmodus buttons
+          updateDischargeUntilDisabled(false);  // gray out Bis Ladezustand (sun control unavailable)
 
           try {
             await Homey.api('POST', '/set-priority', { stationId: currentStationId, batteryFirst: true });
@@ -459,6 +489,9 @@
           lastPrioBatteryFirst = false;
           lastLadePrioSet = Date.now();
           updateSunButtonsDisabled(false);  // enable Sonnenmodus buttons
+          // re-evaluate Bis Ladezustand based on current sun discharge state
+          const sunNow = (lastDischargeSun !== null) ? lastDischargeSun : false;
+          updateDischargeUntilDisabled(sunNow);
 
           try {
             await Homey.api('POST', '/set-priority', { stationId: currentStationId, batteryFirst: false });
@@ -483,6 +516,7 @@
           sunBlock.classList.remove('active');
           lastDischargeSun = true;
           lastLadePrioSet = Date.now();
+          updateDischargeUntilDisabled(true);  // enable Bis Ladezustand
           try {
             await Homey.api('POST', '/set-battery-discharge-sun', { stationId: currentStationId, allowed: true });
             // last* already set for stability during cooldown
@@ -501,6 +535,7 @@
           sunAllow.classList.remove('active');
           lastDischargeSun = false;
           lastLadePrioSet = Date.now();
+          updateDischargeUntilDisabled(false);  // gray out Bis Ladezustand
           try {
             await Homey.api('POST', '/set-battery-discharge-sun', { stationId: currentStationId, allowed: false });
             // last* already set for stability during cooldown
@@ -646,22 +681,26 @@
         }
 
         // Apply disabled state for Sonnenmodus buttons based on current priority
-        if (isBatteryFirst !== undefined) {
-          updateSunButtonsDisabled(isBatteryFirst);
-        }
+        const sunButtonsDisabledByPrio = (isBatteryFirst !== undefined) ? isBatteryFirst : false;
+        updateSunButtonsDisabled(sunButtonsDisabledByPrio);
 
         const sunAllow = document.getElementById('sun-allow');
         const sunBlock = document.getElementById('sun-block');
+        let sunDischargeAllowed = false;
         if (sunAllow && sunBlock) {
-          let allowed;
           if (isRecent && lastDischargeSun !== null) {
-            allowed = lastDischargeSun;
+            sunDischargeAllowed = lastDischargeSun;
           } else {
-            allowed = !!wb.batteryDischargeSun;
+            sunDischargeAllowed = !!wb.batteryDischargeSun;
           }
-          sunAllow.classList.toggle('active', allowed);
-          sunBlock.classList.toggle('active', !allowed);
+          sunAllow.classList.toggle('active', sunDischargeAllowed);
+          sunBlock.classList.toggle('active', !sunDischargeAllowed);
         }
+
+        // "Bis Ladezustand" is only relevant when Sonnenmodus discharge is Erlaubt
+        // AND not blocked by Ladepriorität = Batterie zuerst
+        const dischargeUntilEnabled = !sunButtonsDisabledByPrio && sunDischargeAllowed;
+        updateDischargeUntilDisabled(dischargeUntilEnabled);
 
         const mixAllow = document.getElementById('mix-allow');
         const mixBlock = document.getElementById('mix-block');
