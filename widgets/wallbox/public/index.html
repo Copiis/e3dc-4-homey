@@ -393,10 +393,18 @@
       if (prioBattery) {
         prioBattery.onclick = async () => {
           if (!currentStationId) return;
+
+          // Optimistic UI update
+          prioBattery.classList.add('active');
+          prioWallbox.classList.remove('active');
+
           try {
             await Homey.api('POST', '/set-priority', { stationId: currentStationId, batteryFirst: true });
             await sync(Homey, currentStationId);
           } catch (e) {
+            // revert on error
+            prioBattery.classList.remove('active');
+            prioWallbox.classList.add('active');
             console.error(e);
             alert('Fehler: ' + (e.message || e));
           }
@@ -405,10 +413,18 @@
       if (prioWallbox) {
         prioWallbox.onclick = async () => {
           if (!currentStationId) return;
+
+          // Optimistic UI update
+          prioWallbox.classList.add('active');
+          prioBattery.classList.remove('active');
+
           try {
             await Homey.api('POST', '/set-priority', { stationId: currentStationId, batteryFirst: false });
             await sync(Homey, currentStationId);
           } catch (e) {
+            // revert on error
+            prioWallbox.classList.remove('active');
+            prioBattery.classList.add('active');
             console.error(e);
             alert('Fehler: ' + (e.message || e));
           }

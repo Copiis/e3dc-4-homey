@@ -172,6 +172,8 @@ module.exports = {
       if (!settings || String(settings.stationId) !== String(stationId)) continue;
       try {
         await wb.setBatteryBeforeCar(batteryFirst);
+        // Optimistic update so the widget sees the new value immediately
+        wb.setCapabilityValue('wallbox_priority_battery_first', batteryFirst);
         return { success: true };
       } catch (e) {
         return { success: false, error: e.message || String(e) };
@@ -194,6 +196,7 @@ module.exports = {
       if (!settings || String(settings.stationId) !== String(stationId)) continue;
       try {
         await wb.setBatteryToCar(allowed);
+        wb.setCapabilityValue('wallbox_battery_discharge_sun', allowed);
         return { success: true };
       } catch (e) {
         return { success: false, error: e.message || String(e) };
@@ -217,6 +220,8 @@ module.exports = {
       try {
         // setDisableBatteryAtMixMode(true) = block (Unterbunden)
         await wb.setDisableBatteryAtMixMode(!allowed);
+        // Optimistic: capability true means allowed (Erlaubt)
+        wb.setCapabilityValue('wallbox_battery_discharge_mix', allowed);
         return { success: true };
       } catch (e) {
         return { success: false, error: e.message || String(e) };
