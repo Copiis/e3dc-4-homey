@@ -1,4 +1,8 @@
 {
+  "1.8.51": {
+    "de": "- **Wallbox-Widget:** „Solaranteil“ wird jetzt korrekt in Watt (W) angezeigt (war fälschlich als Prozent %).",
+    "en": "- **Wallbox widget:** \"Solar share\" is now correctly displayed in Watts (W) (was incorrectly shown as percent %)."
+  },
   "1.8.50": {
     "de": "- **Wallbox-Widget:** Ladepriorität- und Sonnenmodus-Buttons stabiler (kein Springen mehr). Sonnenmodus-Buttons werden ausgegraut bei „Batterie zuerst“. „Bis Ladezustand“ wird ausgegraut bei „Unterbunden“.\n- **Widget-Schriftgrößen:** HKW- und Wallbox-Widget an die größeren Schriften der Ladeplaner-Widgets angepasst.\n- **Widget-Titel:** Interne Titel in HKW- und Wallbox-Widget entfernt (Homey stellt Titel bereit).\n- **UI:** Setzen-Button-Höhe an Ladepriorität-Buttons angepasst. Abstände zwischen Sonnenmodus-/Ladezustand-/Mischmodus-Zeilen vereinheitlicht.",
     "en": "- **Wallbox widget:** Load priority and sun mode buttons more stable (no more bouncing). Sun mode buttons grayed out on \"Battery first\". \"Discharge until\" grayed out on \"Blocked\".\n- **Widget font sizes:** HKW and Wallbox widgets now match the larger fonts of the ladeplaner widgets.\n- **Widget titles:** Internal titles removed from HKW and Wallbox widgets (Homey supplies the title).\n- **UI:** Set button height matched to ladepriority buttons. Spacing between sun mode / discharge-until / mix mode rows unified."
