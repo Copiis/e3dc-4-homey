@@ -1,4 +1,8 @@
 {
+  "1.8.55": {
+    "de": "- **HKW-Widget:** Akku-Symbol im HKW-Widget weiter gekürzt (zusätzlich 5 px + 3 px von unten).",
+    "en": "- **HKW widget:** Battery symbol in the HKW widget shortened further (additional 5 px + 3 px from the bottom)."
+  },
   "1.8.54": {
     "de": "- **HKW-Widget:** Akku-Symbol im HKW-Widget weiter gekürzt (nochmal 7 px von oben und 10 px von unten).",
     "en": "- **HKW widget:** Battery symbol in the HKW widget shortened further (another 7 px from the top and 10 px from the bottom)."
