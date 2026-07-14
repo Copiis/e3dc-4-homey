@@ -17,7 +17,7 @@
       display: flex;
       flex-direction: column;
       height: 100%;
-      gap: 8px;
+      gap: 4px;
     }
 
     .header {
@@ -30,8 +30,7 @@
     .controls {
       display: flex;
       justify-content: center;
-      gap: 16px;
-      flex: 1;
+      gap: 12px;
       align-items: center;
     }
 
@@ -111,7 +110,9 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 1px 0;
+      padding: 0;
+      margin: 0;
+      line-height: 1.15;
       border-bottom: 1px solid #333;
     }
     .value-row:last-child {
@@ -156,6 +157,19 @@
       font-size: 11px;
       padding: 2px 5px;
     }
+
+    .ladeprio-section {
+      margin-top: 1px !important;
+      margin-bottom: 1px !important;
+    }
+    .ladeprio-section > div[style*="background:#222"] {
+      padding: 2px !important;
+      margin-bottom: 1px !important;
+    }
+    .ladeprio-section span,
+    .ladeprio-section div[style*="font-size:"] {
+      line-height: 1.05;
+    }
   </style>
 </head>
 <body>
@@ -196,7 +210,7 @@
       <div style="background:#222; border-radius:6px; padding:4px;">
         <div style="font-size:12px; font-weight:600; color:#ccc; margin-bottom:3px;">Batterieentladung durch Wallbox</div>
 
-        <div style="display:flex; align-items:center; justify-content:space-between; font-size:12px; margin-bottom:3px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; font-size:11px; margin-bottom:1px;">
           <span>Im Sonnenmodus</span>
           <div style="display:flex; gap:4px;">
             <button id="sun-allow" class="toggle-btn small">Erlaubt</button>
@@ -204,16 +218,16 @@
           </div>
         </div>
 
-        <div style="display:flex; align-items:center; justify-content:space-between; font-size:12px; margin-bottom:3px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; font-size:11px; margin-bottom:1px;">
           <span>Bis Ladezustand</span>
           <div style="display:flex; align-items:center; gap:3px;">
-            <input id="discharge-input" type="number" min="0" max="100" step="1" style="width:42px; font-size:13px; padding:2px 3px;"> %
-            <button id="set-discharge" class="set-btn" style="font-size:11px; padding:2px 5px;">Setzen</button>
+            <input id="discharge-input" type="number" min="0" max="100" step="1" style="width:42px; font-size:12px; padding:1px 2px;"> %
+            <button id="set-discharge" class="set-btn" style="font-size:10px; padding:1px 4px;">Setzen</button>
           </div>
         </div>
 
-        <div style="display:flex; align-items:center; justify-content:space-between; font-size:12px;">
-          <span style="line-height:1.1;">Im Mischmodus und während Haltezeit und Zeitfunktion</span>
+        <div style="display:flex; align-items:center; justify-content:space-between; font-size:11px;">
+          <span style="line-height:1.05; font-size:10px;">Im Mischmodus und während Haltezeit und Zeitfunktion</span>
           <div style="display:flex; gap:4px;">
             <button id="mix-allow" class="toggle-btn small">Erlaubt</button>
             <button id="mix-block" class="toggle-btn small">Unterbunden</button>
@@ -243,7 +257,7 @@
 
   <script type="text/javascript">
     const SYNC_INTERVAL = 8000;
-    const WIDGET_HEIGHT = 380;
+    const WIDGET_HEIGHT = 500;
 
     let currentStationId = null;
 

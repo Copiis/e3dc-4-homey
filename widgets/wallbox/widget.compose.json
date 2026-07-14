@@ -4,7 +4,7 @@
     "de": "Wallbox"
   },
   "transparent": false,
-  "height": 380,
+  "height": 500,
   "settings": [
     {
       "id": "plantId",
