@@ -96,17 +96,17 @@
 <div id="flow-container" class="homey-widget hidden">
   <svg id="flow-svg" viewBox="0 0 320 278" xmlns="http://www.w3.org/2000/svg">
     <!-- Fluss direkt in die Symbole (keine Boxen mehr) -->
-    <line id="flow-pv-house" x1="160" y1="44" x2="160" y2="103" class="flow-line" data-color="#e6a817"/>
-    <line id="flow-grid-house" x1="68" y1="128" x2="115" y2="128" class="flow-line" data-color="#5b8def"/>
-    <line id="flow-house-grid" x1="115" y1="132" x2="68" y2="132" class="flow-line" data-color="#5b8def"/>
-    <line id="flow-battery-house" x1="250" y1="128" x2="200" y2="128" class="flow-line" data-color="#7AB31B"/>
-    <line id="flow-house-battery" x1="200" y1="132" x2="250" y2="132" class="flow-line" data-color="#7AB31B"/>
-    <line id="flow-house-wallbox" x1="160" y1="135" x2="160" y2="223" class="flow-line" data-color="#8b6cc1"/>
+    <line id="flow-pv-house" x1="160" y1="44" x2="160" y2="100" class="flow-line" data-color="#e6a817"/>
+    <line id="flow-grid-house" x1="50" y1="130" x2="115" y2="130" class="flow-line" data-color="#5b8def"/>
+    <line id="flow-house-grid" x1="115" y1="134" x2="50" y2="134" class="flow-line" data-color="#5b8def"/>
+    <line id="flow-battery-house" x1="180" y1="130" x2="220" y2="130" class="flow-line" data-color="#7AB31B"/>
+    <line id="flow-house-battery" x1="220" y1="134" x2="180" y2="134" class="flow-line" data-color="#7AB31B"/>
+    <line id="flow-house-wallbox" x1="160" y1="145" x2="160" y2="195" class="flow-line" data-color="#8b6cc1"/>
     <g id="flow-dots"></g>
 
-    <!-- PV — Wert dadrüber, Icon zentriert darunter (verdoppelt) -->
-    <g id="node-pv" transform="translate(130, 5)">
-      <text id="pv-value" x="36" y="0" class="node-value" text-anchor="middle">0 W</text>
+    <!-- PV — Wert dadrüber, Icon zentriert -->
+    <g id="node-pv" transform="translate(142, 5)">
+      <text id="pv-value" x="18" y="0" class="node-value" text-anchor="middle">0 W</text>
       <!-- Solar panels icon (deutlicheres Panel mit Gitter) -->
       <g transform="translate(0, 10)">
         <rect x="0" y="0" width="72" height="52" rx="4" fill="#E6A817" stroke="#222" stroke-width="2"/>
@@ -124,8 +124,8 @@
       </g>
     </g>
 
-    <!-- Haus — Icon verdoppelt + Wert mittig -->
-    <g id="node-house" transform="translate(100, 80)">
+    <!-- Haus — zentriert, Wert mittig -->
+    <g id="node-house" transform="translate(115, 100)">
       <!-- House icon (mit Schornstein + Antenne) -->
       <g transform="translate(28, 8)">
         <!-- roof -->
@@ -142,12 +142,12 @@
         <!-- window -->
         <rect x="12" y="10" width="8" height="8" fill="#fff" stroke="#222" stroke-width="0.8"/>
       </g>
-      <!-- Verbrauch mittig auf dem Haus-Symbol -->
-      <text id="house-value" x="60" y="48" class="node-value" text-anchor="middle">0 W</text>
+      <!-- Verbrauch mittig auf dem Haus -->
+      <text id="house-value" x="32" y="52" class="node-value" text-anchor="middle">0 W</text>
     </g>
 
-    <!-- Netz — Symbol verdoppelt, Wert mittig -->
-    <g id="node-grid" transform="translate(5, 85)">
+    <!-- Netz — weiß, Wert mittig darunter -->
+    <g id="node-grid" transform="translate(10, 105)">
       <!-- Power pylon / Strommast (weiß) -->
       <g transform="translate(18, 2)">
         <!-- tower structure -->
@@ -164,54 +164,52 @@
         <line x1="0" y1="6" x2="3" y2="6" stroke="#ddd" stroke-width="1.4"/>
         <line x1="11" y1="6" x2="14" y2="6" stroke="#ddd" stroke-width="1.4"/>
       </g>
-      <!-- Wert mittig auf dem Symbol -->
+      <!-- Wert mittig -->
       <text id="grid-value" x="32" y="70" class="node-value" text-anchor="middle">0 W</text>
     </g>
 
-    <!-- Batterie — Symbol verdoppelt, Werte mittig -->
-    <g id="node-battery" transform="translate(235, 75)">
-      <!-- Battery icon (klassisch + klarer) -->
-      <g transform="translate(12, 4)">
-        <!-- Battery body -->
-        <rect x="0" y="8" width="64" height="36" rx="4" fill="none" stroke="#333" stroke-width="3"/>
-        <!-- Battery cap (oben) -->
-        <rect x="22" y="0" width="20" height="8" rx="2" fill="#7AB31B" stroke="#333" stroke-width="1.6"/>
-        <!-- + und - Pole -->
-        <text x="10" y="32" font-size="14" fill="#333" font-weight="bold">+</text>
-        <text x="52" y="32" font-size="14" fill="#333" font-weight="bold">−</text>
-        <!-- Füllstand (dynamisch wirkend) -->
-        <rect x="6" y="14" width="52" height="24" rx="2" fill="#7AB31B" opacity="0.35"/>
-        <!-- Trennlinien für "Zellen" -->
-        <line x1="26" y1="14" x2="26" y2="38" stroke="#333" stroke-width="1" opacity="0.4"/>
-        <line x1="42" y1="14" x2="42" y2="38" stroke="#333" stroke-width="1" opacity="0.4"/>
+    <!-- Batterie — normalisierte Proportionen, doppelte Größe, Wert mittig -->
+    <g id="node-battery" transform="translate(220, 100)">
+      <!-- Battery icon -->
+      <g transform="translate(5, 5)">
+        <!-- body -->
+        <rect x="0" y="0" width="70" height="40" rx="5" fill="none" stroke="#333" stroke-width="3"/>
+        <!-- cap -->
+        <rect x="70" y="10" width="10" height="20" rx="2" fill="#7AB31B" stroke="#333" stroke-width="2"/>
+        <!-- + - -->
+        <text x="8" y="26" font-size="14" fill="#333" font-weight="bold">+</text>
+        <text x="58" y="26" font-size="14" fill="#333" font-weight="bold">−</text>
+        <!-- fill -->
+        <rect x="4" y="6" width="62" height="28" rx="3" fill="#7AB31B" opacity="0.35"/>
+        <!-- cell lines -->
+        <line x1="24" y1="6" x2="24" y2="34" stroke="#333" stroke-width="1" opacity="0.4"/>
+        <line x1="46" y1="6" x2="46" y2="34" stroke="#333" stroke-width="1" opacity="0.4"/>
       </g>
-      <!-- Werte mittig auf dem Symbol -->
-      <text id="battery-value" x="44" y="70" class="node-value" text-anchor="middle">0 W</text>
-      <text id="battery-soc" x="44" y="84" class="node-soc" text-anchor="middle">0%</text>
-      <text id="battery-charge-time" x="44" y="96" class="node-soc" text-anchor="middle">—</text>
+      <!-- Werte mittig -->
+      <text id="battery-value" x="40" y="60" class="node-value" text-anchor="middle">0 W</text>
+      <text id="battery-soc" x="40" y="74" class="node-soc" text-anchor="middle">0%</text>
+      <text id="battery-charge-time" x="40" y="86" class="node-soc" text-anchor="middle">—</text>
     </g>
 
-    <!-- Wallbox — Icon verdoppelt + Wert mittig -->
-    <g id="node-wallbox" transform="translate(125, 200)">
-      <!-- Wallbox / EV charger icon (besser erkennbarer Stecker) -->
-      <g transform="translate(0, 3)">
-        <!-- Wallbox-Gehäuse -->
-        <rect x="0" y="0" width="36" height="52" rx="6" fill="#8B6CC1" stroke="#222" stroke-width="2"/>
-        <!-- kleines Display / Blitz -->
-        <rect x="8" y="8" width="20" height="16" rx="2" fill="#222"/>
-        <path d="M14 10 L22 10 L17 18 L24 18 L15 26" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        <!-- Kabel -->
-        <path d="M36 26 Q52 18 64 26" fill="none" stroke="#333" stroke-width="5" stroke-linecap="round"/>
-        <!-- Typ-2-ähnlicher Stecker -->
-        <rect x="60" y="16" width="18" height="20" rx="4" fill="#333"/>
-        <!-- Pins -->
-        <circle cx="66" cy="22" r="2.6" fill="#fff"/>
-        <circle cx="74" cy="22" r="2.6" fill="#fff"/>
-        <!-- Erdung oben -->
-        <rect x="68" y="14" width="4" height="4" fill="#fff"/>
+    <!-- Wallbox → Auto Symbol, Wert mittig darunter -->
+    <g id="node-wallbox" transform="translate(142, 195)">
+      <!-- Car icon (einfach, lila) -->
+      <g transform="translate(5, 5)">
+        <!-- body -->
+        <rect x="0" y="10" width="50" height="16" rx="3" fill="#8B6CC1" stroke="#222" stroke-width="2"/>
+        <!-- roof/cabin -->
+        <rect x="8" y="4" width="30" height="10" rx="2" fill="#8B6CC1" stroke="#222" stroke-width="1.5"/>
+        <!-- windows -->
+        <rect x="10" y="6" width="10" height="5" fill="#222"/>
+        <rect x="26" y="6" width="10" height="5" fill="#222"/>
+        <!-- wheels -->
+        <circle cx="12" cy="28" r="5" fill="#333"/>
+        <circle cx="42" cy="28" r="5" fill="#333"/>
+        <circle cx="12" cy="28" r="2" fill="#666"/>
+        <circle cx="42" cy="28" r="2" fill="#666"/>
       </g>
-      <!-- Wert mittig auf dem Symbol -->
-      <text id="wallbox-value" x="42" y="70" class="node-value" text-anchor="middle">0 W</text>
+      <!-- Wert mittig -->
+      <text id="wallbox-value" x="30" y="55" class="node-value" text-anchor="middle">0 W</text>
     </g>
   </svg>
 </div>
