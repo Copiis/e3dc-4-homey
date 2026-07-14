@@ -3235,16 +3235,6 @@
       },
       "transparent": false,
       "height": 310,
-      "settings": [
-        {
-          "id": "plantId",
-          "type": "autocomplete",
-          "title": {
-            "de": "Hauskraftwerk",
-            "en": "Home power plant"
-          }
-        }
-      ],
       "api": {
         "readHomePowerPlants": {
           "method": "GET",
@@ -3263,7 +3253,8 @@
           "path": "/log"
         }
       },
-      "id": "hkw-ladeplaner"
+      "id": "hkw-ladeplaner",
+      "settings": []
     },
     "wallbox": {
       "name": {
@@ -3313,16 +3304,6 @@
       },
       "transparent": false,
       "height": 480,
-      "settings": [
-        {
-          "id": "plantId",
-          "type": "autocomplete",
-          "title": {
-            "de": "Hauskraftwerk",
-            "en": "Home power plant"
-          }
-        }
-      ],
       "api": {
         "readHomePowerPlants": {
           "method": "GET",
@@ -3345,7 +3326,8 @@
           "path": "/log"
         }
       },
-      "id": "wallbox-ladeplaner"
+      "id": "wallbox-ladeplaner",
+      "settings": []
     }
   },
   "capabilities": {

@@ -25,6 +25,11 @@
 <body>
 <div class="header">Wallbox Ladeplaner</div>
 
+<div id="hkw-select-section" class="section" style="display:none; margin-bottom:4px;">
+  <div class="label">Hauskraftwerk</div>
+  <select id="hkw"></select>
+</div>
+
 <div style="background:#3a2; color:#fff; font-size:8px; padding:2px 4px; border-radius:3px; margin-bottom:4px; line-height:1.2;">
   <strong>Hinweis:</strong> Aktive Pläne haben Vorrang. Flows für Charging/Sun/Current werden ignoriert, solange ein Plan läuft.<br>
   Bei „Hausakku entladen bis“ wird der Wert nur temporär gesetzt und nach Plan-Ende automatisch auf den ursprünglichen Wert zurückgesetzt.
@@ -102,11 +107,11 @@ async function onHomeyReady(h) {
     if (plants.length === 1) {
       matched = plants[0];
       plantId = matched.id;
-      // persist the (new) default selection, like in HKW Ladeplaner
       Homey.setSettings({ plantId: matched });
     } else if (plants.length > 1) {
-      document.body.innerHTML = '<div style="color:#f88; text-align:center; padding:20px">Bitte HKW im Widget auswählen</div>';
-      return;
+      // Multiple HKWs: show selector inside widget (no settings picker)
+      setupHkwSelector(plants, storedId);
+      return; // wait for user choice
     } else {
       document.body.innerHTML = '<div style="color:#f88; text-align:center; padding:20px">Kein HKW gefunden</div>';
       return;
@@ -115,9 +120,50 @@ async function onHomeyReady(h) {
     plantId = matched.id;
   }
 
-  // At this point plantId is guaranteed (either from storage or auto-selected for single HKW)
+  // Single HKW or already matched: proceed, hide HKW selector
+  const hkwSection = document.getElementById('hkw-select-section');
+  if (hkwSection) hkwSection.style.display = 'none';
 
-  // Disable end input when "Bis voll" checkbox is selected (like in HKW widget)
+  setupWallboxUi();
+}
+
+function setupHkwSelector(plants, initialId) {
+  const section = document.getElementById('hkw-select-section');
+  const sel = document.getElementById('hkw');
+  if (!section || !sel) return;
+
+  section.style.display = 'block';
+
+  sel.innerHTML = '';
+  plants.forEach(p => {
+    const opt = document.createElement('option');
+    opt.value = p.id;
+    opt.textContent = p.name;
+    sel.appendChild(opt);
+  });
+
+  // preselect
+  if (initialId) {
+    sel.value = initialId;
+  } else if (plants.length > 0) {
+    sel.value = plants[0].id;
+  }
+
+  plantId = sel.value;
+
+  sel.onchange = () => {
+    plantId = sel.value;
+    Homey.setSettings({ plantId: { id: plantId, name: sel.options[sel.selectedIndex].text } });
+    loadWallboxes().then(loadPlans).catch(() => {});
+  };
+
+  loadWallboxes().then(loadPlans).catch(err => {
+    console.error(err);
+  });
+}
+
+function setupWallboxUi() {
+  // Disable end input when "Bis voll" ...
   const untilFullCb = document.getElementById('until-full');
   const endInputWb = document.getElementById('end');
   const endLabelWb = document.getElementById('end-label');
@@ -133,7 +179,6 @@ async function onHomeyReady(h) {
 
   if (untilFullCb) {
     untilFullCb.addEventListener('change', updateWallboxEndDisabled);
-    // initial state
     updateWallboxEndDisabled();
   }
 
@@ -142,7 +187,7 @@ async function onHomeyReady(h) {
     const c = document.getElementById('plans');
     if (c) c.innerHTML = '<div style="color:#f88">Fehler beim Laden. Siehe Logs.</div>';
   });
-  setInterval(() => { loadPlans().catch(() => {}); }, 60000);  // reduced from 10s to lower load on Homey (esp. older 2023 models)
+  setInterval(() => { loadPlans().catch(() => {}); }, 60000);
 }
 
 async function loadWallboxes() {
@@ -150,6 +195,8 @@ async function loadWallboxes() {
     const res = await Homey.api('GET', `/wallboxes?plantId=${plantId}`);
     wallboxes = res;
     const sel = document.getElementById('wallbox');
+    const wallboxRow = sel ? sel.closest('.row') : null;
+
     sel.innerHTML = '';
     wallboxes.forEach(w => {
       const o = document.createElement('option');
@@ -158,7 +205,14 @@ async function loadWallboxes() {
       sel.appendChild(o);
     });
 
-    // Reload plans when user switches wallbox (avoid duplicates)
+    // If only one wallbox, completely hide the selection
+    if (wallboxes.length === 1 && wallboxRow) {
+      wallboxRow.style.display = 'none';
+    } else if (wallboxRow) {
+      wallboxRow.style.display = '';
+    }
+
+    // Reload plans when user switches wallbox
     sel.onchange = loadPlans;
   } catch (err) {
     console.error('loadWallboxes failed:', err);

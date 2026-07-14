@@ -24,6 +24,11 @@
 <body>
 <div class="header">HKW Ladeplaner</div>
 
+<div id="hkw-select-section" class="section" style="display:none; margin-bottom:4px;">
+  <div class="label">Hauskraftwerk</div>
+  <select id="hkw"></select>
+</div>
+
 <div style="background:#3a2; color:#fff; font-size:8px; padding:2px 4px; border-radius:3px; margin-bottom:4px; line-height:1.2;">
   <strong>Achtung:</strong> Aktive Ladepläne haben Vorrang vor Flows. Solange ein Plan läuft, werden Flow-Befehle für Power-Modi ignoriert.
 </div>
@@ -86,17 +91,15 @@ async function onHomeyReady(h) {
     console.error('Failed to load plants', e);
   }
 
-  // Validate stored plantId against current devices
   let matched = plants.find(p => p.id === storedId);
 
   if (!matched) {
     if (plants.length === 1) {
       matched = plants[0];
       plantId = matched.id;
-      // persist the (new) default selection
       Homey.setSettings({ plantId: matched });
     } else if (plants.length > 1) {
-      document.body.innerHTML = '<div style="color:#f88; text-align:center; padding:20px">Bitte HKW im Widget auswählen</div>';
+      setupHkwSelector(plants, storedId);
       return;
     } else {
       document.body.innerHTML = '<div style="color:#f88; text-align:center; padding:20px">Kein HKW gefunden</div>';
@@ -106,10 +109,9 @@ async function onHomeyReady(h) {
     plantId = matched.id;
   }
 
-  if (!plantId) {
-    document.body.innerHTML = '<div style="color:#f88; text-align:center; padding:20px">Bitte HKW im Widget auswählen</div>';
-    return;
-  }
+  // Single HKW: hide selector
+  const hkwSection = document.getElementById('hkw-select-section');
+  if (hkwSection) hkwSection.style.display = 'none';
 
   const debugEl = document.getElementById('plant-debug');
   if (debugEl) {
@@ -272,6 +274,38 @@ async function removePlan(index) {
     list.splice(index, 1);
   }
   await Homey.api('POST', '/hkw-schedules', { plantId, schedules: list });
+  loadPlans();
+}
+
+function setupHkwSelector(plants, initialId) {
+  const section = document.getElementById('hkw-select-section');
+  const sel = document.getElementById('hkw');
+  if (!section || !sel) return;
+
+  section.style.display = 'block';
+
+  sel.innerHTML = '';
+  plants.forEach(p => {
+    const opt = document.createElement('option');
+    opt.value = p.id;
+    opt.textContent = p.name;
+    sel.appendChild(opt);
+  });
+
+  if (initialId) {
+    sel.value = initialId;
+  } else if (plants.length > 0) {
+    sel.value = plants[0].id;
+  }
+
+  plantId = sel.value;
+
+  sel.onchange = () => {
+    plantId = sel.value;
+    Homey.setSettings({ plantId: { id: plantId, name: sel.options[sel.selectedIndex].text } });
+    loadPlans();
+  };
+
   loadPlans();
 }
 </script>
