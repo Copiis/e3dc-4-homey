@@ -259,6 +259,7 @@
     const WIDGET_HEIGHT = 500;
 
     let currentStationId = null;
+    let lastLadePrioSet = 0;
 
     function onHomeyReady(Homey) {
       // Signal ready immediately so it doesn't load forever
@@ -400,6 +401,7 @@
 
           try {
             await Homey.api('POST', '/set-priority', { stationId: currentStationId, batteryFirst: true });
+            lastLadePrioSet = Date.now();
             // Do not immediate sync here — optimistic state is set.
             // Periodic sync (with forced EMS refresh) will confirm.
           } catch (e) {
@@ -421,6 +423,7 @@
 
           try {
             await Homey.api('POST', '/set-priority', { stationId: currentStationId, batteryFirst: false });
+            lastLadePrioSet = Date.now();
             // Do not immediate sync here — optimistic state is set.
             // Periodic sync (with forced EMS refresh) will confirm.
           } catch (e) {
@@ -442,6 +445,7 @@
           sunBlock.classList.remove('active');
           try {
             await Homey.api('POST', '/set-battery-discharge-sun', { stationId: currentStationId, allowed: true });
+            lastLadePrioSet = Date.now();
             // optimistic + next periodic sync (with force refresh) will keep it
           } catch (e) {
             sunAllow.classList.remove('active');
@@ -457,6 +461,7 @@
           sunAllow.classList.remove('active');
           try {
             await Homey.api('POST', '/set-battery-discharge-sun', { stationId: currentStationId, allowed: false });
+            lastLadePrioSet = Date.now();
             // optimistic + next periodic sync (with force refresh) will keep it
           } catch (e) {
             sunBlock.classList.remove('active');
@@ -475,6 +480,7 @@
           mixBlock.classList.remove('active');
           try {
             await Homey.api('POST', '/set-battery-discharge-mix', { stationId: currentStationId, allowed: true });
+            lastLadePrioSet = Date.now();
             // optimistic + next periodic sync (with force refresh) will keep it
           } catch (e) {
             mixAllow.classList.remove('active');
@@ -490,6 +496,7 @@
           mixAllow.classList.remove('active');
           try {
             await Homey.api('POST', '/set-battery-discharge-mix', { stationId: currentStationId, allowed: false });
+            lastLadePrioSet = Date.now();
             // optimistic + next periodic sync (with force refresh) will keep it
           } catch (e) {
             mixBlock.classList.remove('active');
@@ -576,28 +583,32 @@
         setEl('schuko', wb.schuko ? 'Ja' : 'Nein');
 
         // Ladepriorisierung button states (matching E3DC "Ladepriorisierung" screen)
-        const prioBat = document.getElementById('prio-battery');
-        const prioWb = document.getElementById('prio-wallbox');
-        if (prioBat && prioWb) {
-          const isBat = !!wb.priorityBatteryFirst;
-          prioBat.classList.toggle('active', isBat);
-          prioWb.classList.toggle('active', !isBat);
-        }
+        // Respect recent user set to avoid bouncing from stale manager cache pushes
+        const now = Date.now();
+        if (now - lastLadePrioSet > 45000) {
+          const prioBat = document.getElementById('prio-battery');
+          const prioWb = document.getElementById('prio-wallbox');
+          if (prioBat && prioWb) {
+            const isBat = !!wb.priorityBatteryFirst;
+            prioBat.classList.toggle('active', isBat);
+            prioWb.classList.toggle('active', !isBat);
+          }
 
-        const sunAllow = document.getElementById('sun-allow');
-        const sunBlock = document.getElementById('sun-block');
-        if (sunAllow && sunBlock) {
-          const allowed = !!wb.batteryDischargeSun;
-          sunAllow.classList.toggle('active', allowed);
-          sunBlock.classList.toggle('active', !allowed);
-        }
+          const sunAllow = document.getElementById('sun-allow');
+          const sunBlock = document.getElementById('sun-block');
+          if (sunAllow && sunBlock) {
+            const allowed = !!wb.batteryDischargeSun;
+            sunAllow.classList.toggle('active', allowed);
+            sunBlock.classList.toggle('active', !allowed);
+          }
 
-        const mixAllow = document.getElementById('mix-allow');
-        const mixBlock = document.getElementById('mix-block');
-        if (mixAllow && mixBlock) {
-          const allowed = !!wb.batteryDischargeMix;
-          mixAllow.classList.toggle('active', allowed);
-          mixBlock.classList.toggle('active', !allowed);
+          const mixAllow = document.getElementById('mix-allow');
+          const mixBlock = document.getElementById('mix-block');
+          if (mixAllow && mixBlock) {
+            const allowed = !!wb.batteryDischargeMix;
+            mixAllow.classList.toggle('active', allowed);
+            mixBlock.classList.toggle('active', !allowed);
+          }
         }
 
         // Prefill interactive inputs

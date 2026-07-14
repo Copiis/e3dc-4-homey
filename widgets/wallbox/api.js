@@ -7,6 +7,28 @@ module.exports = {
     return readHomePowerPlantsForHomey(homey);
   },
 
+  async _invalidateEmsCache(homey, stationId) {
+    try {
+      const hpsDriver = homey.drivers.getDriver('home-power-station');
+      const hpsList = hpsDriver.getDevices();
+      for (const hps of hpsList) {
+        if (typeof hps.ready === 'function') {
+          await hps.ready();
+        }
+        const hpsData = typeof hps.getData === 'function' ? hps.getData() : {};
+        const hpsId = hpsData.id || (typeof hps.getId === 'function' ? hps.getId() : null);
+        if (String(hpsId) === String(stationId)) {
+          if (hps.wallboxManager && typeof hps.wallboxManager.invalidateEmsSettingsCache === 'function') {
+            hps.wallboxManager.invalidateEmsSettingsCache();
+          }
+          break;
+        }
+      }
+    } catch (e) {
+      // ignore
+    }
+  },
+
   async getWallboxStatus({ homey, query }) {
     const stationId = query.plantId || query.stationId;  // support both for compatibility
     if (!stationId) {
@@ -184,6 +206,7 @@ module.exports = {
         await wb.setBatteryBeforeCar(batteryFirst);
         // Optimistic update so the widget sees the new value immediately
         wb.setCapabilityValue('wallbox_priority_battery_first', batteryFirst);
+        await this._invalidateEmsCache(homey, stationId);
         return { success: true };
       } catch (e) {
         return { success: false, error: e.message || String(e) };
@@ -207,6 +230,7 @@ module.exports = {
       try {
         await wb.setBatteryToCar(allowed);
         wb.setCapabilityValue('wallbox_battery_discharge_sun', allowed);
+        await this._invalidateEmsCache(homey, stationId);
         return { success: true };
       } catch (e) {
         return { success: false, error: e.message || String(e) };
@@ -232,6 +256,7 @@ module.exports = {
         await wb.setDisableBatteryAtMixMode(!allowed);
         // Optimistic: capability true means allowed (Erlaubt)
         wb.setCapabilityValue('wallbox_battery_discharge_mix', allowed);
+        await this._invalidateEmsCache(homey, stationId);
         return { success: true };
       } catch (e) {
         return { success: false, error: e.message || String(e) };
