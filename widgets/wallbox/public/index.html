@@ -264,6 +264,14 @@
     let currentStationId = null;
     let lastLadePrioSet = 0;
 
+    // Remember the last user-intended values for priority/discharge buttons.
+    // Used to keep UI stable (prevent bounce) while E3DC / backend may still
+    // return stale values for a while after a set.
+    let lastPrioBatteryFirst = null;
+    let lastDischargeSun = null;
+    let lastDischargeMix = null;
+    const LADEPRIO_COOLDOWN_MS = 120000; // 2 minutes — covers propagation delays to E3DC reads
+
     function onHomeyReady(Homey) {
       // Signal ready immediately so it doesn't load forever
       Homey.ready({ height: WIDGET_HEIGHT });
@@ -394,12 +402,12 @@
           // Optimistic UI update
           prioBattery.classList.add('active');
           prioWallbox.classList.remove('active');
+          lastPrioBatteryFirst = true;
+          lastLadePrioSet = Date.now();
 
           try {
             await Homey.api('POST', '/set-priority', { stationId: currentStationId, batteryFirst: true });
-            lastLadePrioSet = Date.now();
-            // Do not immediate sync here — optimistic state is set.
-            // Periodic sync (with forced EMS refresh) will confirm.
+            // last* already set for stability during cooldown
           } catch (e) {
             // revert on error
             prioBattery.classList.remove('active');
@@ -416,12 +424,12 @@
           // Optimistic UI update
           prioWallbox.classList.add('active');
           prioBattery.classList.remove('active');
+          lastPrioBatteryFirst = false;
+          lastLadePrioSet = Date.now();
 
           try {
             await Homey.api('POST', '/set-priority', { stationId: currentStationId, batteryFirst: false });
-            lastLadePrioSet = Date.now();
-            // Do not immediate sync here — optimistic state is set.
-            // Periodic sync (with forced EMS refresh) will confirm.
+            // last* already set for stability during cooldown
           } catch (e) {
             // revert on error
             prioWallbox.classList.remove('active');
@@ -439,10 +447,11 @@
           if (!currentStationId) return;
           sunAllow.classList.add('active');
           sunBlock.classList.remove('active');
+          lastDischargeSun = true;
+          lastLadePrioSet = Date.now();
           try {
             await Homey.api('POST', '/set-battery-discharge-sun', { stationId: currentStationId, allowed: true });
-            lastLadePrioSet = Date.now();
-            // optimistic + next periodic sync (with force refresh) will keep it
+            // last* already set for stability during cooldown
           } catch (e) {
             sunAllow.classList.remove('active');
             sunBlock.classList.add('active');
@@ -455,10 +464,11 @@
           if (!currentStationId) return;
           sunBlock.classList.add('active');
           sunAllow.classList.remove('active');
+          lastDischargeSun = false;
+          lastLadePrioSet = Date.now();
           try {
             await Homey.api('POST', '/set-battery-discharge-sun', { stationId: currentStationId, allowed: false });
-            lastLadePrioSet = Date.now();
-            // optimistic + next periodic sync (with force refresh) will keep it
+            // last* already set for stability during cooldown
           } catch (e) {
             sunBlock.classList.remove('active');
             sunAllow.classList.add('active');
@@ -474,10 +484,11 @@
           if (!currentStationId) return;
           mixAllow.classList.add('active');
           mixBlock.classList.remove('active');
+          lastDischargeMix = true;
+          lastLadePrioSet = Date.now();
           try {
             await Homey.api('POST', '/set-battery-discharge-mix', { stationId: currentStationId, allowed: true });
-            lastLadePrioSet = Date.now();
-            // optimistic + next periodic sync (with force refresh) will keep it
+            // last* already set for stability during cooldown
           } catch (e) {
             mixAllow.classList.remove('active');
             mixBlock.classList.add('active');
@@ -490,10 +501,11 @@
           if (!currentStationId) return;
           mixBlock.classList.add('active');
           mixAllow.classList.remove('active');
+          lastDischargeMix = false;
+          lastLadePrioSet = Date.now();
           try {
             await Homey.api('POST', '/set-battery-discharge-mix', { stationId: currentStationId, allowed: false });
-            lastLadePrioSet = Date.now();
-            // optimistic + next periodic sync (with force refresh) will keep it
+            // last* already set for stability during cooldown
           } catch (e) {
             mixBlock.classList.remove('active');
             mixAllow.classList.add('active');
@@ -577,32 +589,51 @@
         setEl('schuko', wb.schuko ? 'Ja' : 'Nein');
 
         // Ladepriorisierung button states (matching E3DC "Ladepriorisierung" screen)
-        // Respect recent user set to avoid bouncing from stale manager cache pushes
+        // Within cooldown after user action: strongly prefer the last user-chosen value
+        // (from local memory) over whatever the server currently returns.
+        // This stops the buttons from jumping back and forth while E3DC / the manager
+        // still delivers stale EMS settings on read (even after invalidate + refresh).
+        // After cooldown we trust the server data (which should have settled by then).
         const now = Date.now();
-        if (now - lastLadePrioSet > 45000) {
-          const prioBat = document.getElementById('prio-battery');
-          const prioWb = document.getElementById('prio-wallbox');
-          if (prioBat && prioWb) {
-            const isBat = !!wb.priorityBatteryFirst;
-            prioBat.classList.toggle('active', isBat);
-            prioWb.classList.toggle('active', !isBat);
-          }
+        const isRecent = (now - lastLadePrioSet) <= LADEPRIO_COOLDOWN_MS;
 
-          const sunAllow = document.getElementById('sun-allow');
-          const sunBlock = document.getElementById('sun-block');
-          if (sunAllow && sunBlock) {
-            const allowed = !!wb.batteryDischargeSun;
-            sunAllow.classList.toggle('active', allowed);
-            sunBlock.classList.toggle('active', !allowed);
+        const prioBat = document.getElementById('prio-battery');
+        const prioWb = document.getElementById('prio-wallbox');
+        if (prioBat && prioWb) {
+          let isBat;
+          if (isRecent && lastPrioBatteryFirst !== null) {
+            isBat = lastPrioBatteryFirst;
+          } else {
+            isBat = !!wb.priorityBatteryFirst;
           }
+          prioBat.classList.toggle('active', isBat);
+          prioWb.classList.toggle('active', !isBat);
+        }
 
-          const mixAllow = document.getElementById('mix-allow');
-          const mixBlock = document.getElementById('mix-block');
-          if (mixAllow && mixBlock) {
-            const allowed = !!wb.batteryDischargeMix;
-            mixAllow.classList.toggle('active', allowed);
-            mixBlock.classList.toggle('active', !allowed);
+        const sunAllow = document.getElementById('sun-allow');
+        const sunBlock = document.getElementById('sun-block');
+        if (sunAllow && sunBlock) {
+          let allowed;
+          if (isRecent && lastDischargeSun !== null) {
+            allowed = lastDischargeSun;
+          } else {
+            allowed = !!wb.batteryDischargeSun;
           }
+          sunAllow.classList.toggle('active', allowed);
+          sunBlock.classList.toggle('active', !allowed);
+        }
+
+        const mixAllow = document.getElementById('mix-allow');
+        const mixBlock = document.getElementById('mix-block');
+        if (mixAllow && mixBlock) {
+          let allowed;
+          if (isRecent && lastDischargeMix !== null) {
+            allowed = lastDischargeMix;
+          } else {
+            allowed = !!wb.batteryDischargeMix;
+          }
+          mixAllow.classList.toggle('active', allowed);
+          mixBlock.classList.toggle('active', !allowed);
         }
 
         // Prefill interactive inputs

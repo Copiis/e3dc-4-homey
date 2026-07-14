@@ -115,10 +115,14 @@ module.exports = {
 
       if (type === 'charging') {
         const current = wb.getCapabilityValue('wallbox_charging') === true;
-        await wb.applyChargingAllowed(!current);
+        const newVal = !current;
+        await wb.applyChargingAllowed(newVal);
+        wb.setCapabilityValue('wallbox_charging', newVal);
       } else if (type === 'sunMode') {
         const current = wb.getCapabilityValue('wallbox_sun_mode') === true;
-        await wb.applySunMode(!current);
+        const newVal = !current;
+        await wb.applySunMode(newVal);
+        wb.setCapabilityValue('wallbox_sun_mode', newVal);
       }
 
       // Only toggle the first matching wallbox
@@ -204,9 +208,12 @@ module.exports = {
       if (!settings || String(settings.stationId) !== String(stationId)) continue;
       try {
         await wb.setBatteryBeforeCar(batteryFirst);
-        // Optimistic update so the widget sees the new value immediately
+        // Optimistic + re-assert after the set (the internal refreshAfter may have
+        // pulled a still-stale value from E3DC). Widget will also protect UI state.
         wb.setCapabilityValue('wallbox_priority_battery_first', batteryFirst);
         await this._invalidateEmsCache(homey, stationId);
+        // Re-assert once more after invalidation in case of races
+        wb.setCapabilityValue('wallbox_priority_battery_first', batteryFirst);
         return { success: true };
       } catch (e) {
         return { success: false, error: e.message || String(e) };
@@ -231,6 +238,8 @@ module.exports = {
         await wb.setBatteryToCar(allowed);
         wb.setCapabilityValue('wallbox_battery_discharge_sun', allowed);
         await this._invalidateEmsCache(homey, stationId);
+        // Re-assert after possible internal refresh
+        wb.setCapabilityValue('wallbox_battery_discharge_sun', allowed);
         return { success: true };
       } catch (e) {
         return { success: false, error: e.message || String(e) };
@@ -257,6 +266,8 @@ module.exports = {
         // Optimistic: capability true means allowed (Erlaubt)
         wb.setCapabilityValue('wallbox_battery_discharge_mix', allowed);
         await this._invalidateEmsCache(homey, stationId);
+        // Re-assert after possible internal refresh
+        wb.setCapabilityValue('wallbox_battery_discharge_mix', allowed);
         return { success: true };
       } catch (e) {
         return { success: false, error: e.message || String(e) };
