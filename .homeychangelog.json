@@ -1,4 +1,8 @@
 {
+  "1.8.52": {
+    "de": "- **HKW-Widget:** Wallbox-Icon jetzt exakt so breit wie das PV-Modul (Proportionen erhalten). Texte von PV, Haus und Wallbox horizontal exakt ausgerichtet.",
+    "en": "- **HKW widget:** Wallbox icon now exactly the same width as the PV module (proportions preserved). Texts for PV, house and wallbox horizontally aligned."
+  },
   "1.8.51": {
     "de": "- **Wallbox-Widget:** „Solaranteil“ wird jetzt korrekt in Watt (W) angezeigt (war fälschlich als Prozent %).",
     "en": "- **Wallbox widget:** \"Solar share\" is now correctly displayed in Watts (W) (was incorrectly shown as percent %)."
