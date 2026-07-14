@@ -82,12 +82,38 @@ let Homey = null;
 let plantId = null;
 let wallboxes = [];
 
-function onHomeyReady(h) {
+async function onHomeyReady(h) {
   Homey = h;
   Homey.ready({ height: 480 });
 
   const s = Homey.getSettings();
-  plantId = s.plantId && s.plantId.id ? s.plantId.id : s.plantId;
+  let storedId = s.plantId && s.plantId.id ? s.plantId.id : s.plantId;
+
+  let plants = [];
+  try {
+    plants = await Homey.api('GET', '/');
+  } catch(e) {
+    console.error('Failed to load plants', e);
+  }
+
+  let matched = plants.find(p => p.id === storedId);
+
+  if (!matched) {
+    if (plants.length === 1) {
+      matched = plants[0];
+      plantId = matched.id;
+      // persist the (new) default selection, like in HKW Ladeplaner
+      Homey.setSettings({ plantId: matched });
+    } else if (plants.length > 1) {
+      document.body.innerHTML = '<div style="color:#f88; text-align:center; padding:20px">Bitte HKW im Widget auswählen</div>';
+      return;
+    } else {
+      document.body.innerHTML = '<div style="color:#f88; text-align:center; padding:20px">Kein HKW gefunden</div>';
+      return;
+    }
+  } else {
+    plantId = matched.id;
+  }
 
   if (!plantId) {
     document.body.innerHTML = '<div style="color:red;padding:10px">HKW auswählen</div>';
