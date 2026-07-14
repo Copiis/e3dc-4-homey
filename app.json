@@ -3197,14 +3197,6 @@
       "height": 300,
       "settings": [
         {
-          "id": "plantId",
-          "type": "autocomplete",
-          "title": {
-            "de": "Hauskraftwerk",
-            "en": "Home power plant"
-          }
-        },
-        {
           "id": "flowThreshold",
           "type": "number",
           "value": 30,
