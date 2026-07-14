@@ -169,27 +169,29 @@
       <text id="battery-charge-time" x="34" y="71" class="node-soc" text-anchor="middle">—</text>
     </g>
 
-    <!-- Auto / Fahrzeug-Symbol (gutes Inline-SVG, seitliche Ansicht) -->
+    <!-- Cybertruck (sehr eckiges, angulars Design als Inline-SVG) -->
     <g id="node-wallbox" transform="translate(110, 215)">
-      <!-- Modernes EV-Auto (saubere Vektorform, Wert mittig) -->
-      <g transform="translate(2, 4) scale(0.82)">
-        <!-- Karosserie -->
-        <path d="M 5 30 Q 5 18 20 17 L 125 17 Q 140 18 140 30 L 140 42 Q 5 42 5 30"
-              fill="#8B6CC1" stroke="#222" stroke-width="3"/>
-        <!-- Kabine / Dach -->
-        <path d="M 28 17 L 42 5 L 100 5 L 114 17"
-              fill="#8B6CC1" stroke="#222" stroke-width="2.5"/>
-        <!-- Fenster -->
-        <rect x="36" y="8" width="20" height="7" rx="1" fill="#222"/>
-        <rect x="70" y="8" width="22" height="7" rx="1" fill="#222"/>
+      <!-- Cybertruck seitliche Ansicht – scharfe Kanten, flaches Dach, markante Form -->
+      <g transform="translate(-2, 3) scale(0.78)">
+        <!-- Haupt-Karosserie (sehr angular) -->
+        <polygon 
+          points="5,42 5,28 18,23 35,16 112,16 128,23 142,28 142,42"
+          fill="#8B6CC1" stroke="#222" stroke-width="3"/>
+        <!-- Kabine / Glasdach (Cybertruck-typisch flach und eckig) -->
+        <polygon 
+          points="30,16 42,6 98,6 110,16"
+          fill="#8B6CC1" stroke="#222" stroke-width="2.5"/>
+        <!-- Fenster (flach, kantig) -->
+        <polygon points="38,13 48,8 68,8 68,13" fill="#222"/>
+        <polygon points="74,13 74,8 96,8 102,13" fill="#222"/>
         <!-- Räder -->
-        <circle cx="28" cy="46" r="10" fill="#222"/>
-        <circle cx="117" cy="46" r="10" fill="#222"/>
-        <circle cx="28" cy="46" r="4" fill="#555"/>
-        <circle cx="117" cy="46" r="4" fill="#555"/>
+        <circle cx="26" cy="46" r="11" fill="#222"/>
+        <circle cx="122" cy="46" r="11" fill="#222"/>
+        <circle cx="26" cy="46" r="4.5" fill="#555"/>
+        <circle cx="122" cy="46" r="4.5" fill="#555"/>
       </g>
-      <!-- Wert mittig auf dem Auto -->
-      <text id="wallbox-value" x="72" y="35" class="node-value" text-anchor="middle">0 W</text>
+      <!-- Wert mittig auf dem Cybertruck -->
+      <text id="wallbox-value" x="74" y="32" class="node-value" text-anchor="middle">0 W</text>
     </g>
   </svg>
 </div>
