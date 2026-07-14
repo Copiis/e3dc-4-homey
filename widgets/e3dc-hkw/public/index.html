@@ -96,18 +96,19 @@
 <div id="flow-container" class="homey-widget hidden">
   <svg id="flow-svg" viewBox="0 0 320 278" xmlns="http://www.w3.org/2000/svg">
     <!-- Fluss direkt in die Symbole (keine Boxen mehr) -->
-    <line id="flow-pv-house" x1="160" y1="44" x2="160" y2="108" class="flow-line" data-color="#e6a817"/>
-    <line id="flow-grid-house" x1="68" y1="130" x2="115" y2="130" class="flow-line" data-color="#5b8def"/>
-    <line id="flow-house-grid" x1="115" y1="134" x2="68" y2="134" class="flow-line" data-color="#5b8def"/>
-    <line id="flow-battery-house" x1="250" y1="130" x2="200" y2="130" class="flow-line" data-color="#7AB31B"/>
-    <line id="flow-house-battery" x1="200" y1="134" x2="250" y2="134" class="flow-line" data-color="#7AB31B"/>
-    <line id="flow-house-wallbox" x1="160" y1="140" x2="160" y2="226" class="flow-line" data-color="#8b6cc1"/>
+    <line id="flow-pv-house" x1="160" y1="44" x2="160" y2="103" class="flow-line" data-color="#e6a817"/>
+    <line id="flow-grid-house" x1="68" y1="128" x2="115" y2="128" class="flow-line" data-color="#5b8def"/>
+    <line id="flow-house-grid" x1="115" y1="132" x2="68" y2="132" class="flow-line" data-color="#5b8def"/>
+    <line id="flow-battery-house" x1="250" y1="128" x2="200" y2="128" class="flow-line" data-color="#7AB31B"/>
+    <line id="flow-house-battery" x1="200" y1="132" x2="250" y2="132" class="flow-line" data-color="#7AB31B"/>
+    <line id="flow-house-wallbox" x1="160" y1="135" x2="160" y2="223" class="flow-line" data-color="#8b6cc1"/>
     <g id="flow-dots"></g>
 
-    <!-- PV — Icon + Wert rechts -->
-    <g id="node-pv" transform="translate(100, 10)">
+    <!-- PV — Wert dadrüber, Icon zentriert -->
+    <g id="node-pv" transform="translate(95, 8)">
+      <text id="pv-value" x="55" y="0" class="node-value" text-anchor="middle">0 W</text>
       <!-- Solar panels icon (deutlicheres Panel mit Gitter) -->
-      <g transform="translate(8, 4)">
+      <g transform="translate(8, 8)">
         <rect x="0" y="0" width="36" height="26" rx="2" fill="#E6A817" stroke="#222" stroke-width="1"/>
         <!-- Zellen-Gitter (6 Zellen) -->
         <rect x="3" y="3" width="9" height="9" fill="none" stroke="#333" stroke-width="0.6"/>
@@ -121,7 +122,6 @@
         <line x1="42" y1="1" x2="42" y2="0" stroke="#fff" stroke-width="0.8"/>
         <line x1="42" y1="9" x2="42" y2="10" stroke="#fff" stroke-width="0.8"/>
       </g>
-      <text id="pv-value" x="100" y="20" class="node-value" text-anchor="end">0 W</text>
     </g>
 
     <!-- Haus — Icon + Wert innen -->
@@ -191,8 +191,8 @@
       <text id="battery-charge-time" x="28" y="64" class="node-soc" text-anchor="middle">—</text>
     </g>
 
-    <!-- Wallbox — Icon links, Wert rechts -->
-    <g id="node-wallbox" transform="translate(84, 226)">
+    <!-- Wallbox — Icon + Wert dadrunter -->
+    <g id="node-wallbox" transform="translate(90, 220)">
       <!-- Wallbox / EV charger icon (besser erkennbarer Stecker) -->
       <g transform="translate(8, 3)">
         <!-- Wallbox-Gehäuse -->
@@ -210,7 +210,8 @@
         <!-- Erdung oben -->
         <rect x="34" y="7" width="2" height="2" fill="#fff"/>
       </g>
-      <text id="wallbox-value" x="130" y="20" class="node-value" text-anchor="end">0 W</text>
+      <!-- Wert direkt darunter -->
+      <text id="wallbox-value" x="25" y="35" class="node-value" text-anchor="middle">0 W</text>
     </g>
   </svg>
 </div>
