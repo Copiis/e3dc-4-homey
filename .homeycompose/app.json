@@ -1,6 +1,6 @@
 {
   "id": "de.jnkconsulting.e3dc.v2",
-"version": "1.8.55",
+"version": "1.8.56",
   "compatibility": ">=12.4.5",
   "sdk": 3,
   "brandColor": "#7AB31B",
@@ -19,7 +19,8 @@
     "energy"
   ],
   "permissions": [
-    "homey:manager:geolocation"
+    "homey:manager:geolocation",
+    "homey:manager:api"
   ],
   "images": {
     "small": "/assets/images/small.png",

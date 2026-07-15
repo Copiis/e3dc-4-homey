@@ -1,0 +1,73 @@
+[
+  {
+    "type": "group",
+    "label": {
+      "en": "Vehicle SOC",
+      "de": "Fahrzeug-SOC"
+    },
+    "children": [
+      {
+        "id": "vehicleSocSource",
+        "type": "dropdown",
+        "label": {
+          "en": "SOC source when E3DC reports 0",
+          "de": "SOC-Quelle wenn E3DC 0 meldet"
+        },
+        "value": "auto_homey_car",
+        "values": [
+          {
+            "id": "auto_homey_car",
+            "label": {
+              "en": "Auto: Homey car (e.g. Tesla)",
+              "de": "Auto: Homey-Auto (z. B. Tesla)"
+            }
+          },
+          {
+            "id": "device",
+            "label": {
+              "en": "Specific Homey device",
+              "de": "Bestimmtes Homey-Gerät"
+            }
+          },
+          {
+            "id": "rscp_only",
+            "label": {
+              "en": "E3DC RSCP only (no fallback)",
+              "de": "Nur E3DC RSCP (kein Fallback)"
+            }
+          }
+        ],
+        "hint": {
+          "en": "Local RSCP often returns 0% for cloud-paired cars (Tesla). Auto uses Homey devices of class “car” (measure_battery).",
+          "de": "Lokales RSCP liefert bei cloud-verbundenen Autos (Tesla) oft 0 %. Auto nutzt Homey-Geräte der Klasse „car“ (measure_battery)."
+        }
+      },
+      {
+        "id": "vehicleSocDeviceId",
+        "type": "text",
+        "label": {
+          "en": "Homey device ID (optional)",
+          "de": "Homey Geräte-ID (optional)"
+        },
+        "value": "",
+        "hint": {
+          "en": "Only for “Specific Homey device”. Copy ID from developer tools, e.g. Tesla car device.",
+          "de": "Nur bei „Bestimmtes Homey-Gerät“. ID z. B. aus den Developer Tools (Tesla-Auto-Gerät)."
+        }
+      },
+      {
+        "id": "vehicleSocCapability",
+        "type": "text",
+        "label": {
+          "en": "Capability ID",
+          "de": "Capability-ID"
+        },
+        "value": "measure_battery",
+        "hint": {
+          "en": "Default measure_battery (Tesla car). Battery device: measure_soc_level.",
+          "de": "Standard measure_battery (Tesla-Auto). Batterie-Gerät: measure_soc_level."
+        }
+      }
+    ]
+  }
+]

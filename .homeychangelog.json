@@ -1,4 +1,8 @@
 {
+  "1.8.56": {
+    "de": "- **Wallbox Fahrzeug-SOC:** Wenn E3DC lokal 0 % liefert (typisch bei Tesla/Cloud-Anbindung), wird der SOC automatisch vom Homey-Auto-Gerät (z. B. Tesla-App, `measure_battery`) übernommen. Einstellung an der Wallbox: Auto / bestimmtes Gerät / nur RSCP.\n- **Flow:** Neue Aktion „Fahrzeug-SOC setzen“ (z. B. mit Token aus der Tesla-App).\n- Keine irreführende 0 %-Anzeige mehr, wenn keine Quelle Daten liefert. Titel zeigt die Quelle (E3DC / Homey-Auto / letzter Wert).\n- E3DC-Cloud-Fallback gedrosselt (C2C-API oft 403 und ohne Fahrzeug-SOC); Diagnose-Hinweise aktualisiert.",
+    "en": "- **Wallbox vehicle SOC:** When E3DC reports 0% locally (common with Tesla/cloud pairing), SOC is taken automatically from a Homey car device (e.g. Tesla app, `measure_battery`). Wallbox setting: auto / specific device / RSCP only.\n- **Flow:** New action “Set vehicle SOC” (e.g. token from Tesla app).\n- No more misleading 0% when no source provides data. Title shows the source (E3DC / Homey car / last known).\n- E3DC cloud fallback throttled (C2C API often 403 and has no vehicle SOC); diagnostic notes updated."
+  },
   "1.8.55": {
     "de": "- **HKW-Widget:** Akku-Symbol im HKW-Widget weiter gekürzt (zusätzlich 5 px + 3 px von unten).",
     "en": "- **HKW widget:** Battery symbol in the HKW widget shortened further (additional 5 px + 3 px from the bottom)."

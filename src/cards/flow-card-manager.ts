@@ -55,6 +55,7 @@ import {WallboxBatteryToCarActionCard} from './action/wallbox-battery-to-car.act
 import {WallboxBatteryBeforeCarActionCard} from './action/wallbox-battery-before-car.action.card';
 import {WallboxDischargeBatteryUntilActionCard} from './action/wallbox-discharge-battery-until.action.card';
 import {WallboxDisableBatteryMixModeActionCard} from './action/wallbox-disable-battery-mix-mode.action.card';
+import {WallboxSetVehicleSocActionCard} from './action/wallbox-set-vehicle-soc.action.card';
 import {RunListener} from './run-listener';
 
 /**
@@ -349,6 +350,7 @@ export class FlowCardManager {
       { id: 'wallbox_battery_before_car', listener: new WallboxBatteryBeforeCarActionCard() },
       { id: 'wallbox_discharge_battery_until', listener: new WallboxDischargeBatteryUntilActionCard() },
       { id: 'wallbox_disable_battery_mix_mode', listener: new WallboxDisableBatteryMixModeActionCard() },
+      { id: 'wallbox_set_vehicle_soc', listener: new WallboxSetVehicleSocActionCard() },
     ];
     actions.forEach(({ id, listener }) => {
       try {

@@ -22,6 +22,8 @@ import {ensureCapabilities} from '../../src/utils/energy-capability-migration';
 import { RunListener } from '../../src/cards/run-listener';
 import { WallboxEmsSettingsManager } from '../../src/managers/wallbox-ems-settings-manager';
 import { GlobalEmsOverrideManager } from '../../src/managers/global-ems-override-manager';
+import { isPlausibleVehicleSocPercent } from '../../src/utils/vehicle-soc';
+import { resolveExternalVehicleSoc } from '../../src/utils/external-vehicle-soc';
 
 const WALLBOX_LEGACY_CAPABILITIES = [
   'evcharger_charging',
@@ -56,9 +58,9 @@ class WallboxDevice extends Homey.Device implements Wallbox {
   private capabilitiesReady = false;
   private wasReadyToCharge = false;
 
-  // Last known good vehicle SOC (always prefer this when current data is implausible)
+  // Last known good vehicle SOC (used when RSCP/external momentarily have no data)
   private lastPlausibleVehicleSoc?: number;
-  private lastSocSource: 'local' | 'cloud' | 'none' = 'none';
+  private lastSocSource: 'local' | 'external' | 'cloud' | 'last_known' | 'none' = 'none';
 
   private async loadLastPlausibleSoc(): Promise<void> {
     try {
@@ -75,18 +77,21 @@ class WallboxDevice extends Homey.Device implements Wallbox {
     } catch {}
   }
 
-  private async updateVehicleSocTitle(): Promise<void> {
+  private async updateVehicleSocTitle(source: 'local' | 'external' | 'cloud' | 'last_known' | 'none'): Promise<void> {
     try {
-      // Always show the hint in parentheses under the value, as the displayed
-      // value is always the last known good one (or the best available).
-      const title = 'Fahrzeug-SOC (letzter bekannter Wert)';
+      const titles: Record<typeof source, { en: string; de: string }> = {
+        local: { en: 'Vehicle SOC', de: 'Fahrzeug-SOC' },
+        external: { en: 'Vehicle SOC (Homey car)', de: 'Fahrzeug-SOC (Homey-Auto)' },
+        cloud: { en: 'Vehicle SOC (cloud)', de: 'Fahrzeug-SOC (Cloud)' },
+        last_known: { en: 'Vehicle SOC (last known)', de: 'Fahrzeug-SOC (letzter bekannter Wert)' },
+        none: { en: 'Vehicle SOC', de: 'Fahrzeug-SOC' },
+      };
       await this.setCapabilityOptions('measure_vehicle_soc', {
-        title,
+        title: titles[source],
         units: { en: '%', de: '%' },
         decimals: 0,
-        uiComponent: 'sensor'
+        uiComponent: 'sensor',
       });
-      this.log(`Vehicle SOC title set to: ${title}`);
     } catch (e) {
       this.error('Failed to set vehicle SOC title: ' + formatError(e));
     }
@@ -114,14 +119,16 @@ class WallboxDevice extends Homey.Device implements Wallbox {
       await this.migrateCapabilities();
       await this.loadLastPlausibleSoc();
 
-      // Immediately set last known good SOC (from previous cloud or local) so the tile shows it right after init/restart
+      // Immediately set last known good SOC so the tile is not blank after restart
       if (this.lastPlausibleVehicleSoc !== undefined && this.lastPlausibleVehicleSoc > 0) {
         updateCapabilityValue('measure_vehicle_soc', this.lastPlausibleVehicleSoc, this, { force: true });
-        this.lastSocSource = 'cloud';
+        this.lastSocSource = 'last_known';
+        await this.updateVehicleSocTitle('last_known');
+      } else {
+        // Try Homey car (Tesla etc.) once at init when RSCP never had a value
+        this.tryApplyExternalVehicleSoc();
+        await this.updateVehicleSocTitle(this.lastSocSource);
       }
-
-      // Always set the title with the "last known value" hint
-      await this.updateVehicleSocTitle();
       this.capabilitiesReady = true;
     } catch (e) {
       this.error('Wallbox onInit failed: ' + formatError(e));
@@ -335,43 +342,7 @@ class WallboxDevice extends Homey.Device implements Wallbox {
       updateCapabilityValue('meter_power', meterKwh, this);
     }
     updateCapabilityValue('measure_wallbox_solarshare', state.solarPowerW, this);
-    // Vehicle SOC: always show last known good value (with hint in title)
-    const socVal = state.socPercent;
-    const isPlausible = socVal !== undefined && socVal > 0 && socVal <= 100;
-
-    let valueToSet: number | undefined;
-    let isLastKnown = false;
-
-    if (isPlausible) {
-      // Fresh good value from local RSCP
-      this.lastPlausibleVehicleSoc = socVal;
-      this.saveLastPlausibleSoc(socVal).catch(() => {});
-      valueToSet = socVal;
-      isLastKnown = false;
-      this.lastSocSource = 'local';
-    } else if (this.lastPlausibleVehicleSoc !== undefined) {
-      // Use last known (could be from previous cloud or local)
-      valueToSet = this.lastPlausibleVehicleSoc;
-      isLastKnown = true;
-      this.lastSocSource = 'cloud';
-      this.log(`Vehicle SOC: showing last known value ${valueToSet}% (current data implausible)`);
-    } else {
-      // Nothing available
-      valueToSet = 0;
-      isLastKnown = false;
-      this.lastSocSource = 'none';
-      this.log('Vehicle SOC: no plausible value available (showing 0)');
-    }
-
-    const socChanged = updateCapabilityValue('measure_vehicle_soc', valueToSet, this, { force: true });
-
-    // Always force the title with the hint so it appears under the value
-    this.updateVehicleSocTitle().catch(() => {});
-
-    if (socChanged || isLastKnown) {
-      const d = state.socDiagnostics;
-      this.log(`Vehicle SOC tile updated to ${valueToSet}% (lastKnown=${isLastKnown}, source=${socVal ?? 'n/a'})`);
-    }
+    this.updateVehicleSocFromLiveState(state);
     updateCapabilityValue('wallbox_charging', state.chargingEnabled, this);
     updateCapabilityValue('wallbox_sun_mode', state.sunModeActive, this);
 
@@ -544,18 +515,96 @@ class WallboxDevice extends Homey.Device implements Wallbox {
   }
 
   /**
-   * Called by HPS cloud fallback to set a plausible SOC from cloud.
-   * Treats it as current value.
+   * Apply a plausible vehicle SOC from cloud, Flow, or Homey external device.
+   * Treats it as a current value (also becomes last-known fallback).
    */
   applyCloudVehicleSoc(socPercent: number): void {
-    if (socPercent > 0 && socPercent <= 100) {
-      this.lastPlausibleVehicleSoc = socPercent;
-      this.saveLastPlausibleSoc(socPercent).catch(() => {});
-      this.lastSocSource = 'cloud';
-      updateCapabilityValue('measure_vehicle_soc', socPercent, this, { force: true });
-      this.updateVehicleSocTitle().catch(() => {});
-      this.log(`Applied cloud vehicle SOC ${socPercent}% (current value)`);
+    this.applyExternalVehicleSoc(socPercent, 'cloud');
+  }
+
+  /**
+   * Apply SOC from Homey external source or Flow (same store/title semantics).
+   */
+  applyExternalVehicleSoc(socPercent: number, source: 'external' | 'cloud' | 'last_known' = 'external'): void {
+    if (!isPlausibleVehicleSocPercent(socPercent)) {
+      return;
     }
+    this.lastPlausibleVehicleSoc = socPercent;
+    this.saveLastPlausibleSoc(socPercent).catch(() => {});
+    this.lastSocSource = source;
+    updateCapabilityValue('measure_vehicle_soc', socPercent, this, { force: true });
+    this.updateVehicleSocTitle(source).catch(() => {});
+    this.log(`Applied vehicle SOC ${socPercent}% (source=${source})`);
+  }
+
+  /**
+   * Resolve vehicle SOC for the tile:
+   * 1) plausible local RSCP
+   * 2) Homey car / configured device (Tesla etc.) when RSCP is 0
+   * 3) last known good value
+   * Never forces a misleading 0 % when no data exists.
+   */
+  private updateVehicleSocFromLiveState(state: WallboxLiveState): void {
+    const socVal = state.socPercent;
+    if (isPlausibleVehicleSocPercent(socVal)) {
+      this.lastPlausibleVehicleSoc = socVal;
+      this.saveLastPlausibleSoc(socVal!).catch(() => {});
+      this.lastSocSource = 'local';
+      updateCapabilityValue('measure_vehicle_soc', socVal!, this, { force: true });
+      this.updateVehicleSocTitle('local').catch(() => {});
+      this.log(`Vehicle SOC from RSCP: ${socVal}%`);
+      return;
+    }
+
+    // RSCP 0 / missing — start Homey-car resolve (async, cross-app via Web API)
+    this.tryApplyExternalVehicleSoc();
+
+    if (this.lastPlausibleVehicleSoc !== undefined && this.lastPlausibleVehicleSoc > 0) {
+      // Show last known immediately; async external may overwrite with fresher Tesla SOC
+      if (this.lastSocSource !== 'external' && this.lastSocSource !== 'cloud') {
+        this.lastSocSource = 'last_known';
+        updateCapabilityValue('measure_vehicle_soc', this.lastPlausibleVehicleSoc, this, { force: true });
+        this.updateVehicleSocTitle('last_known').catch(() => {});
+      }
+      return;
+    }
+
+    // No data at all: do not write 0 (misleading). Keep capability as-is; async may fill it.
+    this.lastSocSource = 'none';
+    this.log(
+      'Vehicle SOC: no plausible RSCP value yet, waiting for Homey-car fallback '
+      + `(socRaw=${state.socDiagnostics?.rscpSocRaw ?? 'n/a'}, `
+      + `algHex=${state.socDiagnostics?.algHex ?? 'n/a'})`,
+    );
+  }
+
+  /** Fire-and-forget external SOC resolve via Homey Web API (cross-app, e.g. Tesla). */
+  private tryApplyExternalVehicleSoc(): void {
+    this.applyExternalVehicleSocAsync().catch(e => {
+      this.error('External vehicle SOC resolve failed: ' + formatError(e));
+    });
+  }
+
+  private async applyExternalVehicleSocAsync(): Promise<boolean> {
+    const settings = this.getSettings() as {
+      vehicleSocSource?: string;
+      vehicleSocDeviceId?: string;
+      vehicleSocCapability?: string;
+    };
+    const hit = await resolveExternalVehicleSoc(this.homey as any, {
+      mode: settings.vehicleSocSource || 'auto_homey_car',
+      deviceId: settings.vehicleSocDeviceId,
+      capabilityId: settings.vehicleSocCapability || 'measure_battery',
+    });
+    if (!hit) {
+      return false;
+    }
+    this.applyExternalVehicleSoc(hit.socPercent, 'external');
+    this.log(
+      `Vehicle SOC from Homey device "${hit.deviceName}" `
+      + `(${hit.capabilityId}=${hit.socPercent}%)`,
+    );
+    return true;
   }
 
   /**

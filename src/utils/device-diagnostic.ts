@@ -207,9 +207,9 @@ export class DeviceDiagnostic {
                 lines.push(`  RSCP chargePlanText: ${snapshot.wallboxChargePlanText}`);
             }
             if (snapshot.wallboxSocPercent === 0 || snapshot.wallboxSocPercent === undefined) {
-                lines.push('  Hinweis: E3/DC-Portal nutzt oft Cloud — lokales RSCP liefert bei Tesla häufig 0.');
-                lines.push('  Aktuell (Stand Juli 2026): E3DC meldet selbst eingeschränkte Fahrzeugintegration im Portal ("Fahrzeug nicht verbunden").');
-                lines.push('  Cloud-Fallback und lokale Werte können daher vorübergehend unzuverlässig sein.');
+                lines.push('  Hinweis: Lokales RSCP liefert bei cloud-verbundenen Autos (z. B. Tesla) oft SOC=0 (auch während des Ladens).');
+                lines.push('  Offizielle E3DC C2C-API (api.e3dc.com) enthält keinen Fahrzeug-SOC und ist für Endnutzer oft 403.');
+                lines.push('  Lösung: Wallbox-Einstellung „Auto: Homey-Auto“ (Tesla measure_battery) oder Flow „Fahrzeug-SOC setzen“.');
             }
         }
         lines.push('');

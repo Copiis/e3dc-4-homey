@@ -32,8 +32,11 @@ export interface E3dcCloudState {
 
 export class E3dcCloudClient {
   private jwt: string | null = null;
-  private jwtExpiry: number = 0;
   private lastLoginAttempt = 0;
+  private jwtExpiry: number = 0;
+  /** After auth 403, stop retrying until this timestamp (C2C is often partner-only). */
+  private authBlockedUntil = 0;
+  private lastFetchAt = 0;
 
   private state: E3dcCloudState = {};
 
@@ -46,10 +49,23 @@ export class E3dcCloudClient {
   /**
    * Main entry: ensure login + fetch latest system state.
    * Returns a best-effort vehicle SOC if we can find one.
+   *
+   * Note: Official systemState schema has house battery SOC + wallbox power only —
+   * no dedicated vehicle SOC field. Many end-user accounts also get HTTP 403 on
+   * api.e3dc.com (Cloud2Cloud partner API). Prefer Homey-car fallback on the wallbox.
    */
   async fetchVehicleSocFallback(config: E3dcCloudConfig): Promise<number | undefined> {
     if (!this.isEnabled(config)) {
       return undefined;
+    }
+
+    const now = Date.now();
+    if (now < this.authBlockedUntil) {
+      return undefined;
+    }
+    // Throttle: at most once per 15 minutes (was every live poll → log spam / rate limits)
+    if (this.lastFetchAt && now - this.lastFetchAt < 15 * 60 * 1000) {
+      return this.state.vehicleSoc;
     }
 
     try {
@@ -58,33 +74,31 @@ export class E3dcCloudClient {
       const sn = await this.resolveSystemSn(config);
       if (!sn) {
         this.logger.log('E3DC Cloud: no system serial number available');
+        this.lastFetchAt = now;
         return undefined;
       }
 
       const systemState = await this.getSystemState(sn);
       this.state.systemState = systemState as Record<string, unknown>;
       this.state.lastFetch = new Date();
+      this.lastFetchAt = now;
 
       const rootForDebug = (systemState as any)?.result || systemState;
 
-      // Try to extract a vehicle / wallbox SOC.
-      // The official C2C model (as of now) primarily exposes power values (WBx_L1 etc.).
-      // Vehicle SOC may appear under different names if the "Fahrzeugintegration" is active,
-      // or in future API versions. We do a best-effort search + log the raw state for diagnostics.
+      // Official C2C model primarily exposes power values (WBx_L1 etc.) + house SOC.
+      // Vehicle SOC may appear only if portal "Fahrzeugintegration" adds extra fields.
       const soc = this.extractVehicleSoc(systemState);
       if (soc !== undefined) {
         this.state.vehicleSoc = soc;
         this.logger.log(`E3DC Cloud: vehicle SOC fallback = ${soc}% (sn=${sn})`);
       } else {
-        this.logger.log('E3DC Cloud: no vehicle SOC data returned from cloud (may be due to portal issues)');
-        // Helpful for debugging: log top level keys (only when no SOC)
+        this.logger.log(
+          'E3DC Cloud: no vehicle SOC in systemState '
+          + '(C2C schema has house SOC + wallbox power only — use Homey-car fallback on wallbox)',
+        );
         try {
           const top = rootForDebug ? Object.keys(rootForDebug).slice(0, 8).join(', ') : 'no root';
           this.logger.log(`E3DC Cloud debug: systemState top keys: ${top}`);
-          if (rootForDebug?.result) {
-            const resKeys = Object.keys(rootForDebug.result).slice(0, 6).join(', ');
-            this.logger.log(`E3DC Cloud debug: result keys: ${resKeys}`);
-          }
         } catch {}
       }
 
@@ -93,6 +107,15 @@ export class E3dcCloudClient {
       const msg = `E3DC Cloud fetch failed: ${e?.message || e}`;
       this.logger.error(msg);
       this.state.error = msg;
+      this.lastFetchAt = now;
+      if (String(e?.message || e).includes('403') || String(e?.message || e).includes('Auth failed: 403')) {
+        // Partner C2C API often rejects portal end-user credentials
+        this.authBlockedUntil = now + 6 * 60 * 60 * 1000;
+        this.logger.log(
+          'E3DC Cloud: auth forbidden (403) — C2C API likely not available for this account. '
+          + 'Use wallbox setting „Auto: Homey-Auto“ for Tesla SOC. Retry in 6h.',
+        );
+      }
       return undefined;
     }
   }
@@ -135,12 +158,17 @@ export class E3dcCloudClient {
 
     const data: any = await res.json();
 
-    // The response contains the JWT. The exact field name may vary; common patterns are token/jwt/result.
-    const token = data?.token || data?.jwt || data?.access_token || (typeof data === 'string' ? data : null);
+    // JWT field name varies across C2C deployments
+    const token =
+      data?.token ||
+      data?.jwt ||
+      data?.access_token ||
+      data?.result?.token ||
+      data?.result?.jwt ||
+      (typeof data?.result === 'string' ? data.result : null) ||
+      (typeof data === 'string' ? data : null);
 
     if (!token) {
-      // Some implementations just return { result: true } and set cookie or different field.
-      // We try to be flexible.
       throw new Error('No JWT returned from auth. Raw: ' + JSON.stringify(data).slice(0, 200));
     }
 

@@ -427,11 +427,7 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
    */
   private async applyCloudVehicleSocFallback(): Promise<void> {
     const settings = this.getSettings() as any;
-    if (!settings.useE3dcCloud) {
-      return;
-    }
-
-    if (!this.e3dcCloudClient) {
+    if (!settings.useE3dcCloud || !this.e3dcCloudClient) {
       return;
     }
 
@@ -445,11 +441,11 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
     const cloudSoc = await this.e3dcCloudClient.fetchVehicleSocFallback(cloudConfig);
     this.lastCloudVehicleSoc = cloudSoc;
     if (cloudSoc === undefined) {
-      this.log('E3DC Cloud: no plausible vehicle SOC available from cloud (portal may have issues)');
+      // No spam: client already throttles and logs; wallbox uses Homey-car fallback instead
       return;
     }
 
-    // Apply to linked wallbox devices that currently have no plausible local SOC
+    // Apply only when wallbox has no fresh local RSCP SOC
     const wallboxDevices = this.homey.drivers.getDriver('wallbox').getDevices();
     for (const d of wallboxDevices) {
       try {
@@ -458,27 +454,20 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
         if (!store || String(store.stationId) !== String(this.getData().id)) continue;
 
         const source = (wb as any).lastSocSource || 'none';
-        const isFromLocal = source === 'local';
-
-        // Refresh from cloud if we don't have fresh local data (even if cap currently shows an old plausible fallback value)
-        if (!isFromLocal) {
-          if (typeof wb.applyCloudVehicleSoc === 'function') {
-            wb.applyCloudVehicleSoc(cloudSoc);
-          } else {
-            // Fallback for older instances
-            await wb.setCapabilityValue('measure_vehicle_soc', cloudSoc);
-          }
-          this.log(`Applied cloud vehicle SOC fallback ${cloudSoc}% to wallbox ${wb.getName?.() || ''}`);
+        // Do not overwrite live RSCP or Homey-car values with cloud
+        if (source === 'local' || source === 'external') {
+          continue;
         }
+
+        if (typeof wb.applyCloudVehicleSoc === 'function') {
+          wb.applyCloudVehicleSoc(cloudSoc);
+        } else {
+          await wb.setCapabilityValue('measure_vehicle_soc', cloudSoc);
+        }
+        this.log(`Applied cloud vehicle SOC fallback ${cloudSoc}% to wallbox ${wb.getName?.() || ''}`);
       } catch (e) {
         this.error('Failed to apply cloud SOC fallback to wallbox: ' + formatError(e));
       }
-    }
-
-    // Also record in diagnostics
-    const cloudState = this.e3dcCloudClient.getLastState?.();
-    if (cloudState) {
-      // The diagnostic manager will pick it up on next record if we expose more; for now log is sufficient
     }
   }
 

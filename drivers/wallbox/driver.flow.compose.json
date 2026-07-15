@@ -272,6 +272,36 @@
       ]
     },
     {
+      "id": "wallbox_set_vehicle_soc",
+      "title": {
+        "de": "Fahrzeug-SOC setzen",
+        "en": "Set vehicle SOC"
+      },
+      "titleFormatted": {
+        "de": "Fahrzeug-SOC auf [[percent]] % setzen",
+        "en": "Set vehicle SOC to [[percent]] %"
+      },
+      "hint": {
+        "de": "Setzt den angezeigten Fahrzeug-SOC (z. B. Token vom Tesla-Gerät). Nützlich wenn E3DC lokal 0 % liefert.",
+        "en": "Sets the displayed vehicle SOC (e.g. token from Tesla device). Useful when E3DC locally reports 0 %."
+      },
+      "args": [
+        {
+          "type": "number",
+          "name": "percent",
+          "title": {
+            "de": "Fahrzeug-SOC (%)",
+            "en": "Vehicle SOC (%)"
+          },
+          "required": true,
+          "min": 1,
+          "max": 100,
+          "step": 1,
+          "value": 50
+        }
+      ]
+    },
+    {
       "id": "wallbox_disable_battery_mix_mode",
       "title": {
         "de": "Batterieentladung im Mischmodus",
