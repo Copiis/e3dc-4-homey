@@ -146,12 +146,17 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
     }
   }
   private async doInit() {
-    this.diagnosticManager?.loadDiagnosticAnalysisLog?.() || undefined
+    // Create DiagnosticManager first so analysis log + auto-off resume work on init.
+    // (Previously load/publish ran before the manager existed and were no-ops.)
+    this.diagnosticManager = new DiagnosticManager(this, DIAGNOSTIC_ANALYSIS_STORE_KEY);
+    this.diagnosticManager.loadDiagnosticAnalysisLog();
+    this.diagnosticManager.resumeDetailedDiagnosticsAutoOff();
+
     const flowManager = new FlowCardManager(this);
     flowManager.setupActionCards();
     flowManager.setupConditionCards();
     flowManager.setupTriggerCards();
-    this.diagnosticManager?.publishDiagnosticReport().catch(reason => {
+    this.diagnosticManager.publishDiagnosticReport().catch(reason => {
       this.error('Initial diagnostic report failed: ' + formatError(reason))
     })
     publishPlantPowerStateFromStation(this)
@@ -174,7 +179,6 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
     this.emsScheduleManager = new EmsScheduleManager(this, () => this.getApi(), this, this.powerModeManager);
     this.emsScheduleManager.loadEmsSchedules();
     this.emsScheduleManager.startEmsScheduleChecker();
-    this.diagnosticManager = new DiagnosticManager(this, DIAGNOSTIC_ANALYSIS_STORE_KEY);
     this.liveDataPoller = new LiveDataPoller(
       () => this.getApi(),
       this,
@@ -508,7 +512,8 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
     // Force publish and actually return the generated report so Flow cards can use the token
     const report = await this.diagnosticManager?.publishDiagnosticReport(true) ?? '';
     if (wasEnabled) {
-      this.diagnosticManager?.scheduleDetailedDiagnosticsAutoOff(10 * 60 * 1000, 'after-export');
+      // 10 min after export, but never past the original 60 min safety deadline
+      this.diagnosticManager?.scheduleAutoOffAfterExport();
     }
     return report;
   }
@@ -572,12 +577,8 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
       this.diagnosticManager?.persistDiagnosticAnalysisLog().catch(() => {});
       this.diagnosticManager?.publishDiagnosticReport(true).catch(() => {}); // force update
       this.log(`Detailed diagnostics ${enabled ? 'enabled' : 'disabled'}`);
-      if (enabled) {
-        // Start safety timeout (60 min max) so resources are not wasted if user forgets to turn off
-        this.diagnosticManager?.scheduleDetailedDiagnosticsAutoOff(60 * 60 * 1000, 'timeout');
-      } else {
-        this.diagnosticManager?.clearDetailedDiagnosticsAutoOff();
-      }
+      // Persist enable timestamp + schedule 60 min auto-off (survives restarts via resume on init)
+      this.diagnosticManager?.onDetailedDiagnosticsSettingChanged(enabled);
     }
   }
   async onRenamed(name: string) {

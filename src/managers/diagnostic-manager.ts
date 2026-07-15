@@ -4,6 +4,15 @@ import { formatError } from '../utils/error-utils';
 import { updateCapabilityValue } from '../utils/capability-utils';
 import { IHpsDevice } from '../types/hps-device';
 
+/** Safety cap: detailed diagnostics auto-off after this long (from enable time). */
+export const DETAILED_DIAGNOSTICS_MAX_MS = 60 * 60 * 1000;
+
+/** After exporting a report while diagnostics are on, shorten remaining time to this. */
+export const DETAILED_DIAGNOSTICS_AFTER_EXPORT_MS = 10 * 60 * 1000;
+
+/** Store key: Date.now() when detailedDiagnostics was turned on (survives app restarts). */
+export const DETAILED_DIAGNOSTICS_ENABLED_AT_KEY = 'detailedDiagnosticsEnabledAt';
+
 /**
  * DiagnosticManager
  *
@@ -12,7 +21,8 @@ import { IHpsDevice } from '../types/hps-device';
  * Aufgaben:
  * - Record und Persistierung von Analysis-Events (Info/Warn/Error)
  * - Erzeugen und Veröffentlichen von Diagnose-Reports
- * - Auto-Off für detailedDiagnostics nach Timeout
+ * - Auto-Off für detailedDiagnostics nach Timeout (persistierter Zeitstempel,
+ *   damit App-/Homey-Neustarts den 60‑Minuten-Timer nicht verlieren)
  * - Zählen verknüpfter Geräte (Wallbox, Battery, Grid-Meter)
  * - Sammeln von Sync-Statistiken und Snapshots
  *
@@ -78,19 +88,103 @@ export class DiagnosticManager {
     this.recordAnalysisEvent('error', message);
   }
 
+  /**
+   * Called when the user toggles detailedDiagnostics in settings.
+   * Persists the enable timestamp so auto-off can resume after restarts.
+   */
+  onDetailedDiagnosticsSettingChanged(enabled: boolean): void {
+    if (enabled) {
+      const now = Date.now();
+      this.device.setStoreValue(DETAILED_DIAGNOSTICS_ENABLED_AT_KEY, now).catch(() => {});
+      this.scheduleDetailedDiagnosticsAutoOff(DETAILED_DIAGNOSTICS_MAX_MS, 'timeout');
+      return;
+    }
+    this.clearDetailedDiagnosticsAutoOff();
+    this.device.setStoreValue(DETAILED_DIAGNOSTICS_ENABLED_AT_KEY, 0).catch(() => {});
+  }
+
+  /**
+   * Call on device init. Restores auto-off after app/Homey restarts.
+   * If still enabled but deadline is past (or no timestamp from older builds), turns off immediately.
+   */
+  resumeDetailedDiagnosticsAutoOff(): void {
+    if (!this.isDetailedDiagnosticsEnabled()) {
+      this.clearDetailedDiagnosticsAutoOff();
+      return;
+    }
+    const enabledAt = this.readEnabledAtMs();
+    if (enabledAt === null) {
+      // Legacy: setting was left ON without a stored deadline (timer died on restart).
+      this.device.log('Detailed diagnostics still ON without deadline — auto-disabling (legacy/stuck)');
+      this.disableDetailedDiagnosticsNow('timeout-missing-deadline');
+      return;
+    }
+    const remainingMs = enabledAt + DETAILED_DIAGNOSTICS_MAX_MS - Date.now();
+    if (remainingMs <= 0) {
+      this.device.log('Detailed diagnostics deadline expired during restart — auto-disabling');
+      this.disableDetailedDiagnosticsNow('timeout');
+      return;
+    }
+    this.device.log(`Detailed diagnostics still ON — auto-off in ${Math.round(remainingMs / 1000)}s`);
+    this.scheduleDetailedDiagnosticsAutoOff(remainingMs, 'timeout');
+  }
+
+  /**
+   * After report export: shorten remaining time to AFTER_EXPORT_MS, never beyond the 60 min safety cap.
+   */
+  scheduleAutoOffAfterExport(): void {
+    if (!this.isDetailedDiagnosticsEnabled()) {
+      return;
+    }
+    const enabledAt = this.readEnabledAtMs() ?? Date.now();
+    const maxDeadline = enabledAt + DETAILED_DIAGNOSTICS_MAX_MS;
+    const exportDeadline = Date.now() + DETAILED_DIAGNOSTICS_AFTER_EXPORT_MS;
+    const delayMs = Math.max(0, Math.min(maxDeadline, exportDeadline) - Date.now());
+    if (delayMs <= 0) {
+      this.disableDetailedDiagnosticsNow('after-export');
+      return;
+    }
+    this.scheduleDetailedDiagnosticsAutoOff(delayMs, 'after-export');
+  }
+
   scheduleDetailedDiagnosticsAutoOff(delayMs: number, reason: 'timeout' | 'after-export' = 'timeout'): void {
     this.clearDetailedDiagnosticsAutoOff();
+    const safeDelay = Math.max(0, delayMs);
     this.detailedDiagnosticsAutoOffTimer = this.device.homey.setTimeout(() => {
-      this.device.setSettings({ detailedDiagnostics: false }).catch(() => {});
-      this.recordAnalysisEvent('info', `Detailed diagnostics auto-disabled after ${reason}`);
-    }, delayMs);
+      this.disableDetailedDiagnosticsNow(reason);
+    }, safeDelay);
   }
 
   clearDetailedDiagnosticsAutoOff(): void {
     if (this.detailedDiagnosticsAutoOffTimer) {
+      // Homey setTimeout handles are cleared via the global clearTimeout in this runtime.
       clearTimeout(this.detailedDiagnosticsAutoOffTimer);
       this.detailedDiagnosticsAutoOffTimer = null;
     }
+  }
+
+  private readEnabledAtMs(): number | null {
+    const raw = this.device.getStoreValue(DETAILED_DIAGNOSTICS_ENABLED_AT_KEY);
+    if (typeof raw === 'number' && Number.isFinite(raw) && raw > 0) {
+      return raw;
+    }
+    if (typeof raw === 'string') {
+      const parsed = parseInt(raw, 10);
+      if (Number.isFinite(parsed) && parsed > 0) {
+        return parsed;
+      }
+    }
+    return null;
+  }
+
+  private disableDetailedDiagnosticsNow(reason: string): void {
+    this.clearDetailedDiagnosticsAutoOff();
+    // Record while still enabled so the info line is kept in the analysis log.
+    this.recordAnalysisEvent('info', `Detailed diagnostics auto-disabled after ${reason}`);
+    this.device.setStoreValue(DETAILED_DIAGNOSTICS_ENABLED_AT_KEY, 0).catch(() => {});
+    this.device.setSettings({ detailedDiagnostics: false }).catch((e: unknown) => {
+      this.device.error('Failed to auto-disable detailedDiagnostics: ' + formatError(e));
+    });
   }
 
   /**
