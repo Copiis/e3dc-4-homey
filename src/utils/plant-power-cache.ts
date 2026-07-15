@@ -15,9 +15,15 @@ export function getPlantPowerState(stationId: string): PowerStatus | undefined {
   return cache.get(stationId);
 }
 
-function aggregateWallboxPowerForStation(homey: HomeyApi, stationId: string): { powerW: number; solarShareW: number; hasWallbox: boolean } {
+function aggregateWallboxPowerForStation(homey: HomeyApi, stationId: string): {
+  powerW: number;
+  solarShareW: number;
+  vehicleSoc?: number;
+  hasWallbox: boolean;
+} {
   let powerW = 0;
   let solarShareW = 0;
+  let vehicleSoc: number | undefined;
   let hasWallbox = false;
   const wallboxDevices = homey.drivers.getDriver('wallbox').getDevices();
   wallboxDevices.forEach((device: Homey.Device) => {
@@ -28,8 +34,15 @@ function aggregateWallboxPowerForStation(homey: HomeyApi, stationId: string): { 
     hasWallbox = true;
     powerW += readCapabilityNumber(device, 'measure_power');
     solarShareW += readCapabilityNumber(device, 'measure_wallbox_solarshare');
+    // Prefer first plausible vehicle SOC (>0) among linked wallboxes
+    if (vehicleSoc === undefined || vehicleSoc <= 0) {
+      const soc = readCapabilityNumber(device, 'measure_vehicle_soc');
+      if (typeof soc === 'number' && !Number.isNaN(soc) && soc > 0 && soc <= 100) {
+        vehicleSoc = Math.round(soc);
+      }
+    }
   });
-  return { powerW, solarShareW, hasWallbox };
+  return { powerW, solarShareW, vehicleSoc, hasWallbox };
 }
 
 export function buildPowerStateFromLiveData(
@@ -37,6 +50,7 @@ export function buildPowerStateFromLiveData(
   wallboxPower: number,
   wallboxSolarShare: number,
   hasWallbox: boolean = true,
+  wallboxVehicleSoc?: number,
 ): PowerStatus {
   const batteryLevel = result.batteryChargingLevel * 100;
   const hasBattery = batteryLevel != null && !isNaN(batteryLevel);
@@ -49,6 +63,9 @@ export function buildPowerStateFromLiveData(
     batteryLevel,
     wallboxPower,
     wallboxSolarShare,
+    wallboxVehicleSoc: wallboxVehicleSoc !== undefined && wallboxVehicleSoc > 0
+      ? Math.round(wallboxVehicleSoc)
+      : undefined,
     hasWallbox,
     hasBattery,
     chargeTime: '',
@@ -72,6 +89,7 @@ export function buildPowerStateFromStation(station: Homey.Device, homey: HomeyAp
     batteryLevel,
     wallboxPower: wallbox.powerW,
     wallboxSolarShare: wallbox.solarShareW,
+    wallboxVehicleSoc: wallbox.vehicleSoc,
     hasWallbox: wallbox.hasWallbox,
     hasBattery,
     chargeTime: (station.getCapabilityValue('charge_time') as string) || '',

@@ -172,9 +172,15 @@ export class WallboxManager {
    * Aggregate wallbox power for the widget power cache.
    * Moved from publishWidgetPowerCache.
    */
-  getWallboxAggregation(): { wallboxPower: number; wallboxSolarShare: number; hasWallbox: boolean } {
+  getWallboxAggregation(): {
+    wallboxPower: number;
+    wallboxSolarShare: number;
+    wallboxVehicleSoc?: number;
+    hasWallbox: boolean;
+  } {
     let wallboxPower = 0;
     let wallboxSolarShare = 0;
+    let wallboxVehicleSoc: number | undefined;
     let hasWallbox = false;
 
     // Single pass over cached linked devices (no double iteration, no repeated full getDevices)
@@ -187,9 +193,15 @@ export class WallboxManager {
       if (d.hasCapability('measure_wallbox_solarshare')) {
         wallboxSolarShare += Number(d.getCapabilityValue('measure_wallbox_solarshare')) || 0;
       }
+      if (d.hasCapability('measure_vehicle_soc') && (wallboxVehicleSoc === undefined || wallboxVehicleSoc <= 0)) {
+        const soc = Number(d.getCapabilityValue('measure_vehicle_soc'));
+        if (!Number.isNaN(soc) && soc > 0 && soc <= 100) {
+          wallboxVehicleSoc = Math.round(soc);
+        }
+      }
     });
 
-    return { wallboxPower, wallboxSolarShare, hasWallbox };
+    return { wallboxPower, wallboxSolarShare, wallboxVehicleSoc, hasWallbox };
   }
 
 }

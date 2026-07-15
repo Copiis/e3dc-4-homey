@@ -16,6 +16,8 @@ export interface PowerStatus {
   batteryLevel: number;
   wallboxPower: number;
   wallboxSolarShare: number;
+  /** Vehicle SOC (%) from linked wallbox tile (RSCP or Homey-car fallback). */
+  wallboxVehicleSoc?: number;
   hasWallbox: boolean;
   hasBattery: boolean;
   chargeTime: string;

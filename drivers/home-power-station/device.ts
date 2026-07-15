@@ -407,9 +407,19 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
       // Optional cloud fallback for vehicle SOC (when local RSCP reports 0)
       this.applyCloudVehicleSocFallback().catch(e => this.error('Cloud fallback error: ' + formatError(e)))
 
-      const agg = this.wallboxManager?.getWallboxAggregation() ?? { wallboxPower: 0, wallboxSolarShare: 0, hasWallbox: false };
+      const agg = this.wallboxManager?.getWallboxAggregation()
+        ?? { wallboxPower: 0, wallboxSolarShare: 0, wallboxVehicleSoc: undefined, hasWallbox: false };
       const stationId = String(this.getData().id);
-      setPlantPowerState(stationId, buildPowerStateFromLiveData(result, agg.wallboxPower, agg.wallboxSolarShare, agg.hasWallbox));
+      setPlantPowerState(
+        stationId,
+        buildPowerStateFromLiveData(
+          result,
+          agg.wallboxPower,
+          agg.wallboxSolarShare,
+          agg.hasWallbox,
+          agg.wallboxVehicleSoc,
+        ),
+      );
       this.capabilityManager?.updateLinkedGridMeter(result)
       this.capabilityManager?.handleAvailability();
       this.diagnosticManager?.recordSyncSuccess(result, this.lastCloudVehicleSoc)
