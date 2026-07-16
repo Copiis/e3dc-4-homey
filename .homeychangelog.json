@@ -1,4 +1,8 @@
 {
+  "1.8.60": {
+    "de": "- **HKW-Widget:** Energie-Flows zwischen Netz/Haus/Batterie optisch auseinandergezogen und feinjustiert.\n- **HKW-Widget:** Am Blitz Reihenfolge und Abstände der Werte angepasst (Bezug oben, dann Leistung, dann Einspeisung).",
+    "en": "- **HKW widget:** Energy flow lines between grid/house/battery spread apart and fine-tuned.\n- **HKW widget:** Lightning bolt value order and spacing adjusted (import on top, then power, then export)."
+  },
   "1.8.59": {
     "de": "- **HKW-Widget:** Unter der PV-Leistung die **Tagesproduktion** (kWh).\n- **HKW-Widget:** Am Netz-Symbol zusätzlich **Netzbezug** und **Netzeinspeisung** heute (kWh); Blitz an Batterie-Größe und Ränder ausgerichtet, Textpositionen feinjustiert.\n- **PV-Prognose:** Angepasste Prognose robuster (Blend aus Kurve + Wetter) – kein plötzlicher Absturz unter die Baseline ab Mittag, sanftere stündliche Schritte.",
     "en": "- **HKW widget:** **Daily PV production** (kWh) under PV power.\n- **HKW widget:** On the grid symbol: **grid import** and **grid export** today (kWh); lightning bolt sized like the battery and aligned margins; text positions fine-tuned.\n- **PV forecast:** More robust adjusted forecast (curve + weather blend) – no sudden drop below baseline at noon, smoother hourly steps."
