@@ -193,9 +193,8 @@ export function estimateProductionEndMs(hours: HourlyIrradiance[], nowMs: number
  * Schätzt den Landepunkt (finale kWh der Tagesproduktion) anhand
  * der Produktionskurve der letzten Stunden + geschätztem Ende.
  *
- * Wichtig: Im aufrufenden Code wird das Ergebnis zusätzlich gegen eine
- * "forecast-guided" Schätzung geclamped, weil reine lineare Extrapolation
- * bei unsicherem Produktionsende leicht überschießt.
+ * Reine lineare Extrapolation neigt zum Überschießen (Mittagssteigung × Restzeit).
+ * Deshalb: Restzeit begrenzen + abnehmende Rate (Taper) zum Abend.
  */
 export function estimateDailyProductionLandingPoint(
   history: Array<{ ts: number; kwh: number }>,
@@ -210,8 +209,8 @@ export function estimateDailyProductionLandingPoint(
     .sort((a, b) => a.ts - b.ts)
     .filter(p => p.kwh >= 0);
 
-  // Für Steilheit/Flachheit: vorzugsweise die Kurve der letzten ~3 Stunden verwenden
-  const recentWindowStart = nowMs - 3 * 3600 * 1000;
+  // Für Steilheit: vorzugsweise die letzten ~2 Stunden (weniger Mittags-Bias als 3h)
+  const recentWindowStart = nowMs - 2 * 3600 * 1000;
   let points = sorted.filter(p => p.ts >= recentWindowStart);
 
   if (points.length < 2) {
@@ -229,17 +228,101 @@ export function estimateDailyProductionLandingPoint(
     return last.kwh;
   }
 
-  const ratePerHour = (last.kwh - first.kwh) / deltaHours; // Steigung der Kurve
+  const ratePerHour = Math.max(0, (last.kwh - first.kwh) / deltaHours);
 
-  // Wichtig: Remaining stark begrenzen. Auch wenn estimateProductionEndMs zu spät liegt,
-  // extrapolieren wir nicht linear über viele Stunden (Produktionsrate fällt zum Abend hin).
+  // Remaining begrenzen (Produktionsrate fällt zum Abend)
   const rawRemaining = (estimatedEndMs - nowMs) / 3600000;
-  const remainingHours = Math.max(0.2, Math.min(3.5, rawRemaining));
+  const remainingHours = Math.max(0.15, Math.min(3.0, rawRemaining));
 
-  let final = last.kwh + ratePerHour * remainingHours;
+  // Taper: nicht volle aktuelle Rate über die Restzeit (Überhöhen vermeiden)
+  // Bei 3h Rest → ~0.55× Rate, bei 0.5h Rest → ~0.9× Rate
+  const taper = 0.5 + 0.45 * Math.min(1, 1.2 / Math.max(remainingHours, 0.3));
+  let final = last.kwh + ratePerHour * remainingHours * taper;
 
-  // Nie unter aktuellen Wert fallen
   final = Math.max(last.kwh, final);
 
   return roundKwh(final);
+}
+
+export interface AdjustedForecastBlendInput {
+  actualKwh: number;
+  baselineKwh: number;
+  expectedKwhSoFar: number;
+  correctionFactor: number;
+  curveEstimate: number;
+  /** Previous published adjusted value (for smooth Insights, no noon crash). */
+  previousAdjustedKwh?: number;
+  /** Local hour 0–23; blending starts after 12. */
+  localHour: number;
+}
+
+/**
+ * Mischt Kurven-Extrapolation und wettergeführte Schätzung.
+ *
+ * Problem der alten Logik `min(curve, guided)`:
+ * - mittags oft Crash (Kurve noch flach → Unterschätzung)
+ * - nachmittags Überschießen (steile Kurve × Restzeit)
+ *
+ * Strategie:
+ * - früh (ab 12) stärker guided/baseline, später mehr Kurve
+ * - Floor/Cap + Schrittbegrenzung gegen Insights-Zacken
+ */
+export function blendAdjustedForecast(input: AdjustedForecastBlendInput): number {
+  const actual = Math.max(0, input.actualKwh);
+  const baseline = Math.max(0, input.baselineKwh);
+  const expectedSoFar = Math.max(0, input.expectedKwhSoFar);
+  const remainingBaseline = Math.max(0, baseline - expectedSoFar);
+  const corr = Number.isFinite(input.correctionFactor) ? input.correctionFactor : 1;
+  const safeFactor = Math.max(0.7, Math.min(1.3, corr));
+  const guided = actual + remainingBaseline * safeFactor;
+  const curve = Math.max(actual, input.curveEstimate || actual);
+
+  // 12:00 → 0, ca. 19:00 → 1
+  const t = Math.max(0, Math.min(1, (input.localHour - 12) / 7));
+
+  // Früh: guided dominiert (stabil nahe Baseline). Spät: Kurve stärker, aber nicht allein.
+  const curveWeight = 0.15 + 0.55 * t; // 0.15 … 0.70
+  let blended = guided * (1 - curveWeight) + curve * curveWeight;
+
+  // Spät am Tag: Richtung „Ist + kleiner Rest“ ziehen (Vorhersage wird sowieso trivial)
+  if (t > 0.65 && baseline > 0) {
+    const doneFrac = Math.min(1, expectedSoFar / baseline);
+    const latePull = (t - 0.65) / 0.35; // 0…1
+    const conservative = actual + remainingBaseline * Math.min(safeFactor, 1.05);
+    blended = blended * (1 - latePull * 0.55) + conservative * (latePull * 0.55);
+    // Wenn schon sehr viel vom erwarteten Tag durch ist, enger an actual
+    if (doneFrac > 0.85) {
+      blended = Math.min(blended, actual + remainingBaseline * 1.05);
+    }
+  }
+
+  // Floor: kein Absturz unter actual; mittags nicht weit unter Baseline/vorherigem Wert
+  let floor = actual;
+  if (t < 0.4) {
+    const anchor = input.previousAdjustedKwh != null && input.previousAdjustedKwh > 0
+      ? input.previousAdjustedKwh
+      : baseline;
+    floor = Math.max(floor, Math.min(anchor, guided) * 0.94);
+  }
+
+  // Cap: begrenztes Überschießen vs. Baseline/Guided
+  const overshoot = t < 0.45 ? 1.1 : 1.18;
+  const cap = Math.max(
+    baseline * overshoot,
+    guided * 1.12,
+    actual * 1.12,
+  );
+
+  let result = Math.min(cap, Math.max(floor, blended));
+  result = Math.max(result, actual);
+
+  // Sanfte Schritte (Insights: keine steilen Treppen/Abstürze pro Update-Stunde)
+  if (input.previousAdjustedKwh != null && input.previousAdjustedKwh > 0) {
+    const prev = input.previousAdjustedKwh;
+    const maxStep = Math.max(2.0, prev * 0.1); // ±10 % oder mind. 2 kWh
+    result = Math.max(prev - maxStep, Math.min(prev + maxStep, result));
+    result = Math.max(result, actual);
+  }
+
+  return roundKwh(result);
 }

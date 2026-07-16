@@ -1,4 +1,12 @@
 {
+  "1.8.59": {
+    "de": "- **HKW-Widget:** Unter der PV-Leistung die **Tagesproduktion** (kWh).\n- **HKW-Widget:** Am Netz-Symbol zusätzlich **Netzbezug** und **Netzeinspeisung** heute (kWh); Blitz an Batterie-Größe und Ränder ausgerichtet, Textpositionen feinjustiert.\n- **PV-Prognose:** Angepasste Prognose robuster (Blend aus Kurve + Wetter) – kein plötzlicher Absturz unter die Baseline ab Mittag, sanftere stündliche Schritte.",
+    "en": "- **HKW widget:** **Daily PV production** (kWh) under PV power.\n- **HKW widget:** On the grid symbol: **grid import** and **grid export** today (kWh); lightning bolt sized like the battery and aligned margins; text positions fine-tuned.\n- **PV forecast:** More robust adjusted forecast (curve + weather blend) – no sudden drop below baseline at noon, smoother hourly steps."
+  },
+  "1.8.58": {
+    "de": "- **Detaillierte Diagnose:** Auto-Aus nach 60 Minuten funktioniert wieder zuverlässig – der Timer überlebt App-/Homey-Neustarts (Zeitstempel im Store).\n- Hängendes „Ja“ ohne Deadline (z. B. nach Update) wird beim nächsten App-Start automatisch abgeschaltet.\n- Diagnose-Manager startet beim Gerätestart korrekt (Analysis-Log + Auto-Off-Resume).",
+    "en": "- **Detailed diagnostics:** Auto-off after 60 minutes works reliably again – the timer survives app/Homey restarts (timestamp in store).\n- Stuck “On” without a deadline (e.g. after an update) is turned off automatically on the next app start.\n- Diagnostic manager starts correctly on device init (analysis log + auto-off resume)."
+  },
   "1.8.57": {
     "de": "- **HKW-Widget:** Unter der Wallbox-Leistung wird der Fahrzeug-SOC angezeigt (wie beim Akku W + %).\n- **HKW-Widget:** Wallbox-Symbol ist jetzt ein Auto in Vorderansicht (statt Ladesäule).\n- **HKW-Widget:** SOC-/Nebenwerte an Akku und Auto sind weiß; Textpositionen an der Wallbox feinjustiert.",
     "en": "- **HKW widget:** Vehicle SOC is shown under wallbox power (like battery W + %).\n- **HKW widget:** Wallbox symbol is now a front-view car (instead of charging pile).\n- **HKW widget:** SOC/secondary values on battery and car are white; wallbox text positions fine-tuned."
@@ -430,64 +438,60 @@
     "de": "- Wallbox Flow: Laden starten, Laden stoppen, Sonnenmodus ein/aus\n- RSCP-Steuerung über WBTag REQ_SET_EXTERN (wie ioBroker e3dc-rscp)\n- Bestehende Karte „Lade-Stromstärke setzen“ bleibt erhalten",
     "en": "- Wallbox flow actions: start charging, stop charging, sun mode on/off\n- RSCP control via WBTag REQ_SET_EXTERN (aligned with ioBroker e3dc-rscp)\n- Existing \"Set charging current\" card retained"
   },
+  "1.2.1": {
+    "en": "Wallbox integration"
+  },
   "1.2.0": {
     "de": "- Community Fork (Copiis) des nicht mehr gepflegten Original-Repos\n- Wallbox: Klasse auf 'evcharger' geändert, Standard-Capability 'measure_power' hinzugefügt (bessere Integration in Homey Energy)\n- Wallbox-Steuerung: Neue Flow-Action 'Set wallbox charging current' (Stromstärke + Modus via RSCP)\n- Erweiterte Wallbox-Doku und Hinweise zu Sun-Mode / Ladestrom\n- Metadaten (Author, Links, Support) auf den Fork aktualisiert\n- Vorbereitung für weitere Wallbox-Features (Energie, detaillierter Status, erweiterte Modi)",
     "en": "- Community fork (Copiis) of the unmaintained original repo\n- Wallbox: changed class to 'evcharger', added standard 'measure_power' capability (better Homey Energy integration)\n- Wallbox control: new Flow Action 'Set wallbox charging current' (current + mode via RSCP)\n- Expanded wallbox docs and notes on Sun mode / charge current\n- Updated metadata (author, links, support) to point to the fork\n- Preparation for richer wallbox features (energy counters, detailed status, more modes)"
-  },
-  "0.5.0": {
-    "en": "Initial release"
-  },
-  "0.5.1": {
-    "en": "Initial release"
-  },
-  "0.6.0": {
-    "de": "- Firmwareversion wird angezeigt\n- WENN Karte: Firmware hat sich geändert\n- Reconnect Problem behoben\n- Lade- und Entladesystem kann vollständig über verschieden WENN, DANN und UND Karten gesteuert werden\n- Vorzeichen für den Batteriestrom wurde geändert. Negative Werte bedeuten, dass die Batterie entladen wird und positive Werte bedeuten, dass die Batterie geladen wird",
-    "en": "- Firmware version is displayed\n- IF card: Firmware has changed\n- Reconnect problem fixed\n- Charging and discharging system can be fully controlled via different IF, THEN and AND cards\n- Sign for battery current has been changed. Negative values mean that the battery is being discharged and positive values mean that the battery is being charged"
-  },
-  "0.7.0": {
-    "de": "- Anzeige Restladezeit/Restentladezeit\n- Karten zur Steuerung der Notstromfunktion\n- Neues Device um die Batteriedaten zu überwachen",
-    "en": "- Display of remaining charging time/remaining discharge time\n- Cards for controlling the emergency power function\n- New device to monitor the battery data"
-  },
-  "0.7.1": {
-    "en": "- Fixed wrong charging time"
-  },
-  "0.8.0": {
-    "de": "- Livedatenanzeige der angeschlossenen Wallboxen",
-    "en": "- Live data display of the connected wallboxes"
-  },
-  "1.0.0": {
-    "de": "public release",
-    "en": "public release"
-  },
-  "1.0.1": {
-    "de": "- Bug gefixt, dass die Einstellungen beim Hinzufügen des Devices nicht übernommen wurden",
-    "en": "- Bug fixed that the settings were not applied when adding the device"
-  },
-  "1.0.2": {
-    "de": "- Gefixt: Aktivierung des Debug Modus schlägt fehlt",
-    "en": "- Fixed: Activation of debug mode fails"
-  },
-  "1.0.3": {
-    "de": "- Gefixt: Auslesen der Batteriekapazität bei S10X Hauskraftwerken schlägt fehl",
-    "en": "- Fixed: Reading out the battery capacity of S10X home power stations fails"
-  },
-  "1.0.4": {
-    "de": "- Die Wartezeit, die die App auf eine Antwort vom Hauskraftwerk antwortet, kann in den Device Einstellungen angepasst werden",
-    "en": "- The time that the app waits for a response from the home power station can be adjusted in the device settings"
-  },
-  "1.0.5": {
-    "de": "- Hotfix: Neues Device konnten nicht hinzugefügt werden. Sorry!!",
-    "en": "- Hotfix: New devices could not be added. Sorry!!"
   },
   "1.1.0": {
     "de": "- Unterstützung für externe Quellen\n- einfaches Übersichtswidget\n- Typos in der deutschen Übersetzung behoben",
     "en": "- Added support for external sources\n- simple overview widget\n- Fixed typos in the German translation"
   },
-  "1.2.1": {
-    "en": "Wallbox integration"
+  "1.0.5": {
+    "de": "- Hotfix: Neues Device konnten nicht hinzugefügt werden. Sorry!!",
+    "en": "- Hotfix: New devices could not be added. Sorry!!"
   },
-  "1.8.58": {
-    "de": "- **Detaillierte Diagnose:** Auto-Aus nach 60 Minuten funktioniert wieder zuverlässig – der Timer überlebt App-/Homey-Neustarts (Zeitstempel im Store).\n- Hängendes „Ja“ ohne Deadline (z. B. nach Update) wird beim nächsten App-Start automatisch abgeschaltet.\n- Diagnose-Manager startet beim Gerätestart korrekt (Analysis-Log + Auto-Off-Resume).",
-    "en": "- **Detailed diagnostics:** Auto-off after 60 minutes works reliably again – the timer survives app/Homey restarts (timestamp in store).\n- Stuck “On” without a deadline (e.g. after an update) is turned off automatically on the next app start.\n- Diagnostic manager starts correctly on device init (analysis log + auto-off resume)."
+  "1.0.4": {
+    "de": "- Die Wartezeit, die die App auf eine Antwort vom Hauskraftwerk antwortet, kann in den Device Einstellungen angepasst werden",
+    "en": "- The time that the app waits for a response from the home power station can be adjusted in the device settings"
+  },
+  "1.0.3": {
+    "de": "- Gefixt: Auslesen der Batteriekapazität bei S10X Hauskraftwerken schlägt fehl",
+    "en": "- Fixed: Reading out the battery capacity of S10X home power stations fails"
+  },
+  "1.0.2": {
+    "de": "- Gefixt: Aktivierung des Debug Modus schlägt fehlt",
+    "en": "- Fixed: Activation of debug mode fails"
+  },
+  "1.0.1": {
+    "de": "- Bug gefixt, dass die Einstellungen beim Hinzufügen des Devices nicht übernommen wurden",
+    "en": "- Bug fixed that the settings were not applied when adding the device"
+  },
+  "1.0.0": {
+    "de": "public release",
+    "en": "public release"
+  },
+  "0.8.0": {
+    "de": "- Livedatenanzeige der angeschlossenen Wallboxen",
+    "en": "- Live data display of the connected wallboxes"
+  },
+  "0.7.1": {
+    "en": "- Fixed wrong charging time"
+  },
+  "0.7.0": {
+    "de": "- Anzeige Restladezeit/Restentladezeit\n- Karten zur Steuerung der Notstromfunktion\n- Neues Device um die Batteriedaten zu überwachen",
+    "en": "- Display of remaining charging time/remaining discharge time\n- Cards for controlling the emergency power function\n- New device to monitor the battery data"
+  },
+  "0.6.0": {
+    "de": "- Firmwareversion wird angezeigt\n- WENN Karte: Firmware hat sich geändert\n- Reconnect Problem behoben\n- Lade- und Entladesystem kann vollständig über verschieden WENN, DANN und UND Karten gesteuert werden\n- Vorzeichen für den Batteriestrom wurde geändert. Negative Werte bedeuten, dass die Batterie entladen wird und positive Werte bedeuten, dass die Batterie geladen wird",
+    "en": "- Firmware version is displayed\n- IF card: Firmware has changed\n- Reconnect problem fixed\n- Charging and discharging system can be fully controlled via different IF, THEN and AND cards\n- Sign for battery current has been changed. Negative values mean that the battery is being discharged and positive values mean that the battery is being charged"
+  },
+  "0.5.1": {
+    "en": "Initial release"
+  },
+  "0.5.0": {
+    "en": "Initial release"
   }
 }

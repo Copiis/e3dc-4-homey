@@ -25,6 +25,7 @@ import {DailyIrradianceForecast, fetchTodayTiltedIrradianceForecast} from '../..
 import {updateCapabilityValue} from '../../src/utils/capability-utils';
 import {formatError} from '../../src/utils/error-utils';
 import {
+  blendAdjustedForecast,
   calculateMultiSegmentPvForecast,
   estimateDailyProductionLandingPoint,
   getLocalHour,
@@ -378,20 +379,13 @@ class PvForecastDevice extends Homey.Device {
       const trimStart = nowMs - 10 * 3600 * 1000;
       history = history.filter(p => p.ts >= trimStart);
 
-      // === REGEL FÜR NACHBERECHNUNG DER PV-PROGNOSE (Landepunkt) ===
-      // Schätzung erfolgt NUR ab 12 Uhr (Mittag) und dann im 1-Stunden-Intervall.
-      // (Die frühere 3-kWh-Ist-Produktions-Bedingung wurde entfernt.)
-      // Wir kombinieren:
-      //   1. Kurven-Extrapolation aus der tatsächlichen Produktionshistorie (letzte ~3h Steigung)
-      //   2. "Forecast-guided": actual + (verbleibende Baseline aus Open-Meteo) * beobachteter Korrekturfaktor
-      // Der Hybrid + Caps im Endzeit- und LandingPoint-Algorithmus soll verhindern,
-      // dass die nachberechnete Prognose über das realistische Tagesziel hinausschießt
-      // (häufiges Problem, wenn Produktionsende im Forecast zu spät geschätzt wird).
+      // === Nachberechnete Prognose (Landepunkt) ===
+      // Ab 12:00, stündlich neu. Blend aus Kurve + Wetter-guided (kein min()-Crash).
+      // Vor 12:00 = reine Baseline (Ursprungsprognose).
       let adjustedKwh = baselineKwh;
       const localHour = getLocalHour(timezone, nowMs);
       const shouldStartEstimation = localHour >= 12;
 
-      // Sicherstellen dass dayState ein Objekt ist
       let workingDayState: PvForecastDayState = dayState || {
         localDate: today,
         configHash,
@@ -401,32 +395,33 @@ class PvForecastDevice extends Homey.Device {
 
       if (shouldStartEstimation) {
         const lastEstimate = workingDayState.lastAdjustedEstimateMs ?? 0;
+        const previousAdjusted =
+          typeof workingDayState.adjustedKwh === 'number'
+            ? workingDayState.adjustedKwh
+            : baselineKwh;
 
         // Alle 1 Stunde neu rechnen (nur ab Mittag)
         if (!lastEstimate || (nowMs - lastEstimate) >= 60 * 60 * 1000) {
-          // estimatedEndMs wurde oben bereits als sunset - 3h berechnet
+          // estimatedEndMs: sunset − 2h (weniger aggressiv als −3h, Restzeit trotzdem capped)
+          if (this.cachedSunset?.sunsetMs) {
+            estimatedEndMs = this.cachedSunset.sunsetMs - 2 * 3600 * 1000;
+          }
 
           const curveEstimate = estimateDailyProductionLandingPoint(
             history,
             nowMs,
-            estimatedEndMs
+            estimatedEndMs,
           );
 
-          // Hybrid-Schutz gegen Overshooting:
-          // Die reine Kurven-Extrapolation (Steigung * verbleibende Zeit) kann stark überschießen,
-          // wenn das geschätzte Produktionsende zu spät liegt oder die Steigung aus der Mittagszeit kommt.
-          // Deshalb berechnen wir zusätzlich eine "forecast-guided" Schätzung:
-          //   actual + (verbleibende Baseline aus dem Wettermodell) * beobachteter Faktor
-          // und nehmen den konservativeren Wert.
-          const expectedSoFar = forecast.expectedKwhSoFar || 0;
-          const remainingBaseline = Math.max(0, baselineKwh - expectedSoFar);
-          const corr = forecast.correctionFactor || 1;
-          const safeFactor = Math.max(0.75, Math.min(1.35, corr));
-          const guided = actualKwh + remainingBaseline * safeFactor;
-
-          // Curve darf nicht viel über die wettermodell-geführte Schätzung hinausgehen
-          adjustedKwh = Math.min(curveEstimate, Math.max(guided, actualKwh * 1.05));
-          adjustedKwh = Math.max(adjustedKwh, actualKwh);
+          adjustedKwh = blendAdjustedForecast({
+            actualKwh,
+            baselineKwh,
+            expectedKwhSoFar: forecast.expectedKwhSoFar || 0,
+            correctionFactor: forecast.correctionFactor || 1,
+            curveEstimate,
+            previousAdjustedKwh: previousAdjusted,
+            localHour,
+          });
 
           workingDayState = {
             ...workingDayState,
@@ -438,9 +433,8 @@ class PvForecastDevice extends Homey.Device {
             productionHistory: history,
           };
         } else {
-          if (typeof workingDayState.adjustedKwh === 'number') {
-            adjustedKwh = workingDayState.adjustedKwh;
-          }
+          // Zwischen den Stunden: gespeicherten Wert halten, aber nie unter Ist
+          adjustedKwh = Math.max(previousAdjusted, actualKwh);
           workingDayState = {
             ...workingDayState,
             localDate: today,

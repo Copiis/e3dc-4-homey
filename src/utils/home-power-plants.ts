@@ -18,6 +18,19 @@ export interface PowerStatus {
   wallboxSolarShare: number;
   /** Vehicle SOC (%) from linked wallbox tile (RSCP or Homey-car fallback). */
   wallboxVehicleSoc?: number;
+  /**
+   * PV day yield in kWh (today), when available from a linked
+   * HKW-Statistik (TODAY) or PV-forecast device.
+   */
+  pvTodayKwh?: number;
+  /**
+   * Grid import today in kWh (Netzbezug), from Statistik (TODAY) or grid-meter device.
+   */
+  gridImportTodayKwh?: number;
+  /**
+   * Grid export today in kWh (Netzeinspeisung), from Statistik (TODAY) or grid-meter device.
+   */
+  gridExportTodayKwh?: number;
   hasWallbox: boolean;
   hasBattery: boolean;
   chargeTime: string;

@@ -1,5 +1,6 @@
 import Homey from 'homey';
 import {LiveData} from '../model/live-data';
+import {SummaryConfig, SummaryType} from '../model/summary.config';
 import {PowerStatus} from './home-power-plants';
 import {readCapabilityNumber} from './read-capability-number';
 
@@ -15,6 +16,90 @@ export function getPlantPowerState(stationId: string): PowerStatus | undefined {
   return cache.get(stationId);
 }
 
+function safeGetDevices(homey: HomeyApi, driverId: string): Homey.Device[] {
+  try {
+    return homey.drivers.getDriver(driverId).getDevices();
+  } catch {
+    return [];
+  }
+}
+
+function readFiniteCapability(device: Homey.Device, capability: string): number | undefined {
+  if (!device.hasCapability(capability)) {
+    return undefined;
+  }
+  const value = readCapabilityNumber(device, capability, Number.NaN);
+  return Number.isFinite(value) ? value : undefined;
+}
+
+/**
+ * Day counters (kWh today) from linked devices.
+ * Prefer HKW-Statistik (TODAY); fall back to PV-forecast / grid-meter.
+ */
+function readDayKwhForStation(homey: HomeyApi, stationId: string): {
+  pvTodayKwh?: number;
+  gridImportTodayKwh?: number;
+  gridExportTodayKwh?: number;
+} {
+  const stationKey = String(stationId);
+  let pvTodayKwh: number | undefined;
+  let gridImportTodayKwh: number | undefined;
+  let gridExportTodayKwh: number | undefined;
+
+  for (const device of safeGetDevices(homey, 'summary')) {
+    const config = device.getStoreValue('settings') as SummaryConfig | undefined;
+    if (String(config?.stationId) !== stationKey) {
+      continue;
+    }
+    if (config?.type !== SummaryType.TODAY) {
+      continue;
+    }
+    if (pvTodayKwh === undefined) {
+      pvTodayKwh = readFiniteCapability(device, 'measure_pv_summary');
+    }
+    // measure_grid_out = Netzbezug, measure_grid_in = Netzeinspeisung (heute)
+    if (gridImportTodayKwh === undefined) {
+      gridImportTodayKwh = readFiniteCapability(device, 'measure_grid_out');
+    }
+    if (gridExportTodayKwh === undefined) {
+      gridExportTodayKwh = readFiniteCapability(device, 'measure_grid_in');
+    }
+  }
+
+  if (pvTodayKwh === undefined) {
+    for (const device of safeGetDevices(homey, 'pv-forecast')) {
+      const config = device.getStoreValue('settings') as { stationId?: string } | undefined;
+      if (String(config?.stationId) !== stationKey) {
+        continue;
+      }
+      pvTodayKwh = readFiniteCapability(device, 'measure_pv_actual_today');
+      if (pvTodayKwh !== undefined) {
+        break;
+      }
+    }
+  }
+
+  if (gridImportTodayKwh === undefined || gridExportTodayKwh === undefined) {
+    for (const device of safeGetDevices(homey, 'grid-meter')) {
+      const config = device.getStoreValue('settings') as { stationId?: string } | undefined;
+      if (String(config?.stationId) !== stationKey) {
+        continue;
+      }
+      if (gridImportTodayKwh === undefined) {
+        gridImportTodayKwh = readFiniteCapability(device, 'measure_grid_out');
+      }
+      if (gridExportTodayKwh === undefined) {
+        gridExportTodayKwh = readFiniteCapability(device, 'measure_grid_in');
+      }
+      if (gridImportTodayKwh !== undefined && gridExportTodayKwh !== undefined) {
+        break;
+      }
+    }
+  }
+
+  return { pvTodayKwh, gridImportTodayKwh, gridExportTodayKwh };
+}
+
 function aggregateWallboxPowerForStation(homey: HomeyApi, stationId: string): {
   powerW: number;
   solarShareW: number;
@@ -25,7 +110,7 @@ function aggregateWallboxPowerForStation(homey: HomeyApi, stationId: string): {
   let solarShareW = 0;
   let vehicleSoc: number | undefined;
   let hasWallbox = false;
-  const wallboxDevices = homey.drivers.getDriver('wallbox').getDevices();
+  const wallboxDevices = safeGetDevices(homey, 'wallbox');
   wallboxDevices.forEach((device: Homey.Device) => {
     const config = device.getStoreValue('settings') as { stationId?: string } | undefined;
     if (String(config?.stationId) !== stationId) {
@@ -51,6 +136,7 @@ export function buildPowerStateFromLiveData(
   wallboxSolarShare: number,
   hasWallbox: boolean = true,
   wallboxVehicleSoc?: number,
+  pvTodayKwh?: number,
 ): PowerStatus {
   const batteryLevel = result.batteryChargingLevel * 100;
   const hasBattery = batteryLevel != null && !isNaN(batteryLevel);
@@ -66,6 +152,7 @@ export function buildPowerStateFromLiveData(
     wallboxVehicleSoc: wallboxVehicleSoc !== undefined && wallboxVehicleSoc > 0
       ? Math.round(wallboxVehicleSoc)
       : undefined,
+    pvTodayKwh,
     hasWallbox,
     hasBattery,
     chargeTime: '',
@@ -80,6 +167,7 @@ export function buildPowerStateFromStation(station: Homey.Device, homey: HomeyAp
   const batteryLevel = readCapabilityNumber(station, 'measure_battery');
   const hasBattery = batteryLevel != null && !isNaN(batteryLevel);
   const batteryPower = readCapabilityNumber(station, 'measure_battery_delivery');
+  const dayKwh = readDayKwhForStation(homey, stationId);
 
   return {
     consumption: readCapabilityNumber(station, 'measure_house_consumption'),
@@ -90,6 +178,9 @@ export function buildPowerStateFromStation(station: Homey.Device, homey: HomeyAp
     wallboxPower: wallbox.powerW,
     wallboxSolarShare: wallbox.solarShareW,
     wallboxVehicleSoc: wallbox.vehicleSoc,
+    pvTodayKwh: dayKwh.pvTodayKwh,
+    gridImportTodayKwh: dayKwh.gridImportTodayKwh,
+    gridExportTodayKwh: dayKwh.gridExportTodayKwh,
     hasWallbox: wallbox.hasWallbox,
     hasBattery,
     chargeTime: (station.getCapabilityValue('charge_time') as string) || '',
