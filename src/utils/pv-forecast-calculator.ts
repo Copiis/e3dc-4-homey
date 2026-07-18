@@ -18,6 +18,8 @@ export interface PvForecastResult {
   baselineKwh: number;
   adjustedKwh: number;
   expectedKwhSoFar: number;
+  /** Wetter-Restenergie ab „jetzt“ (kWh), gleiche Formel wie Baseline. */
+  remainingWeatherKwh: number;
   correctionFactor: number;
 }
 
@@ -77,7 +79,7 @@ export function calculateMultiSegmentPvForecast(
 ): PvForecastResult {
   let baselineKwh = 0;
   let expectedKwhSoFar = 0;
-  let remainingKwh = 0;
+  let remainingWeatherKwh = 0;
 
   for (const segment of segments) {
     const partial = calculatePvForecast({
@@ -90,7 +92,7 @@ export function calculateMultiSegmentPvForecast(
     });
     baselineKwh += partial.baselineKwh;
     expectedKwhSoFar += partial.expectedKwhSoFar;
-    remainingKwh += partial.adjustedKwh;
+    remainingWeatherKwh += partial.remainingWeatherKwh;
   }
 
   const actualKwh = Math.max(0, actualKwhSoFar);
@@ -100,15 +102,20 @@ export function calculateMultiSegmentPvForecast(
     correctionFactor = Math.max(CORRECTION_MIN, Math.min(CORRECTION_MAX, correctionFactor));
   }
 
-  // Die nachberechnete Prognose (Kurven-Schätzung) wird ab 12 Uhr mittags
-  // (nur noch, nicht mehr bei >=3 kWh Ist) im Device anhand der Insights-Produktionskurve berechnet.
-  // Hier liefern wir als adjusted immer die reine Baseline.
-  const adjustedKwhValue = baselineKwh;
+  // adjusted hier = reiner Wetter-Rest-Landepunkt (ohne Smooth/History)
+  const adjustedKwhValue = computeWeatherRestLandingPoint({
+    actualKwh,
+    baselineKwh,
+    expectedKwhSoFar,
+    remainingWeatherKwh,
+    correctionFactor,
+  });
 
   return {
     baselineKwh: roundKwh(baselineKwh),
     adjustedKwh: roundKwh(adjustedKwhValue),
     expectedKwhSoFar: roundKwh(expectedKwhSoFar),
+    remainingWeatherKwh: roundKwh(remainingWeatherKwh),
     correctionFactor: Math.round(correctionFactor * 1000) / 1000,
   };
 }
@@ -120,7 +127,7 @@ export function calculatePvForecast(inputs: PvForecastInputs): PvForecastResult 
   const elapsedHours = filterHoursUpTo(inputs.hours, nowMs);
   const remainingHours = filterHoursAfter(inputs.hours, nowMs);
   const expectedKwhSoFar = sumIrradianceKwh(elapsedHours, inputs.installedKwp, inputs.calibrationFactor, pr);
-  const remainingKwh = sumIrradianceKwh(remainingHours, inputs.installedKwp, inputs.calibrationFactor, pr);
+  const remainingWeatherKwh = sumIrradianceKwh(remainingHours, inputs.installedKwp, inputs.calibrationFactor, pr);
   const actualKwh = Math.max(0, inputs.actualKwhSoFar ?? 0);
 
   let correctionFactor = 1;
@@ -129,17 +136,65 @@ export function calculatePvForecast(inputs: PvForecastInputs): PvForecastResult 
     correctionFactor = Math.max(CORRECTION_MIN, Math.min(CORRECTION_MAX, correctionFactor));
   }
 
-  // Kurvenbasierte Schätzung der Endsumme (nachberechnete Prognose)
-  // erfolgt im Device — aber nur ab 12:00 mittags (im 1h-Intervall).
-  // Hier: reine Baseline zurückgeben.
-  const adjustedKwhValue = baselineKwh;
+  const adjustedKwhValue = computeWeatherRestLandingPoint({
+    actualKwh,
+    baselineKwh,
+    expectedKwhSoFar,
+    remainingWeatherKwh,
+    correctionFactor,
+  });
 
   return {
     baselineKwh: roundKwh(baselineKwh),
     adjustedKwh: roundKwh(adjustedKwhValue),
     expectedKwhSoFar: roundKwh(expectedKwhSoFar),
+    remainingWeatherKwh: roundKwh(remainingWeatherKwh),
     correctionFactor: Math.round(correctionFactor * 1000) / 1000,
   };
+}
+
+/**
+ * Kern der Nachberechnung (valider Weg):
+ *   A = E_ist + R_Wetter · f
+ * f = E_ist / E_modell,bisher (geclampt); bei wenig Modell-Daten → 1.
+ * Immer A ≥ E_ist; Rest → 0 abends ⇒ A → E_ist.
+ */
+export function computeWeatherRestLandingPoint(input: {
+  actualKwh: number;
+  baselineKwh: number;
+  expectedKwhSoFar: number;
+  remainingWeatherKwh: number;
+  correctionFactor?: number;
+}): number {
+  const actual = Math.max(0, input.actualKwh);
+  const expected = Math.max(0, input.expectedKwhSoFar);
+  const remaining = Math.max(0, input.remainingWeatherKwh);
+  const baseline = Math.max(0, input.baselineKwh);
+
+  let f = 1;
+  if (typeof input.correctionFactor === 'number' && Number.isFinite(input.correctionFactor)) {
+    f = input.correctionFactor;
+  } else if (expected >= MIN_EXPECTED_KWH_FOR_CORRECTION && actual > 0) {
+    f = actual / expected;
+  }
+  // Enger als die alte 0.6–1.4-Spanne: Overshoot durch zu großes f vermeiden
+  f = Math.max(0.7, Math.min(1.2, f));
+
+  let A = actual + remaining * f;
+  A = Math.max(A, actual);
+
+  // Nicht klar voraus → nicht über die (eingefrorene) Baseline steigen
+  const ahead = expected > 0.5 && actual > expected * 1.03;
+  if (baseline > 0) {
+    if (!ahead) {
+      A = Math.min(A, Math.max(baseline, actual));
+    } else {
+      // Klar voraus: max. +10 % über Baseline (Notbremse)
+      A = Math.min(A, Math.max(actual, baseline * 1.1));
+    }
+  }
+
+  return roundKwh(A);
 }
 
 export function roundKwh(value: number): number {
@@ -232,11 +287,12 @@ export function estimateDailyProductionLandingPoint(
 
   // Remaining begrenzen (Produktionsrate fällt zum Abend)
   const rawRemaining = (estimatedEndMs - nowMs) / 3600000;
-  const remainingHours = Math.max(0.15, Math.min(3.0, rawRemaining));
+  // Max 2.5h Rest mit voller Steigung — danach ist die Kurve oft zu optimistisch
+  const remainingHours = Math.max(0.15, Math.min(2.5, rawRemaining));
 
   // Taper: nicht volle aktuelle Rate über die Restzeit (Überhöhen vermeiden)
-  // Bei 3h Rest → ~0.55× Rate, bei 0.5h Rest → ~0.9× Rate
-  const taper = 0.5 + 0.45 * Math.min(1, 1.2 / Math.max(remainingHours, 0.3));
+  // Bei 2.5h Rest → ~0.45× Rate, bei 0.5h Rest → ~0.85× Rate
+  const taper = 0.4 + 0.45 * Math.min(1, 1.0 / Math.max(remainingHours, 0.3));
   let final = last.kwh + ratePerHour * remainingHours * taper;
 
   final = Math.max(last.kwh, final);
@@ -249,7 +305,16 @@ export interface AdjustedForecastBlendInput {
   baselineKwh: number;
   expectedKwhSoFar: number;
   correctionFactor: number;
-  curveEstimate: number;
+  /**
+   * Wetter-Restenergie ab jetzt (kWh) aus aktuellem Open-Meteo.
+   * Wenn weggelassen: Fallback `max(0, baseline − expectedSoFar)` (ungenauer).
+   */
+  remainingWeatherKwh?: number;
+  /**
+   * @deprecated Kurven-Landepunkt wird nicht mehr als Treiber genutzt
+   * (Overshoot-Ursache). Parameter bleibt optional für alte Aufrufer.
+   */
+  curveEstimate?: number;
   /** Previous published adjusted value (for smooth Insights, no noon crash). */
   previousAdjustedKwh?: number;
   /** Local hour 0–23; blending starts after 12. */
@@ -257,72 +322,73 @@ export interface AdjustedForecastBlendInput {
 }
 
 /**
- * Mischt Kurven-Extrapolation und wettergeführte Schätzung.
+ * Nachberechnete Tagesprognose (angepasst):
+ *   A = E_ist + R_Wetter · f
  *
- * Problem der alten Logik `min(curve, guided)`:
- * - mittags oft Crash (Kurve noch flach → Unterschätzung)
- * - nachmittags Überschießen (steile Kurve × Restzeit)
- *
- * Strategie:
- * - früh (ab 12) stärker guided/baseline, später mehr Kurve
- * - Floor/Cap + Schrittbegrenzung gegen Insights-Zacken
+ * Die frühere Kurven-Extrapolation (Mittagssteigung × Restzeit) entfällt —
+ * sie war die Hauptursache für Nachmittags-Überschießen in Insights.
+ * Optionaler Schritt-Smoother hält Insights ruhig (nach oben streng begrenzt).
  */
 export function blendAdjustedForecast(input: AdjustedForecastBlendInput): number {
   const actual = Math.max(0, input.actualKwh);
   const baseline = Math.max(0, input.baselineKwh);
   const expectedSoFar = Math.max(0, input.expectedKwhSoFar);
-  const remainingBaseline = Math.max(0, baseline - expectedSoFar);
-  const corr = Number.isFinite(input.correctionFactor) ? input.correctionFactor : 1;
-  const safeFactor = Math.max(0.7, Math.min(1.3, corr));
-  const guided = actual + remainingBaseline * safeFactor;
-  const curve = Math.max(actual, input.curveEstimate || actual);
+  const remainingWeather =
+    typeof input.remainingWeatherKwh === 'number' && Number.isFinite(input.remainingWeatherKwh)
+      ? Math.max(0, input.remainingWeatherKwh)
+      : Math.max(0, baseline - expectedSoFar);
 
-  // 12:00 → 0, ca. 19:00 → 1
+  const target = computeWeatherRestLandingPoint({
+    actualKwh: actual,
+    baselineKwh: baseline,
+    expectedKwhSoFar: expectedSoFar,
+    remainingWeatherKwh: remainingWeather,
+    correctionFactor: input.correctionFactor,
+  });
+
+  let result = target;
+
+  // Früh nach 12:00 + wenig Ist: bei Previous/Baseline ankern (kein Insights-Crash unter Baseline)
   const t = Math.max(0, Math.min(1, (input.localHour - 12) / 7));
-
-  // Früh: guided dominiert (stabil nahe Baseline). Spät: Kurve stärker, aber nicht allein.
-  const curveWeight = 0.15 + 0.55 * t; // 0.15 … 0.70
-  let blended = guided * (1 - curveWeight) + curve * curveWeight;
-
-  // Spät am Tag: Richtung „Ist + kleiner Rest“ ziehen (Vorhersage wird sowieso trivial)
-  if (t > 0.65 && baseline > 0) {
-    const doneFrac = Math.min(1, expectedSoFar / baseline);
-    const latePull = (t - 0.65) / 0.35; // 0…1
-    const conservative = actual + remainingBaseline * Math.min(safeFactor, 1.05);
-    blended = blended * (1 - latePull * 0.55) + conservative * (latePull * 0.55);
-    // Wenn schon sehr viel vom erwarteten Tag durch ist, enger an actual
-    if (doneFrac > 0.85) {
-      blended = Math.min(blended, actual + remainingBaseline * 1.05);
-    }
+  if (t < 0.3 && baseline > 0 && actual < baseline * 0.45) {
+    const anchor =
+      input.previousAdjustedKwh != null && input.previousAdjustedKwh > 0
+        ? input.previousAdjustedKwh
+        : baseline;
+    // Halte nahe am Anker (Baseline), lasse aber target den Wert nach unten ziehen wenn
+    // das Wetter klar weniger Rest meldet — gemischt, kein harter Drop.
+    const anchored = Math.min(anchor, baseline);
+    result = Math.max(actual, anchored * (1 - t) + target * t);
   }
 
-  // Floor: kein Absturz unter actual; mittags nicht weit unter Baseline/vorherigem Wert
-  let floor = actual;
-  if (t < 0.4) {
-    const anchor = input.previousAdjustedKwh != null && input.previousAdjustedKwh > 0
-      ? input.previousAdjustedKwh
-      : baseline;
-    floor = Math.max(floor, Math.min(anchor, guided) * 0.94);
-  }
-
-  // Cap: begrenztes Überschießen vs. Baseline/Guided
-  const overshoot = t < 0.45 ? 1.1 : 1.18;
-  const cap = Math.max(
-    baseline * overshoot,
-    guided * 1.12,
-    actual * 1.12,
-  );
-
-  let result = Math.min(cap, Math.max(floor, blended));
   result = Math.max(result, actual);
 
-  // Sanfte Schritte (Insights: keine steilen Treppen/Abstürze pro Update-Stunde)
+  // Schritte: nach oben streng (kein stündliches Hochklettern), nach unten freier
   if (input.previousAdjustedKwh != null && input.previousAdjustedKwh > 0) {
     const prev = input.previousAdjustedKwh;
-    const maxStep = Math.max(2.0, prev * 0.1); // ±10 % oder mind. 2 kWh
-    result = Math.max(prev - maxStep, Math.min(prev + maxStep, result));
+    const maxUp = Math.max(0.6, prev * 0.025); // ~2.5 %/h max
+    const maxDown = prev > baseline + 0.5
+      ? Math.max(4.0, prev * 0.2) // Overshoot schnell abbauen
+      : Math.max(2.0, prev * 0.12);
+    result = Math.max(prev - maxDown, Math.min(prev + maxUp, result));
     result = Math.max(result, actual);
   }
+
+  // Harte Caps nach Smoothing
+  const ahead = expectedSoFar > 0.5 && actual > expectedSoFar * 1.03;
+  if (baseline > 0) {
+    if (!ahead) {
+      result = Math.min(result, Math.max(baseline, actual));
+    } else {
+      result = Math.min(result, Math.max(actual, baseline * 1.1));
+    }
+  }
+  // Nachmittag/Abend: nicht über den Wetter-Landepunkt davonlaufen
+  // (früh nach 12 mit wenig Ist bleibt Anker erlaubt)
+  if (!(t < 0.3 && actual < baseline * 0.45)) {
+    result = Math.min(result, Math.max(target, actual) + 0.3);
+  }
+  result = Math.max(result, actual);
 
   return roundKwh(result);
 }

@@ -27,12 +27,10 @@ import {formatError} from '../../src/utils/error-utils';
 import {
   blendAdjustedForecast,
   calculateMultiSegmentPvForecast,
-  estimateDailyProductionLandingPoint,
   getLocalHour,
   localDateString,
   roundKwh,
 } from '../../src/utils/pv-forecast-calculator';
-import { fetchSunsetMs } from '../../src/services/open-meteo-forecast';
 import {
   PV_SEGMENT_SETTING_PREFIXES,
   pvForecastConfigHash,
@@ -54,8 +52,6 @@ class PvForecastDevice extends Homey.Device {
   private loopId: NodeJS.Timeout | null = null;
   private syncErrorCount = 0;
   private cachedWeather: WeatherCache = {};
-  /** Cached sunset for the current local day to avoid repeated API calls */
-  private cachedSunset: { localDate: string; sunsetMs: number } | null = null;
 
   /**
    * Initialisiert die PV-Prognose.
@@ -336,23 +332,6 @@ class PvForecastDevice extends Homey.Device {
         };
       });
 
-      // Sonnenuntergang holen und Produktionsende immer 3 Stunden davor setzen.
-      // Das ist zuverlässiger als die letzte Irradiance-Stunde aus dem Forecast.
-      const coords = await this.resolveCoordinates(settings);
-      let estimatedEndMs = nowMs + 4 * 3600 * 1000; // Fallback
-      if (coords) {
-        const todayForSun = localDateString(timezone, nowMs);
-        if (!this.cachedSunset || this.cachedSunset.localDate !== todayForSun) {
-          const sunsetMs = await fetchSunsetMs(coords.latitude, coords.longitude, timezone, nowMs);
-          if (sunsetMs && sunsetMs > nowMs) {
-            this.cachedSunset = { localDate: todayForSun, sunsetMs };
-          }
-        }
-        if (this.cachedSunset?.sunsetMs) {
-          estimatedEndMs = this.cachedSunset.sunsetMs - 3 * 3600 * 1000;
-        }
-      }
-
       const actualKwh = await this.readActualPvTodayKwh(station, timezone);
 
       // Reine Baseline (Ursprungsprognose) aus dem Wetter-Modell
@@ -379,8 +358,8 @@ class PvForecastDevice extends Homey.Device {
       const trimStart = nowMs - 10 * 3600 * 1000;
       history = history.filter(p => p.ts >= trimStart);
 
-      // === Nachberechnete Prognose (Landepunkt) ===
-      // Ab 12:00, stündlich neu. Blend aus Kurve + Wetter-guided (kein min()-Crash).
+      // === Nachberechnete Prognose ===
+      // Ab 12:00 stündlich: A = E_ist + R_Wetter · f (kein Kurven-Overshoot).
       // Vor 12:00 = reine Baseline (Ursprungsprognose).
       let adjustedKwh = baselineKwh;
       const localHour = getLocalHour(timezone, nowMs);
@@ -402,23 +381,12 @@ class PvForecastDevice extends Homey.Device {
 
         // Alle 1 Stunde neu rechnen (nur ab Mittag)
         if (!lastEstimate || (nowMs - lastEstimate) >= 60 * 60 * 1000) {
-          // estimatedEndMs: sunset − 2h (weniger aggressiv als −3h, Restzeit trotzdem capped)
-          if (this.cachedSunset?.sunsetMs) {
-            estimatedEndMs = this.cachedSunset.sunsetMs - 2 * 3600 * 1000;
-          }
-
-          const curveEstimate = estimateDailyProductionLandingPoint(
-            history,
-            nowMs,
-            estimatedEndMs,
-          );
-
           adjustedKwh = blendAdjustedForecast({
             actualKwh,
             baselineKwh,
             expectedKwhSoFar: forecast.expectedKwhSoFar || 0,
             correctionFactor: forecast.correctionFactor || 1,
-            curveEstimate,
+            remainingWeatherKwh: forecast.remainingWeatherKwh || 0,
             previousAdjustedKwh: previousAdjusted,
             localHour,
           });

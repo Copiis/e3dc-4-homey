@@ -1,6 +1,7 @@
 import { LiveData } from '../model/live-data';
 import { RscpApi } from '../rscp-api';
 import { Logger } from '../internal-api/logger';
+import { formatError } from '../utils/error-utils';
 
 export interface PollerLogger extends Logger {}  // compatible with RscpApi's Logger expectation
 
@@ -10,6 +11,7 @@ export interface PollerLogger extends Logger {}  // compatible with RscpApi's Lo
  * - Manage polling interval
  * - Apply simple debounce / freshness cache to avoid hammering RSCP
  * - Notify listeners when fresh data arrives
+ * - Report fetch failures so the device can mark itself unavailable
  *
  * This is the first extraction step to reduce the size of HomePowerStationDevice.
  */
@@ -18,6 +20,7 @@ export class LiveDataPoller {
   private lastData: LiveData | null = null;
   private lastFetch = 0;
   private readonly listeners: Array<(data: LiveData) => void> = [];
+  private readonly errorListeners: Array<(err: unknown) => void> = [];
 
   /**
    * @param apiFactory function that returns the current RscpApi (device may recreate it)
@@ -35,6 +38,14 @@ export class LiveDataPoller {
    */
   onData(listener: (data: LiveData) => void): void {
     this.listeners.push(listener);
+  }
+
+  /**
+   * Register a listener for failed fetches (network / RSCP errors).
+   * Used by HKW device to increment syncErrorCount and setUnavailable.
+   */
+  onError(listener: (err: unknown) => void): void {
+    this.errorListeners.push(listener);
   }
 
   /**
@@ -88,13 +99,20 @@ export class LiveDataPoller {
         try {
           listener(data);
         } catch (err) {
-          this.logger.error('LiveDataPoller listener error: ' + (err as Error).message);
+          this.logger.error('LiveDataPoller listener error: ' + formatError(err));
         }
       });
 
       return data;
     } catch (err) {
-      this.logger.error('LiveDataPoller fetch failed: ' + (err as Error).message);
+      this.logger.error('LiveDataPoller fetch failed: ' + formatError(err));
+      this.errorListeners.forEach(listener => {
+        try {
+          listener(err);
+        } catch (listenerErr) {
+          this.logger.error('LiveDataPoller error-listener failed: ' + formatError(listenerErr));
+        }
+      });
       return undefined;
     }
   }

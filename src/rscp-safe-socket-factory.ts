@@ -5,16 +5,22 @@ import {normalizeError} from './utils/error-utils';
 /**
  * Sichere SocketFactory als Workaround für easy-rscp.
  *
- * Problem: Bei Verbindungsfehlern (z.B. EHOSTUNREACH) wird der Connection-Timeout nicht immer gecleared.
- * Dadurch kann ein späteres 'error' Event ohne Listener kommen und die App crashen.
+ * Problem: Bei Verbindungsfehlern (z.B. EHOSTUNREACH) wird im DefaultSocketFactory
+ * der Connection-Timeout nicht immer gecleared. Danach kann destroy() ein weiteres
+ * 'error' Event ohne Listener auslösen und die Homey-App crashen
+ * (Stack: TCPConnectWrap.afterConnect).
  *
- * Diese Factory stellt sicher, dass Timeouts gecleared werden, Listener entfernt und Fehler normalisiert werden.
+ * Diese Factory:
+ * - hält ab Socket-Erstellung dauerhaft mindestens einen Error-Listener (kein uncaughtException)
+ * - cleared Timeouts bei jedem Settlement
+ * - normalisiert Fehler für Promise-Ablehnung
+ *
  * Wird beim Erstellen der RscpApi verwendet (siehe rscp-api.ts).
  */
 export class SafeSocketFactory implements SocketFactory {
     /**
      * Erstellt einen sicheren Socket mit Timeout-Handling und Error-Protection.
-     * 
+     *
      * @param connectionData - Verbindungsdaten inkl. Timeout
      * @returns Promise mit dem Socket
      */
@@ -24,6 +30,13 @@ export class SafeSocketFactory implements SocketFactory {
             let settled = false;
             const connectionTimeout = connectionData.connectionTimeoutMillis ?? 5000;
 
+            // Permanent sink: Socket darf nie ohne 'error'-Listener enden
+            // (Handoff-Lücke zu easy-rscp, späte destroy-Fehler, Doppel-Events).
+            const permanentSink = (_error: Error) => {
+                /* absorbed — settlement handler or connection layer handles logic */
+            };
+            newSocket.on('error', permanentSink);
+
             const settleReject = (reason: unknown) => {
                 if (settled) {
                     return;
@@ -31,7 +44,6 @@ export class SafeSocketFactory implements SocketFactory {
                 settled = true;
                 clearTimeout(timeoutId);
                 newSocket.removeListener('error', onError);
-                newSocket.on('error', () => undefined);
                 try {
                     newSocket.destroy();
                 } catch {
@@ -61,6 +73,8 @@ export class SafeSocketFactory implements SocketFactory {
                 settled = true;
                 clearTimeout(timeoutId);
                 newSocket.removeListener('error', onError);
+                // permanentSink bleibt — schützt die Mikro-Lücke bis easy-rscp
+                // seinen eigenen error-Listener setzt, und späte destroy-Fehler.
                 resolve(newSocket);
             });
         });

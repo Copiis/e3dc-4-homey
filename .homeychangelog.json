@@ -1,4 +1,8 @@
 {
+  "1.8.61": {
+    "de": "- **Crash-Schutz HKW offline:** Bei `EHOSTUNREACH` / unerreichbarem HKW stürzt die App nicht mehr ab (RSCP-Socket hat dauerhaft einen Error-Listener; kein uncaughtException mehr).\n- **HKW-Gerät:** Nach mehreren fehlgeschlagenen Syncs wird das Gerät wieder als „nicht verfügbar“ markiert (war nach LiveDataPoller-Refactor verloren gegangen).\n- **PV-Prognose (nachberechnet):** Kein Nachmittag-Überschießen mehr — Landepunkt aus Ist-PV + Wetter-Restenergie (aktuelles Open-Meteo), statt Kurven-Extrapolation.",
+    "en": "- **Crash guard when HPS offline:** App no longer crashes on `EHOSTUNREACH` / unreachable HPS (RSCP socket always keeps an error listener; no more uncaughtException).\n- **HPS device:** After several failed syncs the device is marked unavailable again (this was lost in the LiveDataPoller refactor).\n- **PV forecast (adjusted):** No more afternoon overshoot — landing point from actual PV + weather remaining energy (current Open-Meteo), instead of curve extrapolation."
+  },
   "1.8.60": {
     "de": "- **HKW-Widget:** Energie-Flows zwischen Netz/Haus/Batterie optisch auseinandergezogen und feinjustiert.\n- **HKW-Widget:** Am Blitz Reihenfolge und Abstände der Werte angepasst (Bezug oben, dann Leistung, dann Einspeisung).",
     "en": "- **HKW widget:** Energy flow lines between grid/house/battery spread apart and fine-tuned.\n- **HKW widget:** Lightning bolt value order and spacing adjusted (import on top, then power, then export)."

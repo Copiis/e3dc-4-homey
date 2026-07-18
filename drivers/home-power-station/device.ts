@@ -185,6 +185,7 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
       () => this.wallboxManager!.hasLinkedWallboxes(),
     )
     this.liveDataPoller.onData((data) => this.processLiveData(data))
+    this.liveDataPoller.onError((err) => this.handleLiveSyncFailure(err))
     this.liveDataPoller.start(SYNC_INTERVAL)
 
     // Optional E3DC Cloud client for fallback values (e.g. vehicle SOC)
@@ -390,6 +391,26 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
     this.processLiveData(data);
     return data;
   }
+  /**
+   * Called by LiveDataPoller when RSCP/network fetch fails (e.g. EHOSTUNREACH).
+   * After several consecutive failures the device is marked unavailable so Homey
+   * and the user see the HPS is offline — without crashing the app process.
+   */
+  private handleLiveSyncFailure(err: unknown): void {
+    const message = formatError(err);
+    this.syncErrorCount++;
+    this.diagnosticManager?.recordSyncFailure('Live-Sync / live sync: ' + message);
+    this.error(
+      `Live sync failed (${this.syncErrorCount}/${MAX_ALLOWED_ERROR_BEFORE_UNAVAILABLE}): ${message}`,
+    );
+    if (this.syncErrorCount >= MAX_ALLOWED_ERROR_BEFORE_UNAVAILABLE) {
+      const unavailableMessage = this.homey.__('messages.hps-not-available');
+      this.setUnavailable(unavailableMessage).catch((reason: unknown) => {
+        this.error('setUnavailable failed: ' + formatError(reason));
+      });
+    }
+  }
+
   /**
    * Processing extracted from the old monolithic sync path.
    * Called by the LiveDataPoller when fresh data arrives.
