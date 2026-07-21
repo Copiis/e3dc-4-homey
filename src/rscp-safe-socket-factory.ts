@@ -1,18 +1,22 @@
 import {Socket} from 'net';
 import {E3dcConnectionData, SocketFactory} from 'easy-rscp';
 import {normalizeError} from './utils/error-utils';
+import {installNetSocketSafety} from './net-socket-safety';
+
+// Patch vor jeder Socket-Nutzung (auch falls app.ts-Import-Reihenfolge abweicht)
+installNetSocketSafety();
 
 /**
  * Sichere SocketFactory als Workaround für easy-rscp.
  *
- * Problem: Bei Verbindungsfehlern (z.B. EHOSTUNREACH) wird im DefaultSocketFactory
- * der Connection-Timeout nicht immer gecleared. Danach kann destroy() ein weiteres
- * 'error' Event ohne Listener auslösen und die Homey-App crashen
+ * Problem: Bei Verbindungsfehlern (z.B. EHOSTUNREACH) kann im DefaultSocketFactory
+ * 'error' ohne Listener landen → uncaughtException → Homey-Crash-Mail
  * (Stack: TCPConnectWrap.afterConnect).
  *
  * Diese Factory:
- * - hält ab Socket-Erstellung dauerhaft mindestens einen Error-Listener (kein uncaughtException)
- * - cleared Timeouts bei jedem Settlement
+ * - installiert globalen connect-Patch ({@link installNetSocketSafety})
+ * - hält ab Socket-Erstellung dauerhaft Error-Listener (nie alle entfernen)
+ * - cleared Timeouts bei Settlement
  * - normalisiert Fehler für Promise-Ablehnung
  *
  * Wird beim Erstellen der RscpApi verwendet (siehe rscp-api.ts).
@@ -30,10 +34,10 @@ export class SafeSocketFactory implements SocketFactory {
             let settled = false;
             const connectionTimeout = connectionData.connectionTimeoutMillis ?? 5000;
 
-            // Permanent sink: Socket darf nie ohne 'error'-Listener enden
-            // (Handoff-Lücke zu easy-rscp, späte destroy-Fehler, Doppel-Events).
+            // Permanent sink: bleibt immer — auch nach Settlement / destroy.
+            // Zusätzlich zum globalen connect-Patch (doppelte Absicherung).
             const permanentSink = (_error: Error) => {
-                /* absorbed — settlement handler or connection layer handles logic */
+                /* absorbed */
             };
             newSocket.on('error', permanentSink);
 
@@ -43,9 +47,11 @@ export class SafeSocketFactory implements SocketFactory {
                 }
                 settled = true;
                 clearTimeout(timeoutId);
-                newSocket.removeListener('error', onError);
+                // permanentSink bleibt bewusst hängen
                 try {
-                    newSocket.destroy();
+                    if (!newSocket.destroyed) {
+                        newSocket.destroy();
+                    }
                 } catch {
                     /* ignore */
                 }
@@ -65,16 +71,17 @@ export class SafeSocketFactory implements SocketFactory {
             }, connectionTimeout);
 
             newSocket.setKeepAlive(true);
+            // Settlement-Listener zusätzlich zu permanentSink
             newSocket.on('error', onError);
+            // Signature: connect(port, host, listener) — kompatibel zu @types/node
             newSocket.connect(connectionData.port, connectionData.address, () => {
                 if (settled) {
                     return;
                 }
                 settled = true;
                 clearTimeout(timeoutId);
+                // onError entfernen, permanentSink bleibt
                 newSocket.removeListener('error', onError);
-                // permanentSink bleibt — schützt die Mikro-Lücke bis easy-rscp
-                // seinen eigenen error-Listener setzt, und späte destroy-Fehler.
                 resolve(newSocket);
             });
         });

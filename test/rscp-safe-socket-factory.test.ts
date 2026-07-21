@@ -1,6 +1,8 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert';
+import { Socket } from 'net';
 import { SafeSocketFactory } from '../src/rscp-safe-socket-factory';
+import { installNetSocketSafety, isBenignNetworkError } from '../src/net-socket-safety';
 import type { E3dcConnectionData } from 'easy-rscp';
 
 /**
@@ -68,5 +70,42 @@ describe('SafeSocketFactory', () => {
     process.removeListener('uncaughtException', onUncaught);
 
     assert.strictEqual(uncaught.length, 0, 'timeout path must not crash process');
+  });
+});
+
+describe('installNetSocketSafety', () => {
+  it('prevents uncaughtException for bare Socket.connect (no app listeners)', async () => {
+    installNetSocketSafety();
+    const uncaught: Error[] = [];
+    const onUncaught = (err: Error) => uncaught.push(err);
+    process.on('uncaughtException', onUncaught);
+
+    await new Promise<void>((resolve) => {
+      const s = new Socket();
+      // Absichtlich kein eigener error-Listener — nur globaler Patch
+      s.connect({ port: 5033, host: '172.31.255.254' });
+      setTimeout(() => {
+        try {
+          s.destroy();
+        } catch {
+          /* ignore */
+        }
+        resolve();
+      }, 1500);
+    });
+
+    process.removeListener('uncaughtException', onUncaught);
+    assert.strictEqual(
+      uncaught.length,
+      0,
+      'bare connect must not crash (got: ' + uncaught.map((e) => e.message).join('; ') + ')',
+    );
+  });
+
+  it('classifies EHOSTUNREACH as benign', () => {
+    const err = Object.assign(new Error('connect EHOSTUNREACH 192.168.178.119:5033'), {
+      code: 'EHOSTUNREACH',
+    });
+    assert.strictEqual(isBenignNetworkError(err), true);
   });
 });

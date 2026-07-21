@@ -1,6 +1,11 @@
 import Homey from 'homey';
 import {formatError, normalizeError} from './src/utils/error-utils';
 import {readHomePowerPlantsForHomey} from './src/utils/home-power-plants';
+import {installNetSocketSafety, isBenignNetworkError} from './src/net-socket-safety';
+
+// So früh wie möglich: TCP connect ohne error-Listener → sonst Homey-Crash-Mail
+// (EHOSTUNREACH / HKW offline, Stack: TCPConnectWrap.afterConnect).
+installNetSocketSafety();
 
 class MyApp extends Homey.App {
 
@@ -12,10 +17,20 @@ class MyApp extends Homey.App {
 
     process.on('unhandledRejection', (reason: unknown) => {
       const err = normalizeError(reason);
+      if (isBenignNetworkError(err)) {
+        this.log('Network rejection (HKW offline/unreachable): ' + formatError(err));
+        return;
+      }
       this.error('Unhandled promise rejection: ' + formatError(err));
     });
     process.on('uncaughtException', (err: unknown) => {
-      this.error('Uncaught exception: ' + formatError(normalizeError(err)));
+      const e = normalizeError(err);
+      if (isBenignNetworkError(e)) {
+        // Sollte durch Socket-Patch selten greifen; falls doch: nicht eskalieren.
+        this.log('Network exception (HKW offline/unreachable): ' + formatError(e));
+        return;
+      }
+      this.error('Uncaught exception: ' + formatError(e));
     });
     this.registerPlantAutocompleteWidget('e3dc-hkw');
     this.registerPlantAutocompleteWidget('wallbox');
