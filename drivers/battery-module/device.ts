@@ -29,6 +29,9 @@ import {formatError} from '../../src/utils/error-utils';
 class BatterModuleDevice extends Homey.Device implements BatteryModule{
 
   private readonly energyMeter = new EnergyMeterIntegrator(this)
+  /** Last full RSCP battery readout — used to estimate module power (V×I). */
+  private lastBatteryData: BatteryData | null = null
+  private refreshTimer: NodeJS.Timeout | null = null
 
   /**
    * Initialisiert das Batterie-Modul-Gerät.
@@ -52,7 +55,9 @@ class BatterModuleDevice extends Homey.Device implements BatteryModule{
 
       // Trigger initial population of capacity (and dcb/voltage/temp info) on the tile.
       // getBatteryCapacity on the linked HPS now also distributes to battery modules.
-      setTimeout(() => {
+      if (this.refreshTimer) clearTimeout(this.refreshTimer);
+      this.refreshTimer = setTimeout(() => {
+        this.refreshTimer = null;
         this.triggerBatteryDataRefresh().catch(() => {});
       }, 2500);
     } catch (e) {
@@ -68,11 +73,16 @@ class BatterModuleDevice extends Homey.Device implements BatteryModule{
       if (!myConfig?.stationId) return;
 
       for (const hps of hpsDevices) {
-        const hpsData = (hps as any).getData?.() || {};
-        const hpsId = (hps as any).getId?.() || hpsData.id;
+        const hpsDevice = hps as Homey.Device & {
+          getData?: () => { id?: string };
+          getId?: () => string;
+          getBatteryCapacity?: () => Promise<number>;
+        };
+        const hpsData = hpsDevice.getData?.() || {};
+        const hpsId = hpsDevice.getId?.() || hpsData.id;
         if (hpsId == myConfig.stationId) {
-          if (typeof (hps as any).getBatteryCapacity === 'function') {
-            await (hps as any).getBatteryCapacity().catch(() => {});
+          if (typeof hpsDevice.getBatteryCapacity === 'function') {
+            await hpsDevice.getBatteryCapacity().catch(() => {});
           }
           break;
         }
@@ -87,16 +97,39 @@ class BatterModuleDevice extends Homey.Device implements BatteryModule{
   }
 
   /**
+   * Estimate this module's power from last RSCP DCB currents and pack voltage.
+   * Falls back to station-total power when no DCB data is available yet.
+   * Sign follows station `batteryPowerW` (E3DC: charge > 0, discharge < 0).
+   */
+  private resolveModulePowerW(stationBatteryPowerW: number): number {
+    const data = this.lastBatteryData;
+    if (!data || !data.dcbs?.length || !Number.isFinite(data.voltage) || data.voltage === 0) {
+      return stationBatteryPowerW;
+    }
+    const currentSumA = data.dcbs.reduce((sum, dcb) => sum + (Number(dcb.currentA) || 0), 0);
+    if (!Number.isFinite(currentSumA) || currentSumA === 0) {
+      // Idle / no current tags: show 0 on module tile rather than system total (P3 clarity)
+      if (Math.abs(stationBatteryPowerW) < 50) {
+        return 0;
+      }
+      return stationBatteryPowerW;
+    }
+    const magnitudeW = Math.abs(data.voltage * currentSumA);
+    const sign = stationBatteryPowerW < 0 ? -1 : stationBatteryPowerW > 0 ? 1 : (currentSumA < 0 ? -1 : 1);
+    return Math.round(sign * magnitudeW);
+  }
+
+  /**
    * Live-Update für das Modul (wird vom CapabilityManager aufgerufen).
    *
-   * WICHTIG: `batteryPowerW` ist die **gesamte Batterieleistung der Station**
-   * (nicht pro Modul). Jede Batterie-Modul-Kachel zeigt daher die System-Gesamtleistung.
-   * Das entspricht dem Design und dem Verhalten vieler E3DC-Installationen.
+   * `stationBatteryPowerW` is the station total (for sign / fallback).
+   * Displayed `measure_power` prefers V×I from this module's last DCB readout.
    */
-  syncLive(rsoc: number, batteryPowerW: number,
+  syncLive(rsoc: number, stationBatteryPowerW: number,
       chargingConfiguration: ChargingConfiguration, emergencyPower: EmergencyPowerState) {
-    updateCapabilityValue('measure_power', batteryPowerW, this, { force: true })
-    const meter = this.energyMeter.integrateBattery(batteryPowerW)
+    const powerW = this.resolveModulePowerW(stationBatteryPowerW)
+    updateCapabilityValue('measure_power', powerW, this, { force: true })
+    const meter = this.energyMeter.integrateBattery(powerW)
     updateCapabilityValue('meter_power.charged', meter.chargedKwh, this)
     updateCapabilityValue('measure_battery_charged_total', meter.chargedKwh, this)
     updateCapabilityValue('meter_power.discharged', meter.dischargedKwh, this)
@@ -107,8 +140,8 @@ class BatterModuleDevice extends Homey.Device implements BatteryModule{
 
   sync(batteryData: BatteryData, rsoc: number, capacity: number, batteryPowerW: number,
       chargingConfiguration: ChargingConfiguration, emergencyPower: EmergencyPowerState) {
-    this.syncLive(rsoc, batteryPowerW, chargingConfiguration, emergencyPower)
     this.updateBatteryInfo(batteryData, capacity)
+    this.syncLive(rsoc, batteryPowerW, chargingConfiguration, emergencyPower)
   }
 
   /**
@@ -119,6 +152,7 @@ class BatterModuleDevice extends Homey.Device implements BatteryModule{
    * Dynamic values (SoC, power, limits) are updated via syncLive on every poll.
    */
   updateBatteryInfo(batteryData: BatteryData, capacityKwh: number) {
+    this.lastBatteryData = batteryData
     updateCapabilityValue('device_name', batteryData.name, this)
     updateCapabilityValue('measure_dcbcount', batteryData.dcbs.length, this)
     updateCapabilityValue('measure_capacity', capacityKwh, this)
@@ -178,6 +212,10 @@ class BatterModuleDevice extends Homey.Device implements BatteryModule{
   }
 
   async onDeleted() {
+    if (this.refreshTimer) {
+      clearTimeout(this.refreshTimer);
+      this.refreshTimer = null;
+    }
     this.log('BatterModuleDevice has been deleted');
   }
 

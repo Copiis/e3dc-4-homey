@@ -12,11 +12,11 @@ export interface PollerLogger extends Logger {}  // compatible with RscpApi's Lo
  * - Apply simple debounce / freshness cache to avoid hammering RSCP
  * - Notify listeners when fresh data arrives
  * - Report fetch failures so the device can mark itself unavailable
- *
- * This is the first extraction step to reduce the size of HomePowerStationDevice.
+ * - Clear *all* timers on stop (interval + delayed initial fetch)
  */
 export class LiveDataPoller {
   private timer: NodeJS.Timeout | null = null;
+  private initialTimer: NodeJS.Timeout | null = null;
   private lastData: LiveData | null = null;
   private lastFetch = 0;
   private readonly listeners: Array<(data: LiveData) => void> = [];
@@ -55,11 +55,18 @@ export class LiveDataPoller {
   start(intervalMs: number): void {
     this.stop();
     // initial fetch shortly after start (matches old 2s delay in device)
-    setTimeout(() => this.fetch().catch(() => {}), 2000);
+    this.initialTimer = setTimeout(() => {
+      this.initialTimer = null;
+      this.fetch().catch(() => {});
+    }, 2000);
     this.timer = setInterval(() => this.fetch().catch(() => {}), intervalMs);
   }
 
   stop(): void {
+    if (this.initialTimer) {
+      clearTimeout(this.initialTimer);
+      this.initialTimer = null;
+    }
     if (this.timer) {
       clearInterval(this.timer);
       this.timer = null;

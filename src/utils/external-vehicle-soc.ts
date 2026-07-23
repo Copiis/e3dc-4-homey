@@ -1,11 +1,17 @@
 import {isPlausibleVehicleSocPercent, normalizeVehicleSocPercent} from './vehicle-soc';
 
 /**
- * Resolve vehicle SOC from another Homey device (e.g. Tesla app).
+ * Resolve vehicle SOC from another Homey device (e.g. car apps).
  *
  * Apps cannot read other apps' devices via `homey.drivers` — that is sandboxed.
  * We use the in-app Homey Web API (`homey:manager:api` permission):
  *   getOwnerApiToken + getLocalUrl → GET /api/manager/devices/device
+ *
+ * Athom policy note (P3):
+ * - `homey:manager:api` is optional and only needed for cross-app SOC.
+ * - If Athom rejects the permission in review, set wallbox SOC source to `rscp_only`
+ *   (or remove the permission) — local RSCP + Flow cards remain the primary path.
+ * - Do not expand this feature until Athom review feedback is clear.
  */
 
 export type VehicleSocSourceMode = 'rscp_only' | 'auto_homey_car' | 'device';

@@ -57,6 +57,7 @@ import {
 import {WallboxEmsSettings} from './model/wallbox-ems-settings';
 import { RscpTagRegistry } from './model/rscp-tag-registry';
 import {resolveUsableCapacityWh} from './utils/battery-capacity';
+import { sharedRscpConnectionPool } from './rscp-connection-pool';
 
 const {
     EMS_GET_WALLBOX_ENFORCE_POWER_ASSIGNMENT,
@@ -73,9 +74,8 @@ const {
     EMS_SET_POWER,
 } = RscpTagRegistry;
 
-const connectionMap: Map<string, HomePowerPlantConnection> = new Map<string, HomePowerPlantConnection>()
-const connectionFactoryMap: Map<string, HomePowerPlantConnectionFactory> = new Map<string, HomePowerPlantConnectionFactory>()
-const pendingOpenMap: Map<string, Promise<HomePowerPlantConnection>> = new Map<string, Promise<HomePowerPlantConnection>>()
+/** Process-wide pool: one TCP session + serialized send() per host:port. */
+const pool = sharedRscpConnectionPool;
 
 export class RscpApi {
 
@@ -83,7 +83,7 @@ export class RscpApi {
 
     init(data: E3dcConnectionData, log: Logger) {
         if (this.connectionData) {
-            const currentConnection = connectionMap.get(this.getKey())
+            const currentConnection = pool.getConnection(this.getKey())
             this.closeConnection(currentConnection, log).then()
         }
         this.connectionData = data
@@ -92,7 +92,7 @@ export class RscpApi {
             undefined,
             new SafeSocketFactory(),
         )
-        connectionFactoryMap.set(this.getKey(), newFactory)
+        pool.setFactory(this.getKey(), newFactory)
     }
 
     private getKey(): string {
@@ -100,27 +100,24 @@ export class RscpApi {
     }
 
     private getConnectionFactory(): HomePowerPlantConnectionFactory {
-        return connectionFactoryMap.get(this.getKey())!!
+        return pool.getFactory(this.getKey())!!
     }
     private evictConnection(connection: HomePowerPlantConnection | undefined): void {
         if (!connection) {
             return
         }
-        const key = this.getKey()
-        if (connectionMap.get(key) === connection) {
-            connectionMap.delete(key)
-        }
+        pool.evictConnection(this.getKey(), connection)
     }
 
     private getOpenConnection(log: Logger): Promise<HomePowerPlantConnection> {
         const key = this.getKey()
-        const currentConnection = connectionMap.get(key)
+        const currentConnection = pool.getConnection(key)
         if (currentConnection?.isConnected()) {
             log.log('getOpenConnection: Returning existing connection')
-            return Promise.resolve(currentConnection)
+            return Promise.resolve(pool.wrapSerialSend(key, currentConnection))
         }
 
-        const pendingOpen = pendingOpenMap.get(key)
+        const pendingOpen = pool.getPendingOpen(key)
         if (pendingOpen) {
             log.log('getOpenConnection: Waiting for pending connection')
             return pendingOpen
@@ -130,27 +127,28 @@ export class RscpApi {
         const openPromise = this.getConnectionFactory()
             .openConnection()
             .then(con => {
-                log.log('getOpenConnection: Returning new connection')
-                connectionMap.set(key, con)
-                return con
+                log.log('getOpenConnection: Returning new connection (serial send wrapped)')
+                const serial = pool.wrapSerialSend(key, con)
+                pool.setConnection(key, serial)
+                return serial
             })
             .catch(e => {
                 log.error('getOpenConnection: Creating new connection failed')
                 log.error(formatError(e))
-                connectionMap.delete(key)
+                pool.evictConnection(key)
                 throw normalizeError(e)
             })
             .finally(() => {
-                pendingOpenMap.delete(key)
+                pool.clearPendingOpen(key)
             })
 
-        pendingOpenMap.set(key, openPromise)
+        pool.setPendingOpen(key, openPromise)
         return openPromise
     }
 
     closeOwnConnection(log: Logger): Promise<unknown> {
         const key = this.getKey()
-        const toClose = connectionMap.get(key)
+        const toClose = pool.getConnection(key)
         return this.closeConnection(toClose, log)
     }
 
@@ -647,7 +645,7 @@ export class RscpApi {
         if (allowReconnect) {
             log.log('startManualCharge(' + amountWh + ': Received error. Try to reconnect ... (Error: ' + causingError + ')')
             log.log(causingError)
-            const currentConnection = connectionMap.get(this.getKey())
+            const currentConnection = pool.getConnection(this.getKey())
             this.closeConnection(currentConnection, log)
                 .finally(() => {
                     this.startManualCharge(amountWh,false, log)
@@ -711,7 +709,7 @@ export class RscpApi {
         if (allowReconnect) {
             log.log('setPowerMode(' + mode + ', ' + powerW + 'W): Received error. Try to reconnect ... (Error: ' + causingError + ')')
             log.log(causingError)
-            const currentConnection = connectionMap.get(this.getKey())
+            const currentConnection = pool.getConnection(this.getKey())
             this.closeConnection(currentConnection, log)
                 .finally(() => {
                     this.setPowerMode(mode, powerW, false, log)
@@ -818,7 +816,7 @@ export class RscpApi {
                 .catch(e => {
                     if (allowReconnect) {
                         log.log(`readWallboxLiveStateById: error, reconnecting ... (${e})`)
-                        const currentConnection = connectionMap.get(this.getKey())
+                        const currentConnection = pool.getConnection(this.getKey())
                         this.closeConnection(currentConnection, log)
                             .finally(() => {
                                 this.readWallboxLiveStateById(wallboxId, false, log)
@@ -939,7 +937,7 @@ export class RscpApi {
         if (allowReconnect) {
             log.log('readLiveData: Received error. Try to reconnect ...')
             log.log(causingError)
-            const currentConnection = connectionMap.get(this.getKey())
+            const currentConnection = pool.getConnection(this.getKey())
             this.closeConnection(currentConnection, log)
                 .finally(() => {
                     this.readLiveData(false, log)
@@ -975,7 +973,7 @@ export class RscpApi {
         if (allowReconnect) {
             log.log('readSummaryData: Received error. Try to reconnect ... ')
             log.log(causingError)
-            const currentConnection = connectionMap.get(this.getKey())
+            const currentConnection = pool.getConnection(this.getKey())
             this.closeConnection(currentConnection, log)
                 .finally(() => {
                     this.readSummaryData(type, false, log, timezone)
@@ -1011,7 +1009,7 @@ export class RscpApi {
         if (allowReconnect) {
             log.log('writeChargingLimits: Received error. Try to reconnect ...')
             log.log(causingError)
-            const currentConnection = connectionMap.get(this.getKey())
+            const currentConnection = pool.getConnection(this.getKey())
             this.closeConnection(currentConnection, log)
                 .finally(() => {
                     this.writeChargingLimits(limits, false, log)
@@ -1045,7 +1043,7 @@ export class RscpApi {
         if (allowReconnect) {
             log.log('readChargingConfiguration: Received error. Try to reconnect ...')
             log.log(causingError)
-            const currentConnection = connectionMap.get(this.getKey())
+            const currentConnection = pool.getConnection(this.getKey())
             this.closeConnection(currentConnection, log)
                 .finally(() => {
                     this.readChargingConfiguration( false, log)
@@ -1080,7 +1078,7 @@ export class RscpApi {
         if (allowReconnect) {
             log.log('writeEmergencyPowerReserveError(' + amount + ', ' + asPercentage + ': Received error. Try to reconnect ...')
             log.log(causingError)
-            const currentConnection = connectionMap.get(this.getKey())
+            const currentConnection = pool.getConnection(this.getKey())
             this.closeConnection(currentConnection, log)
                 .finally(() => {
                     this.writeEmergencyPowerReserve( amount, asPercentage, false, log)
@@ -1172,7 +1170,7 @@ export class RscpApi {
         if (allowReconnect) {
             log.log('readConnectedWallboxes: Received error. Try to reconnect ... (Error: ' + causingError + ')')
             log.log(causingError)
-            const currentConnection = connectionMap.get(this.getKey())
+            const currentConnection = pool.getConnection(this.getKey())
             this.closeConnection(currentConnection, log)
                 .finally(() => {
                     this.readConnectedWallboxes(false, log)
@@ -1292,7 +1290,7 @@ export class RscpApi {
     ) {
         if (allowReconnect) {
             log.log(`setWallboxExtern: Received error. Try to reconnect ... (Error: ${causingError})`)
-            const currentConnection = connectionMap.get(this.getKey())
+            const currentConnection = pool.getConnection(this.getKey())
             this.closeConnection(currentConnection, log)
                 .finally(() => {
                     this.setWallboxExtern(wallboxId, externBytes, false, log)
@@ -1363,7 +1361,7 @@ export class RscpApi {
     ) {
         if (allowReconnect) {
             log.log(`setWallboxMode: Received error. Try to reconnect ... (Error: ${causingError})`)
-            const currentConnection = connectionMap.get(this.getKey())
+            const currentConnection = pool.getConnection(this.getKey())
             this.closeConnection(currentConnection, log)
                 .finally(() => {
                     this.setWallboxMode(wallboxId, mode, maxCurrentA, false, log)
@@ -1772,7 +1770,7 @@ export class RscpApi {
     ) {
         if (allowReconnect) {
             log.log(`${operationName}: Received error. Try to reconnect ... (Error: ${causingError})`)
-            const currentConnection = connectionMap.get(this.getKey())
+            const currentConnection = pool.getConnection(this.getKey())
             this.closeConnection(currentConnection, log)
                 .finally(() => {
                     retry()
@@ -1829,7 +1827,7 @@ export class RscpApi {
         if (allowReconnect) {
             log.log('readConnectedWallboxIds: Received error. Try to reconnect ... (Error: ' + causingError + ')')
             log.log(causingError)
-            const currentConnection = connectionMap.get(this.getKey())
+            const currentConnection = pool.getConnection(this.getKey())
             this.closeConnection(currentConnection, log)
                 .finally(() => {
                     this.readConnectedWallboxIds(false, log)

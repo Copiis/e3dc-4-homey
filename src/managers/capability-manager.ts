@@ -249,9 +249,7 @@ export class CapabilityManager {
         const linked = currentDevice as {
           syncLive?: (level: number, delivery: number, config: unknown, eps: unknown) => void
         };
-        // Note: We pass the *total* station battery power here.
-        // Individual battery-module tiles show the system total (not per-module split).
-        // This is by design for simplicity and matches E3DC portal behavior for many users.
+        // Station-total power is passed as sign/fallback; modules prefer V×I from their DCB data.
         linked.syncLive?.(
           result.batteryChargingLevel * 100,
           result.batteryDelivery,

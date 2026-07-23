@@ -18,6 +18,25 @@ describe('LiveDataPoller', () => {
     assert.ok(true);
   });
 
+  it('stop cancels delayed initial fetch', async () => {
+    const logger = { log: () => {}, error: () => {} };
+    let fetches = 0;
+    const api = {
+      readLiveData: async () => {
+        fetches += 1;
+        return { pvDelivery: 1 } as LiveData;
+      },
+    } as unknown as RscpApi;
+
+    const poller = new LiveDataPoller(() => api, logger, () => false);
+    poller.start(60_000);
+    poller.stop();
+    await new Promise((r) => setTimeout(r, 50));
+    // initial fetch is scheduled at 2000ms — must not run after stop
+    await new Promise((r) => setTimeout(r, 2200));
+    assert.strictEqual(fetches, 0);
+  });
+
   it('notifies onError when fetch fails', async () => {
     const logger = { log: () => {}, error: () => {} };
     const failingApi = {

@@ -505,5 +505,9 @@
   },
   "0.5.0": {
     "en": "Initial release"
+  },
+  "1.8.63": {
+    "en": "Stability: serialize RSCP requests per plant, clear live-data poller timers, estimate battery-module power from V×I (not system total). Cleanup and docs.",
+    "de": "Stabilität: RSCP-Anfragen pro Anlage serialisieren, Live-Poller-Timer sauber beenden, Batterie-Modul-Leistung aus V×I schätzen (nicht System-Total). Aufräumen und Doku."
   }
 }

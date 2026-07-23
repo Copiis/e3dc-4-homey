@@ -25,9 +25,11 @@ Die App wurde von einem großen Monolithen (`drivers/home-power-station/device.t
   - Keine Timer mehr direkt in den Geräten (außer wo absolut notwendig)
 
 - **RSCP-Schicht**
-  - `RscpApi`
+  - `RscpApi` (noch groß; schrittweise entflechten)
+  - `RscpConnectionPool` — process-wide Connection + **serialisiertes** `send()` pro host:port
   - `RscpTagRegistry` (zentral, typsicher, keine Hardcoded-Tag-Dateien mehr)
   - Converter (z. B. `wallbox-extern-alg-parser`, Live-State-Converter)
+  - `net-socket-safety` / `SafeSocketFactory` — Crash-Schutz bei EHOSTUNREACH (globaler connect-Patch, bewusst)
 
 - **Cards**
   - Alle Flow-Karten sind in `src/cards/` modular ausgelagert (FlowCardManager)
