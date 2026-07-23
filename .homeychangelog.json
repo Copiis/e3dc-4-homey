@@ -509,5 +509,9 @@
   "1.8.63": {
     "en": "Stability: serialize RSCP requests per plant, clear live-data poller timers, estimate battery-module power from V×I (not system total). Cleanup and docs.",
     "de": "Stabilität: RSCP-Anfragen pro Anlage serialisieren, Live-Poller-Timer sauber beenden, Batterie-Modul-Leistung aus V×I schätzen (nicht System-Total). Aufräumen und Doku."
+  },
+  "1.8.64": {
+    "en": "PV forecast: freeze morning baseline, apply learned day-scale (~0.85), hard-cap adjusted ≤ baseline, smoother f (EMA), monotone actual kWh, stricter evening bind.",
+    "de": "PV-Prognose: Baseline morgens frieren, gelernte Tagesskala (~0,85), Nachberechnung hart ≤ Baseline, f per EMA glätten, monotoner Ist-Tageswert, abends enger anbinden."
   }
 }

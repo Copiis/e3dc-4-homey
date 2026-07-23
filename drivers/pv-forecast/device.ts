@@ -25,11 +25,16 @@ import {DailyIrradianceForecast, fetchTodayTiltedIrradianceForecast} from '../..
 import {updateCapabilityValue} from '../../src/utils/capability-utils';
 import {formatError} from '../../src/utils/error-utils';
 import {
+  applyBaselineDayScale,
   blendAdjustedForecast,
   calculateMultiSegmentPvForecast,
+  DEFAULT_BASELINE_DAY_SCALE,
   getLocalHour,
   localDateString,
+  monotoneActualKwh,
+  nextCorrectionEma,
   roundKwh,
+  updateDayScaleFromOutcome,
 } from '../../src/utils/pv-forecast-calculator';
 import {
   PV_SEGMENT_SETTING_PREFIXES,
@@ -44,6 +49,8 @@ const MAX_ALLOWED_ERROR_BEFORE_UNAVAILABLE = 3;
 
 const STORE_DAY_STATE_KEY = 'pvForecastDayState';
 const STORE_WEATHER_KEY = 'pvForecastWeatherBySurface';
+/** Cross-day learned baseline scale (actual/rawBaseline EMA). */
+const STORE_DAY_SCALE_KEY = 'pvForecastDayScale';
 
 type WeatherCache = Record<string, DailyIrradianceForecast>;
 
@@ -117,6 +124,20 @@ class PvForecastDevice extends Homey.Device {
       });
   }
 
+  private loadLearnedDayScale(): number {
+    const stored = this.getStoreValue(STORE_DAY_SCALE_KEY);
+    if (typeof stored === 'number' && Number.isFinite(stored)) {
+      return stored;
+    }
+    return DEFAULT_BASELINE_DAY_SCALE;
+  }
+
+  private saveLearnedDayScale(scale: number): void {
+    this.setStoreValue(STORE_DAY_SCALE_KEY, scale).catch(reason => {
+      this.error('Failed to store pv forecast day scale: ' + formatError(reason));
+    });
+  }
+
   private restoreDisplayFromCache(): void {
     const timezone = this.homey.clock.getTimezone();
     const settings = readPvForecastSettings(this);
@@ -124,8 +145,11 @@ class PvForecastDevice extends Homey.Device {
     if (!dayState) {
       return;
     }
-    if (dayState.baselineKwh != null) {
-      updateCapabilityValue('measure_pv_forecast_baseline', dayState.baselineKwh, this);
+    const baselineDisplay =
+      dayState.baselineDisplayKwh
+      ?? applyBaselineDayScale(dayState.baselineKwh, dayState.dayScale ?? this.loadLearnedDayScale());
+    if (baselineDisplay != null) {
+      updateCapabilityValue('measure_pv_forecast_baseline', baselineDisplay, this);
     }
     if (dayState.adjustedKwh != null) {
       updateCapabilityValue('measure_pv_forecast_adjusted', dayState.adjustedKwh, this);
@@ -265,17 +289,17 @@ class PvForecastDevice extends Homey.Device {
   }
 
   private publishForecastValues(
-    baselineKwh: number,
+    baselineDisplayKwh: number,
     adjustedKwh: number,
     actualKwh: number,
     dayState: PvForecastDayState,
   ): void {
-    updateCapabilityValue('measure_pv_forecast_baseline', baselineKwh, this);
+    updateCapabilityValue('measure_pv_forecast_baseline', baselineDisplayKwh, this);
     updateCapabilityValue('measure_pv_forecast_adjusted', adjustedKwh, this);
     updateCapabilityValue('measure_pv_actual_today', actualKwh, this);
     this.saveDayState({
       ...dayState,
-      baselineKwh,
+      baselineDisplayKwh,
       adjustedKwh,
       actualKwh,
     });
@@ -332,9 +356,11 @@ class PvForecastDevice extends Homey.Device {
         };
       });
 
-      const actualKwh = await this.readActualPvTodayKwh(station, timezone);
+      const rawActualKwh = await this.readActualPvTodayKwh(station, timezone);
+      // Monotone "today" counter (Insights / summary glitches must not lower E)
+      const actualKwh = monotoneActualKwh(dayState?.actualKwh, rawActualKwh);
 
-      // Reine Baseline (Ursprungsprognose) aus dem Wetter-Modell
+      // Wetter-Modell (raw); f nutzt Ist vs. Modell-bisher
       const forecast = calculateMultiSegmentPvForecast(
         segmentInputs,
         settings.calibrationFactor,
@@ -343,33 +369,45 @@ class PvForecastDevice extends Homey.Device {
         actualKwh,
       );
 
-      let baselineKwh = dayState?.baselineKwh;
-      if (baselineKwh == null) {
-        baselineKwh = forecast.baselineKwh;
-      }
+      const learnedScale = dayState?.dayScale ?? this.loadLearnedDayScale();
 
-      // Historie der kumulierten PV-Erzeugung (Insights-Kurve) immer pflegen
+      // Baseline: morgens einmal raw einfrieren, Anzeige = raw × dayScale
+      let baselineRawKwh = dayState?.baselineKwh;
+      if (baselineRawKwh == null) {
+        baselineRawKwh = forecast.baselineKwh;
+      }
+      const baselineDisplayKwh = applyBaselineDayScale(baselineRawKwh, learnedScale);
+
+      // Historie monoton
       let history = [...(dayState?.productionHistory || [])];
       const lastHist = history[history.length - 1];
       if (!lastHist || nowMs - lastHist.ts > 4 * 60 * 1000) {
-        history.push({ ts: nowMs, kwh: actualKwh });
+        const histKwh = monotoneActualKwh(lastHist?.kwh, actualKwh);
+        history.push({ ts: nowMs, kwh: histKwh });
       }
-      // Trimmen auf sinnvollen Zeitraum (letzte ~10 Stunden)
       const trimStart = nowMs - 10 * 3600 * 1000;
       history = history.filter(p => p.ts >= trimStart);
 
-      // === Nachberechnete Prognose ===
-      // Ab 12:00 stündlich: A = E_ist + R_Wetter · f (kein Kurven-Overshoot).
-      // Vor 12:00 = reine Baseline (Ursprungsprognose).
-      let adjustedKwh = baselineKwh;
+      // === Nachberechnung ab 12:00; davor = skalierte Baseline ===
+      let adjustedKwh = baselineDisplayKwh;
       const localHour = getLocalHour(timezone, nowMs);
       const shouldStartEstimation = localHour >= 12;
 
-      let workingDayState: PvForecastDayState = dayState || {
+      let workingDayState: PvForecastDayState = {
+        ...(dayState || {
+          localDate: today,
+          configHash,
+          baselineKwh: baselineRawKwh,
+          lastWeatherFetchMs: nowMs,
+        }),
         localDate: today,
         configHash,
-        baselineKwh,
+        baselineKwh: baselineRawKwh,
+        baselineDisplayKwh,
+        dayScale: learnedScale,
         lastWeatherFetchMs: nowMs,
+        productionHistory: history,
+        actualKwh,
       };
 
       if (shouldStartEstimation) {
@@ -377,53 +415,66 @@ class PvForecastDevice extends Homey.Device {
         const previousAdjusted =
           typeof workingDayState.adjustedKwh === 'number'
             ? workingDayState.adjustedKwh
-            : baselineKwh;
+            : baselineDisplayKwh;
 
-        // Alle 1 Stunde neu rechnen (nur ab Mittag)
         if (!lastEstimate || (nowMs - lastEstimate) >= 60 * 60 * 1000) {
+          const correctionEma = nextCorrectionEma(
+            actualKwh,
+            forecast.expectedKwhSoFar || 0,
+            workingDayState.correctionEma,
+          );
           adjustedKwh = blendAdjustedForecast({
             actualKwh,
-            baselineKwh,
+            baselineKwh: baselineDisplayKwh,
             expectedKwhSoFar: forecast.expectedKwhSoFar || 0,
-            correctionFactor: forecast.correctionFactor || 1,
+            correctionFactor: correctionEma,
             remainingWeatherKwh: forecast.remainingWeatherKwh || 0,
             previousAdjustedKwh: previousAdjusted,
+            previousCorrectionEma: workingDayState.correctionEma,
             localHour,
           });
 
           workingDayState = {
             ...workingDayState,
-            localDate: today,
-            configHash,
-            baselineKwh,
-            lastWeatherFetchMs: nowMs,
             lastAdjustedEstimateMs: nowMs,
-            productionHistory: history,
+            correctionEma,
+            adjustedKwh,
           };
         } else {
-          // Zwischen den Stunden: gespeicherten Wert halten, aber nie unter Ist
           adjustedKwh = Math.max(previousAdjusted, actualKwh);
+          // Still never above effective baseline between hourly ticks
+          if (baselineDisplayKwh > 0) {
+            adjustedKwh = Math.min(adjustedKwh, Math.max(baselineDisplayKwh, actualKwh));
+          }
           workingDayState = {
             ...workingDayState,
-            localDate: today,
-            configHash,
-            baselineKwh,
-            lastWeatherFetchMs: nowMs,
-            productionHistory: history,
+            adjustedKwh,
           };
         }
       } else {
-        adjustedKwh = baselineKwh;
+        adjustedKwh = baselineDisplayKwh;
         workingDayState = {
-          localDate: today,
-          configHash,
-          baselineKwh,
-          lastWeatherFetchMs: nowMs,
-          productionHistory: history,
+          ...workingDayState,
+          adjustedKwh,
         };
       }
 
-      this.publishForecastValues(baselineKwh, adjustedKwh, actualKwh, workingDayState);
+      // End-of-day: learn scale from raw baseline vs monotone actual
+      if (localHour >= 20 && !workingDayState.dayScaleLearned && baselineRawKwh >= 5 && actualKwh >= 3) {
+        const newScale = updateDayScaleFromOutcome(learnedScale, baselineRawKwh, actualKwh);
+        this.saveLearnedDayScale(newScale);
+        workingDayState = {
+          ...workingDayState,
+          dayScale: newScale,
+          dayScaleLearned: true,
+        };
+        this.log(
+          `PV forecast day-scale learn: actual=${actualKwh} rawB=${baselineRawKwh} `
+          + `ratio=${(actualKwh / baselineRawKwh).toFixed(3)} scale ${learnedScale}→${newScale}`,
+        );
+      }
+
+      this.publishForecastValues(baselineDisplayKwh, adjustedKwh, actualKwh, workingDayState);
 
       this.syncErrorCount = 0;
       if (!this.getAvailable()) {
@@ -431,8 +482,10 @@ class PvForecastDevice extends Homey.Device {
       }
       this.log(
         `PV forecast sync: surfaces=[${this.formatSegmentLog(settings.segments)}] total=${settings.totalKwp} kWp `
-        + `baseline=${baselineKwh} kWh adjusted=${adjustedKwh} kWh actual=${actualKwh} kWh `
-        + `correction=${forecast.correctionFactor}`,
+        + `rawB=${baselineRawKwh} dispB=${baselineDisplayKwh} scale=${learnedScale} `
+        + `adjusted=${adjustedKwh} actual=${actualKwh} (raw=${rawActualKwh}) `
+        + `f=${forecast.correctionFactor} fEma=${workingDayState.correctionEma ?? '—'} `
+        + `R=${forecast.remainingWeatherKwh}`,
       );
     } catch (e) {
       this.error('PV forecast sync failed: ' + formatError(e));
