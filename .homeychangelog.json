@@ -525,5 +525,9 @@
   "1.8.67": {
     "de": "- **PV-Nachberechnung:** Echte Endwert-Antizipation (A = Ist + Wetter-Rest · f) statt dem Ist hinterherzukleben.\n- Wenn Produktion die Prognose überholt → sofort neu nach oben; wenn uneinholbar darunter → neu nach unten.\n- Weniger enges Abend-Cap, solange noch Rest-PV erwartet wird.",
     "en": "- **PV adjusted forecast:** True end-of-day anticipation (A = actual + weather rest · f) instead of tracking actual.\n- When production overtakes the forecast → re-project upward immediately; when uncatchably below → re-project downward.\n- Less aggressive evening collapse while residual PV is still expected."
+  },
+  "1.8.68": {
+    "de": "- **HKW-Widget ohne Wallbox:** Unterkante von Netz (kWh) und Batterie wurde abgeschnitten — viewBox und Widget-Höhe korrigiert.\n- Sekundärtexte im Widget etwas besser lesbar im Dark Mode.",
+    "en": "- **HPS widget without wallbox:** Bottom of grid (kWh) and battery was clipped — fixed viewBox and widget height.\n- Secondary widget text slightly more readable in dark mode."
   }
 }

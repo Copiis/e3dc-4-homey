@@ -44,7 +44,7 @@
     }
 
     .node-label {
-      fill: #c8c8c8;
+      fill: #e0e0e0;
       font-size: 13px;
     }
 
@@ -54,8 +54,9 @@
       font-weight: 600;
     }
 
+    /* Secondary values (kWh, SOC) — slightly brighter for dark Homey theme */
     .node-soc {
-      fill: #ffffff;
+      fill: #f2f2f2;
       font-size: 13px;
     }
 
@@ -218,7 +219,13 @@
 
 <script type="text/javascript">
   const SYNC_INTERVAL = 10000;
+  /** Homey widget height with wallbox row. */
   const WIDGET_HEIGHT = 300;
+  /**
+   * Height without wallbox: must fit SVG viewBox 320×200 + container padding.
+   * 220 was too short → battery/grid bottoms clipped (see Robert screenshot).
+   */
+  const WIDGET_HEIGHT_NO_WALLBOX = 255;
   const FLOW_DOT_COUNT = 2;
   const SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -388,13 +395,15 @@
     if (batteryLine1) batteryLine1.style.display = showBattery ? '' : 'none';
     if (batteryLine2) batteryLine2.style.display = showBattery ? '' : 'none';
 
-    // Dynamically crop SVG when no wallbox (reduces visual height)
+    // Dynamically crop SVG when no wallbox (removes empty wallbox band only).
+    // Battery/grid sit ~y=103..185 (bottom kWh on lightning) — viewBox must stay ≥ ~200
+    // or the bottom of battery + grid export text is clipped (forum @RobertHerter).
     const svgEl = document.getElementById('flow-svg');
     if (svgEl) {
       if (showWallbox) {
         svgEl.setAttribute('viewBox', '0 0 320 278');
       } else {
-        svgEl.setAttribute('viewBox', '0 0 320 175');
+        svgEl.setAttribute('viewBox', '0 0 320 200');
       }
     }
 
@@ -517,8 +526,11 @@
       applyLiveVisibility(settings, plant.powerState);
       showFlow();
 
-      // Dynamic height for the flow diagram (no list below anymore)
-      const dynamicHeight = plant.powerState.hasWallbox ? WIDGET_HEIGHT : 220;
+      // Dynamic height: full with wallbox, shorter without (but not so short that
+      // battery / grid bottom values are cropped).
+      const dynamicHeight = plant.powerState.hasWallbox
+        ? WIDGET_HEIGHT
+        : WIDGET_HEIGHT_NO_WALLBOX;
       setHeight(Homey, asInit, dynamicHeight);
     } catch (e) {
       showMessage(e.toString());
