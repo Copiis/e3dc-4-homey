@@ -34,6 +34,7 @@ import {
   monotoneActualKwh,
   nextCorrectionEma,
   roundKwh,
+  shouldReanticipateAdjusted,
   updateDayScaleFromOutcome,
 } from '../../src/utils/pv-forecast-calculator';
 import {
@@ -416,8 +417,18 @@ class PvForecastDevice extends Homey.Device {
           typeof workingDayState.adjustedKwh === 'number'
             ? workingDayState.adjustedKwh
             : baselineDisplayKwh;
+        const remainingWeather = forecast.remainingWeatherKwh || 0;
+        const reanticipate = shouldReanticipateAdjusted({
+          actualKwh,
+          previousAdjustedKwh: previousAdjusted,
+          remainingWeatherKwh: remainingWeather,
+        });
+        const hourElapsed = !lastEstimate || (nowMs - lastEstimate) >= 60 * 60 * 1000;
+        // Recompute end-of-day A hourly, or immediately when Ist overtook A / uncatchable under A.
+        // Do NOT glue A to actual between ticks (that only "tracks" production).
+        const shouldRecompute = hourElapsed || reanticipate !== 'none';
 
-        if (!lastEstimate || (nowMs - lastEstimate) >= 60 * 60 * 1000) {
+        if (shouldRecompute) {
           const correctionEma = nextCorrectionEma(
             actualKwh,
             forecast.expectedKwhSoFar || 0,
@@ -428,10 +439,11 @@ class PvForecastDevice extends Homey.Device {
             baselineKwh: baselineDisplayKwh,
             expectedKwhSoFar: forecast.expectedKwhSoFar || 0,
             correctionFactor: correctionEma,
-            remainingWeatherKwh: forecast.remainingWeatherKwh || 0,
+            remainingWeatherKwh: remainingWeather,
             previousAdjustedKwh: previousAdjusted,
             previousCorrectionEma: workingDayState.correctionEma,
             localHour,
+            reanticipate,
           });
 
           workingDayState = {
@@ -441,11 +453,9 @@ class PvForecastDevice extends Homey.Device {
             adjustedKwh,
           };
         } else {
+          // Hold anticipatory A until next hour / re-anticipate trigger
           adjustedKwh = Math.max(previousAdjusted, actualKwh);
-          // Still never above effective baseline between hourly ticks
-          if (baselineDisplayKwh > 0) {
-            adjustedKwh = Math.min(adjustedKwh, Math.max(baselineDisplayKwh, actualKwh));
-          }
+          // Only lift floor with actual; never clamp residual away between ticks
           workingDayState = {
             ...workingDayState,
             adjustedKwh,

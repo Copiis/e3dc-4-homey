@@ -9,6 +9,7 @@ import {
   estimateDailyProductionLandingPoint,
   monotoneActualKwh,
   nextCorrectionEma,
+  shouldReanticipateAdjusted,
   smoothCorrectionFactor,
   updateDayScaleFromOutcome,
 } from '../src/utils/pv-forecast-calculator';
@@ -27,7 +28,7 @@ describe('computeWeatherRestLandingPoint', () => {
     assert.ok(result <= 32.1, `no overshoot when behind, got ${result}`);
   });
 
-  it('allows only +5% over baseline when clearly ahead', () => {
+  it('allows lift over baseline when clearly ahead (re-anticipate residual)', () => {
     const result = computeWeatherRestLandingPoint({
       actualKwh: 24,
       baselineKwh: 32,
@@ -36,8 +37,25 @@ describe('computeWeatherRestLandingPoint', () => {
       correctionFactor: 1.1,
       localHour: 15,
     });
+    // A ≈ 24 + 12*1.1 = 37.2, soft-capped near baseline*1.2 or actual+R*fmax
     assert.ok(result >= 24);
-    assert.ok(result <= 32 * 1.05 + 0.05, `cap at +5% baseline, got ${result}`);
+    assert.ok(result > 32, `should re-anticipate above baseline when ahead, got ${result}`);
+    assert.ok(result <= 24 + 12 * 1.1 + 0.2, `not wild overshoot, got ${result}`);
+  });
+
+  it('when actual overtook previous A, keeps residual above actual', () => {
+    const result = computeWeatherRestLandingPoint({
+      actualKwh: 22,
+      baselineKwh: 19.5,
+      expectedKwhSoFar: 18,
+      remainingWeatherKwh: 4,
+      correctionFactor: 1.05,
+      localHour: 16,
+      previousAdjustedKwh: 19.5,
+    });
+    // Must not glue to 22 — anticipate 22 + 4*f
+    assert.ok(result > 22.5, `re-anticipate residual after overtake, got ${result}`);
+    assert.ok(result >= 22);
   });
 
   it('converges to actual when remaining weather is 0', () => {
@@ -64,7 +82,7 @@ describe('computeWeatherRestLandingPoint', () => {
     assert.ok(result >= 30);
   });
 
-  it('evening hour binds near actual', () => {
+  it('evening hour binds near actual when residual small path', () => {
     const result = computeWeatherRestLandingPoint({
       actualKwh: 22,
       baselineKwh: 32,
@@ -75,6 +93,41 @@ describe('computeWeatherRestLandingPoint', () => {
     });
     assert.ok(result <= 23.5, `expected tight evening bind, got ${result}`);
     assert.ok(result >= 22);
+  });
+});
+
+describe('shouldReanticipateAdjusted', () => {
+  it('detects overtake when actual reaches previous A with residual left', () => {
+    assert.strictEqual(
+      shouldReanticipateAdjusted({
+        actualKwh: 19.5,
+        previousAdjustedKwh: 19.5,
+        remainingWeatherKwh: 4,
+      }),
+      'above',
+    );
+  });
+
+  it('detects uncatchable below previous A', () => {
+    assert.strictEqual(
+      shouldReanticipateAdjusted({
+        actualKwh: 10,
+        previousAdjustedKwh: 30,
+        remainingWeatherKwh: 5, // optimistic 10+5.5=15.5 << 30
+      }),
+      'below',
+    );
+  });
+
+  it('holds when still on track under A with enough residual', () => {
+    assert.strictEqual(
+      shouldReanticipateAdjusted({
+        actualKwh: 12,
+        previousAdjustedKwh: 20,
+        remainingWeatherKwh: 12,
+      }),
+      'none',
+    );
   });
 });
 
@@ -150,19 +203,36 @@ describe('blendAdjustedForecast (weather-rest + hard caps)', () => {
     assert.ok(result >= 20);
   });
 
-  it('caps ahead case at +5% baseline', () => {
+  it('re-anticipates above previous A when production overtakes (Insights pattern)', () => {
+    // 15:00-ish: B=19.5, A was 19.5, actual reaches 19.5 with rest still left
     const result = blendAdjustedForecast({
-      actualKwh: 24,
+      actualKwh: 19.5,
+      baselineKwh: 19.5,
+      expectedKwhSoFar: 16,
+      correctionFactor: 1.1,
+      remainingWeatherKwh: 5,
+      previousAdjustedKwh: 19.5,
+      localHour: 15,
+      reanticipate: 'above',
+    });
+    assert.ok(result > 19.5, `must lift above overtaken line, got ${result}`);
+    assert.ok(result >= 19.5 + 1.0, `must keep residual, got ${result}`);
+  });
+
+  it('re-anticipates down when uncatchable under previous A', () => {
+    const result = blendAdjustedForecast({
+      actualKwh: 10,
       baselineKwh: 32,
       expectedKwhSoFar: 20,
-      correctionFactor: 1.1,
-      remainingWeatherKwh: 12,
-      curveEstimate: 48,
-      previousAdjustedKwh: 32.5,
-      localHour: 15,
+      correctionFactor: 0.85,
+      remainingWeatherKwh: 4,
+      previousAdjustedKwh: 30,
+      localHour: 16,
+      reanticipate: 'below',
     });
-    assert.ok(result <= 32 * 1.05 + 0.2, `expected modest overshoot only, got ${result}`);
-    assert.ok(result >= 24);
+    // optimistic end ≈ 10+4.4 = 14.4 — should drop well below 30
+    assert.ok(result < 26, `expected clear downward re-anticipate, got ${result}`);
+    assert.ok(result >= 10);
   });
 
   it('never goes below actual', () => {
@@ -202,26 +272,26 @@ describe('blendAdjustedForecast (weather-rest + hard caps)', () => {
       remainingWeatherKwh: 8,
       previousAdjustedKwh: 40,
       localHour: 16,
+      reanticipate: 'below',
     });
     assert.ok(result < 38, `expected downward correction, got ${result}`);
-    assert.ok(result <= 32.1, `expected not above baseline when behind, got ${result}`);
   });
 
-  it('does not climb hour-by-hour above baseline', () => {
+  it('when behind model stays at/below baseline across afternoon hours', () => {
     let prev = 32.0;
-    for (let hour = 13; hour <= 17; hour++) {
+    for (let hour = 13; hour <= 15; hour++) {
+      // actual slightly under expected → behind
       prev = blendAdjustedForecast({
-        actualKwh: 18 + (hour - 12) * 2,
+        actualKwh: 14 + (hour - 12) * 1.5,
         baselineKwh: 32.0,
-        expectedKwhSoFar: 20 + (hour - 12) * 2,
-        correctionFactor: 0.95,
-        remainingWeatherKwh: Math.max(0, 12 - (hour - 12) * 2),
-        curveEstimate: 50,
+        expectedKwhSoFar: 18 + (hour - 12) * 2,
+        correctionFactor: 0.9,
+        remainingWeatherKwh: Math.max(0, 14 - (hour - 12) * 2),
         previousAdjustedKwh: prev,
         localHour: hour,
       });
     }
-    assert.ok(prev <= 32.1, `stayed at/below baseline, got final ${prev}`);
+    assert.ok(prev <= 32.1, `stayed at/below baseline while behind, got final ${prev}`);
   });
 
   it('rejects morning-style explosion (high remaining * f with low expected)', () => {

@@ -521,5 +521,9 @@
   "1.8.66": {
     "de": "- **Timeline Stromausfall:** Klarere Meldungen — „HKW nicht erreichbar — Strom- oder Internetausfall?“, „Netzausfall — HKW im Inselbetrieb!“, „Netz wieder da — HKW im Normalbetrieb!“\n- Nach Reconnect: Insel-Flows nachträglich; keine doppelte „wieder erreichbar“-Meldung neben der Insel-Meldung.",
     "en": "- **Outage timeline:** Clearer messages — “HPS unreachable — power or internet outage?”, “Grid outage — HPS in island mode!”, “Grid restored — HPS in normal operation!”\n- After reconnect: island flows fire delayed; no duplicate “reachable again” next to the island message."
+  },
+  "1.8.67": {
+    "de": "- **PV-Nachberechnung:** Echte Endwert-Antizipation (A = Ist + Wetter-Rest · f) statt dem Ist hinterherzukleben.\n- Wenn Produktion die Prognose überholt → sofort neu nach oben; wenn uneinholbar darunter → neu nach unten.\n- Weniger enges Abend-Cap, solange noch Rest-PV erwartet wird.",
+    "en": "- **PV adjusted forecast:** True end-of-day anticipation (A = actual + weather rest · f) instead of tracking actual.\n- When production overtakes the forecast → re-project upward immediately; when uncatchably below → re-project downward.\n- Less aggressive evening collapse while residual PV is still expected."
   }
 }
