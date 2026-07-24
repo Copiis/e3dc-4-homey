@@ -45,6 +45,12 @@ export class CapabilityManager {
    */
   private islandStartNotified = false;
 
+  /**
+   * When island start/stop already posted a timeline for this poll cycle,
+   * skip the generic "HPS reachable again" to avoid double messages.
+   */
+  private skipHpsAvailableTimeline = false;
+
   // Short in-memory caches for linked sub-devices to avoid repeated getDriver().getDevices() + getStoreValue
   // every 30s poll (addresses repeated device lookups / sync store reads).
   private gridCache: { timestamp: number; devices: unknown[] } | null = null;
@@ -263,23 +269,25 @@ export class CapabilityManager {
       return;
     }
     this.islandStartNotified = true;
-
+    // Flow always fires (including delayed after offline) so user Push cards run.
     try {
       this.device.islandModeStartedTrigger?.trigger(undefined);
     } catch (e) {
       this.device.error('islandModeStartedTrigger failed: ' + formatError(e));
     }
 
+    // Same user-facing text for live and delayed; keys kept for i18n/history.
     const timelineKey =
       kind === 'live' ? 'timeline.island-started' : 'timeline.island-started-delayed';
     this.device.postTimelineNotification(this.device.homey.__(timelineKey));
+    this.skipHpsAvailableTimeline = true;
 
     const analysis =
       kind === 'live'
-        ? 'Inselbetrieb gestartet (Notstrom) / island mode started'
+        ? 'Netzausfall — HKW im Inselbetrieb (live) / grid outage island live'
         : kind === 'delayed'
-          ? 'Inselbetrieb erkannt nach Wiederverbindung (verspätet) / island after reconnect'
-          : 'Inselbetrieb aktiv (bei Start erkannt) / island active on init';
+          ? 'Netzausfall — HKW im Inselbetrieb (nach Reconnect) / grid outage after reconnect'
+          : 'Netzausfall — HKW im Inselbetrieb (bei Start) / grid outage on init';
     this.device.recordAnalysisEvent('warn', analysis);
   }
 
@@ -291,7 +299,8 @@ export class CapabilityManager {
       this.device.error('islandModeStoppedTrigger failed: ' + formatError(e));
     }
     this.device.postTimelineNotification(this.device.homey.__('timeline.island-stopped'));
-    this.device.recordAnalysisEvent('warn', 'Inselbetrieb beendet — Netz wieder da / island mode stopped');
+    this.skipHpsAvailableTimeline = true;
+    this.device.recordAnalysisEvent('warn', 'Netz wieder da — HKW im Normalbetrieb / grid restored normal');
   }
 
   handleAvailability() {
@@ -299,11 +308,17 @@ export class CapabilityManager {
     this.device.syncErrorCount = 0;
     if (wasUnavailable) {
       this.device.recordAnalysisEvent('info', 'HKW wieder verfügbar / available again');
-      this.device.postTimelineNotification(this.device.homey.__('timeline.hps-available'));
+      // Avoid double timeline: island start/stop already said what matters.
+      if (!this.skipHpsAvailableTimeline && !this.currentEmergencyPowerState?.island) {
+        this.device.postTimelineNotification(this.device.homey.__('timeline.hps-available'));
+      }
+      this.skipHpsAvailableTimeline = false;
       if (!this.device.getAvailable()) {
         this.device.setAvailable(true).catch((reason: unknown) => this.device.error('Failed to set available: ' + formatError(reason)));
       }
       this.device.publishDiagnosticReport().catch(() => undefined);
+    } else {
+      this.skipHpsAvailableTimeline = false;
     }
   }
 

@@ -517,5 +517,9 @@
   "1.8.65": {
     "de": "- **Inselbetrieb / Notstrom (Stromausfall):** Erkennung und Flow-Trigger wieder zuverlässig (Kaputt nach Manager-Refactor + Korrektur vertauschter easy-rscp-Tags island/invalidState).\n- **Timeline:** „Inselbetrieb gestartet/beendet“, „HKW nicht erreichbar / wieder verbunden“ wieder aktiv.\n- **Nachmeldung:** Wird das HKW erst nach Offline wieder erreicht und ist im Inselbetrieb → Flow + Timeline „Inselbetrieb erkannt nach Wiederverbindung (verspätet)“ (z. B. wenn WLAN-Repeater ohne Notstrom ausfällt).",
     "en": "- **Island mode / emergency power (outage):** Detection and flow triggers reliable again (broken after manager refactor + fix for swapped easy-rscp island/invalidState tags).\n- **Timeline:** “Island mode started/stopped”, “HPS unreachable / connected again” restored.\n- **Delayed notify:** When the HPS becomes reachable again after offline and is in island mode → flow + timeline “Island mode detected after reconnect (delayed)” (e.g. Wi‑Fi repeater without backup power)."
+  },
+  "1.8.66": {
+    "de": "- **Timeline Stromausfall:** Klarere Meldungen — „HKW nicht erreichbar — Strom- oder Internetausfall?“, „Netzausfall — HKW im Inselbetrieb!“, „Netz wieder da — HKW im Normalbetrieb!“\n- Nach Reconnect: Insel-Flows nachträglich; keine doppelte „wieder erreichbar“-Meldung neben der Insel-Meldung.",
+    "en": "- **Outage timeline:** Clearer messages — “HPS unreachable — power or internet outage?”, “Grid outage — HPS in island mode!”, “Grid restored — HPS in normal operation!”\n- After reconnect: island flows fire delayed; no duplicate “reachable again” next to the island message."
   }
 }

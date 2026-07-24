@@ -137,8 +137,29 @@ describe('Island mode detection (Stromausfall / Notstrom)', () => {
       { recoveredFromUnavailable: true },
     );
 
+    // Flow is triggered retroactively (same as live) so Push cards run late
     assert.strictEqual(mock.started, 1);
     assert.deepStrictEqual(mock.timeline, ['timeline.island-started-delayed']);
+  });
+
+  it('after reconnect then normal: fires island-stopped (flow + Netz wieder da)', () => {
+    const mock = createMockDevice();
+    const manager = new CapabilityManager(mock.device, {} as EnergyMeterIntegrator);
+
+    manager.handleEmergencyPowerStateChanges(makeLive(makeEps({ island: false })));
+    manager.handleEmergencyPowerStateChanges(
+      makeLive(makeEps({ island: true, connectedToGrid: false })),
+      { recoveredFromUnavailable: true },
+    );
+    // Brief offline while island, then back in normal mode
+    manager.handleEmergencyPowerStateChanges(
+      makeLive(makeEps({ island: false, connectedToGrid: true })),
+      { recoveredFromUnavailable: true },
+    );
+
+    assert.strictEqual(mock.started, 1);
+    assert.strictEqual(mock.stopped, 1);
+    assert.ok(mock.timeline.includes('timeline.island-stopped'));
   });
 
   it('after reconnect: does not double-notify if live edge already fired', () => {

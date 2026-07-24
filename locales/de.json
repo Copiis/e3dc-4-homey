@@ -85,11 +85,11 @@
     "manual-charge-already-running": "Es ist bereits ein manueller Ladevorgang aktiv"
   },
   "timeline": {
-    "hps-unavailable": "**E3/DC HKW** nicht erreichbar — Verbindung prüfen",
-    "hps-available": "**E3/DC HKW** wieder verbunden",
-    "island-started": "**Inselbetrieb** gestartet (Notstrom)",
-    "island-started-delayed": "**Inselbetrieb** erkannt nach Wiederverbindung (verspätet) — Notstrom",
-    "island-stopped": "**Inselbetrieb** beendet — Netz wieder da",
+    "hps-unavailable": "**HKW nicht erreichbar** — Strom- oder Internetausfall?",
+    "hps-available": "**HKW wieder erreichbar**",
+    "island-started": "**Netzausfall** — HKW im Inselbetrieb!",
+    "island-started-delayed": "**Netzausfall** — HKW im Inselbetrieb!",
+    "island-stopped": "**Netz wieder da** — HKW im Normalbetrieb!",
     "firmware-updated": "Firmware aktualisiert: **__OLD__** → **__NEW__**"
   },
   "result-code": {

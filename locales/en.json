@@ -83,11 +83,11 @@
     "manual-charge-already-running": "A manual charging process is already active"
   },
   "timeline": {
-    "hps-unavailable": "**E3/DC HPS** unreachable — check connection settings",
-    "hps-available": "**E3/DC HPS** connected again",
-    "island-started": "**Island mode** started (emergency power)",
-    "island-started-delayed": "**Island mode** detected after reconnect (delayed) — emergency power",
-    "island-stopped": "**Island mode** ended — grid restored",
+    "hps-unavailable": "**HPS unreachable** — power or internet outage?",
+    "hps-available": "**HPS reachable again**",
+    "island-started": "**Grid outage** — HPS in island mode!",
+    "island-started-delayed": "**Grid outage** — HPS in island mode!",
+    "island-stopped": "**Grid restored** — HPS in normal operation!",
     "firmware-updated": "Firmware updated: **__OLD__** → **__NEW__**"
   },
   "result-code": {
