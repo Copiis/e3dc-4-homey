@@ -86,6 +86,7 @@
     "hps-unavailable": "**E3/DC HPS** unreachable — check connection settings",
     "hps-available": "**E3/DC HPS** connected again",
     "island-started": "**Island mode** started (emergency power)",
+    "island-started-delayed": "**Island mode** detected after reconnect (delayed) — emergency power",
     "island-stopped": "**Island mode** ended — grid restored",
     "firmware-updated": "Firmware updated: **__OLD__** → **__NEW__**"
   },

@@ -405,6 +405,10 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
     );
     if (this.syncErrorCount >= MAX_ALLOWED_ERROR_BEFORE_UNAVAILABLE) {
       const unavailableMessage = this.homey.__('messages.hps-not-available');
+      this.diagnosticManager?.recordAnalysisEvent('warn', 'HKW nicht verfügbar / unavailable: ' + unavailableMessage);
+      if (this.getAvailable()) {
+        this.postTimelineNotification(this.homey.__('timeline.hps-unavailable'));
+      }
       this.setUnavailable(unavailableMessage).catch((reason: unknown) => {
         this.error('setUnavailable failed: ' + formatError(reason));
       });
@@ -425,7 +429,10 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
       this.capabilityManager?.handleFirmwareChange(result);
       this.capabilityManager?.handleChargingConfigurationChanges(result);
       this.capabilityManager?.handleManualChargeStateChanges(result)
-      this.capabilityManager?.handleEmergencyPowerStateChanges(result)
+      // Capture before handleAvailability clears unavailable — island may only
+      // become visible after reconnect (repeater boot, Notstrom-Pfad).
+      const recoveredFromUnavailable = !this.getAvailable();
+      this.capabilityManager?.handleEmergencyPowerStateChanges(result, { recoveredFromUnavailable })
       this.wallboxManager?.handleWallboxData(result)
       this.updateHkwLadeplanStatus()
 

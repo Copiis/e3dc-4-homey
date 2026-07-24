@@ -20,7 +20,16 @@ export class SyncDataFrameConverter implements FrameConverter<LiveData> {
         const chargingConfig = chargingConfigConverter.convert(this.sysSpecResponse)
         const manualChargeState = manualChargeConverter.convert(frame)
         const emergencyPowerConverter = new EmergencyPowerStateConverter();
-        const emergencyPowerState = emergencyPowerConverter.convert(frame)
+        // easy-rscp ≤0.9.1 maps island ↔ invalidState to the wrong EPTags (swapped):
+        //   island ← IS_INVALID_STATE, invalidState ← IS_ISLAND_GRID
+        // Correct mapping: island = IS_ISLAND_GRID, invalidState = IS_INVALID_STATE.
+        // Without this swap, Stromausfall / Inselbetrieb is never detected (flows + timeline silent).
+        const rawEmergency = emergencyPowerConverter.convert(frame)
+        const emergencyPowerState = {
+            ...rawEmergency,
+            island: rawEmergency.invalidState,
+            invalidState: rawEmergency.island,
+        }
         const externalPowerConnected = frame.numberByTag(EMSTag.EXT_SRC_AVAILABLE) >= 1
         let externalPower = 0
         if (externalPowerConnected) {

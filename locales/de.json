@@ -88,6 +88,7 @@
     "hps-unavailable": "**E3/DC HKW** nicht erreichbar — Verbindung prüfen",
     "hps-available": "**E3/DC HKW** wieder verbunden",
     "island-started": "**Inselbetrieb** gestartet (Notstrom)",
+    "island-started-delayed": "**Inselbetrieb** erkannt nach Wiederverbindung (verspätet) — Notstrom",
     "island-stopped": "**Inselbetrieb** beendet — Netz wieder da",
     "firmware-updated": "Firmware aktualisiert: **__OLD__** → **__NEW__**"
   },

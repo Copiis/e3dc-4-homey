@@ -31,11 +31,19 @@ export interface PowerDataChanges {
  *
  * Vollkommen entkoppelt über IHpsDevice. Keine Casts mehr.
  */
+export type IslandNotifyKind = 'live' | 'delayed' | 'init';
+
 export class CapabilityManager {
   currentChargingConfig: ChargingConfiguration | null = null;
   currentManualChargeState: ManualChargeState | null = null;
   currentEmergencyPowerState: EmergencyPowerState | null = null;
   lastPvSurplusW = 0;
+
+  /**
+   * True after we already fired island-started (flow + timeline) for the current
+   * island episode. Cleared when island ends. Prevents double notify on reconnect.
+   */
+  private islandStartNotified = false;
 
   // Short in-memory caches for linked sub-devices to avoid repeated getDriver().getDevices() + getStoreValue
   // every 30s poll (addresses repeated device lookups / sync store reads).
@@ -199,15 +207,91 @@ export class CapabilityManager {
     }
   }
 
-  handleEmergencyPowerStateChanges(result: LiveData) {
-    const change = updateCapabilityValue('emergency_power_state', result.emergencyPowerState, this.device);
-    if (change) {
-      this.currentEmergencyPowerState = result.emergencyPowerState;
-      if (result.emergencyPowerState?.island) {
-        this.device.islandModeStartedTrigger?.trigger(undefined);
-      }
+  /**
+   * Detect island (Notstrom/Stromausfall) transitions and emergency-reserve changes.
+   *
+   * Must compare in-memory previous state — `emergency_power_state` is not a Homey
+   * capability, so updateCapabilityValue never reports a reliable change.
+   *
+   * When the HKW was unreachable (e.g. repeater down during outage), the live
+   * edge can be missed. Pass `recoveredFromUnavailable: true` on the first
+   * successful poll after reconnect so we still notify (timeline: delayed).
+   */
+  handleEmergencyPowerStateChanges(
+    result: LiveData,
+    options: { recoveredFromUnavailable?: boolean } = {},
+  ) {
+    const next = result.emergencyPowerState;
+    if (!next) {
+      return;
     }
-    this.currentEmergencyPowerState = result.emergencyPowerState;
+
+    const prev = this.currentEmergencyPowerState;
+    const wasIsland = Boolean(prev?.island);
+    const isIsland = Boolean(next.island);
+    const recovered = Boolean(options.recoveredFromUnavailable);
+
+    if (prev) {
+      if (wasIsland && !isIsland) {
+        this.notifyIslandStopped();
+      } else if (!wasIsland && isIsland) {
+        // Live edge, or first sight after outage while network was down
+        this.notifyIslandStarted(recovered ? 'delayed' : 'live');
+      } else if (recovered && isIsland && !this.islandStartNotified) {
+        // Already island in memory (or edge missed) but never notified this episode
+        this.notifyIslandStarted('delayed');
+      }
+
+      const reserveChange: ValueChanged<number> = {
+        oldValue: prev.reserveWh,
+        newValue: next.reserveWh,
+      };
+      this.device.emergencyPowerReserveChangedTrigger?.runIfChanged(reserveChange);
+    } else if (isIsland) {
+      // App start or first ever sample while already in island
+      this.notifyIslandStarted(recovered ? 'delayed' : 'init');
+    }
+
+    this.currentEmergencyPowerState = next;
+  }
+
+  /**
+   * Flow + timeline for island start. Idempotent per island episode via islandStartNotified.
+   */
+  private notifyIslandStarted(kind: IslandNotifyKind): void {
+    if (this.islandStartNotified) {
+      return;
+    }
+    this.islandStartNotified = true;
+
+    try {
+      this.device.islandModeStartedTrigger?.trigger(undefined);
+    } catch (e) {
+      this.device.error('islandModeStartedTrigger failed: ' + formatError(e));
+    }
+
+    const timelineKey =
+      kind === 'live' ? 'timeline.island-started' : 'timeline.island-started-delayed';
+    this.device.postTimelineNotification(this.device.homey.__(timelineKey));
+
+    const analysis =
+      kind === 'live'
+        ? 'Inselbetrieb gestartet (Notstrom) / island mode started'
+        : kind === 'delayed'
+          ? 'Inselbetrieb erkannt nach Wiederverbindung (verspätet) / island after reconnect'
+          : 'Inselbetrieb aktiv (bei Start erkannt) / island active on init';
+    this.device.recordAnalysisEvent('warn', analysis);
+  }
+
+  private notifyIslandStopped(): void {
+    this.islandStartNotified = false;
+    try {
+      this.device.islandModeStoppedTrigger?.trigger(undefined);
+    } catch (e) {
+      this.device.error('islandModeStoppedTrigger failed: ' + formatError(e));
+    }
+    this.device.postTimelineNotification(this.device.homey.__('timeline.island-stopped'));
+    this.device.recordAnalysisEvent('warn', 'Inselbetrieb beendet — Netz wieder da / island mode stopped');
   }
 
   handleAvailability() {
@@ -215,6 +299,7 @@ export class CapabilityManager {
     this.device.syncErrorCount = 0;
     if (wasUnavailable) {
       this.device.recordAnalysisEvent('info', 'HKW wieder verfügbar / available again');
+      this.device.postTimelineNotification(this.device.homey.__('timeline.hps-available'));
       if (!this.device.getAvailable()) {
         this.device.setAvailable(true).catch((reason: unknown) => this.device.error('Failed to set available: ' + formatError(reason)));
       }

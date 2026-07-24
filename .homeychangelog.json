@@ -513,5 +513,9 @@
   "1.8.64": {
     "en": "PV forecast: freeze morning baseline, apply learned day-scale (~0.85), hard-cap adjusted ≤ baseline, smoother f (EMA), monotone actual kWh, stricter evening bind.",
     "de": "PV-Prognose: Baseline morgens frieren, gelernte Tagesskala (~0,85), Nachberechnung hart ≤ Baseline, f per EMA glätten, monotoner Ist-Tageswert, abends enger anbinden."
+  },
+  "1.8.65": {
+    "de": "- **Inselbetrieb / Notstrom (Stromausfall):** Erkennung und Flow-Trigger wieder zuverlässig (Kaputt nach Manager-Refactor + Korrektur vertauschter easy-rscp-Tags island/invalidState).\n- **Timeline:** „Inselbetrieb gestartet/beendet“, „HKW nicht erreichbar / wieder verbunden“ wieder aktiv.\n- **Nachmeldung:** Wird das HKW erst nach Offline wieder erreicht und ist im Inselbetrieb → Flow + Timeline „Inselbetrieb erkannt nach Wiederverbindung (verspätet)“ (z. B. wenn WLAN-Repeater ohne Notstrom ausfällt).",
+    "en": "- **Island mode / emergency power (outage):** Detection and flow triggers reliable again (broken after manager refactor + fix for swapped easy-rscp island/invalidState tags).\n- **Timeline:** “Island mode started/stopped”, “HPS unreachable / connected again” restored.\n- **Delayed notify:** When the HPS becomes reachable again after offline and is in island mode → flow + timeline “Island mode detected after reconnect (delayed)” (e.g. Wi‑Fi repeater without backup power)."
   }
 }
