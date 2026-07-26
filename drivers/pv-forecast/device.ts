@@ -29,6 +29,7 @@ import {
   blendAdjustedForecast,
   calculateMultiSegmentPvForecast,
   DEFAULT_BASELINE_DAY_SCALE,
+  estimateProductionEndMs,
   getLocalHour,
   localDateString,
   monotoneActualKwh,
@@ -393,6 +394,12 @@ class PvForecastDevice extends Homey.Device {
       let adjustedKwh = baselineDisplayKwh;
       const localHour = getLocalHour(timezone, nowMs);
       const shouldStartEstimation = localHour >= 12;
+      // Last meaningful PV from irradiance series (GTI>15); residual tapered in last 2 h
+      let productionEndMs = nowMs;
+      for (const segment of segmentInputs) {
+        productionEndMs = Math.max(productionEndMs, estimateProductionEndMs(segment.hours, nowMs));
+      }
+      const hoursUntilProductionEnd = (productionEndMs - nowMs) / 3600000;
 
       let workingDayState: PvForecastDayState = {
         ...(dayState || {
@@ -422,6 +429,7 @@ class PvForecastDevice extends Homey.Device {
           actualKwh,
           previousAdjustedKwh: previousAdjusted,
           remainingWeatherKwh: remainingWeather,
+          hoursUntilProductionEnd,
         });
         const hourElapsed = !lastEstimate || (nowMs - lastEstimate) >= 60 * 60 * 1000;
         // Recompute end-of-day A hourly, or immediately when Ist overtook A / uncatchable under A.
@@ -443,6 +451,7 @@ class PvForecastDevice extends Homey.Device {
             previousAdjustedKwh: previousAdjusted,
             previousCorrectionEma: workingDayState.correctionEma,
             localHour,
+            hoursUntilProductionEnd,
             reanticipate,
           });
 
@@ -495,7 +504,7 @@ class PvForecastDevice extends Homey.Device {
         + `rawB=${baselineRawKwh} dispB=${baselineDisplayKwh} scale=${learnedScale} `
         + `adjusted=${adjustedKwh} actual=${actualKwh} (raw=${rawActualKwh}) `
         + `f=${forecast.correctionFactor} fEma=${workingDayState.correctionEma ?? '—'} `
-        + `R=${forecast.remainingWeatherKwh}`,
+        + `R=${forecast.remainingWeatherKwh} endIn=${hoursUntilProductionEnd.toFixed(1)}h`,
       );
     } catch (e) {
       this.error('PV forecast sync failed: ' + formatError(e));

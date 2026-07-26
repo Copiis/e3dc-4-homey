@@ -19,9 +19,10 @@ export const DAY_SCALE_MAX = 1.1;
 export const DAY_SCALE_EMA_ALPHA = 0.25;
 /**
  * When clearly ahead of weather model / previous A, allow lift over baseline.
- * Insights 24.07.: day ended ~25 kWh vs display-B ~19.5 — need room to re-anticipate.
+ * Insights 25.07.: A hit 37.7 while B≈31.6 / end Ist≈32.9 — 1.20 was too loose
+ * and softCap used max(B·cap, Ist+R·f) which is not a real ceiling.
  */
-const AHEAD_BASELINE_CAP = 1.20;
+const AHEAD_BASELINE_CAP = 1.10;
 /** Max step up per normal hourly recompute. */
 const MAX_UP_FRAC = 0.03;
 const MAX_UP_ABS_KWH = 0.8;
@@ -31,6 +32,77 @@ const MAX_UP_ABS_REANTICIPATE = 3.0;
 /** Larger step down when remaining weather cannot catch previous A. */
 const MAX_DOWN_FRAC_UNCATCHABLE = 0.25;
 const MAX_DOWN_ABS_UNCATCHABLE = 5.0;
+
+/**
+ * Hours before production end (sunset / last GTI) during which residual is tapered.
+ * Production parabola flattens — no significant yield change expected in this window.
+ */
+export const EVENING_FLATTEN_HOURS = 2;
+
+/**
+ * Scale factor for remaining weather energy as the daily curve flattens.
+ * Full credit until 2 h before end; then (h/2)² → 0 at end (parabolic taper).
+ */
+export function eveningResidualTaper(hoursUntilEnd: number | undefined): number {
+  if (hoursUntilEnd == null || !Number.isFinite(hoursUntilEnd)) {
+    return 1;
+  }
+  if (hoursUntilEnd >= EVENING_FLATTEN_HOURS) {
+    return 1;
+  }
+  if (hoursUntilEnd <= 0) {
+    return 0;
+  }
+  const x = hoursUntilEnd / EVENING_FLATTEN_HOURS;
+  return x * x;
+}
+
+/** Weather rest after evening parabola taper. */
+export function effectiveRemainingWeatherKwh(
+  remainingWeatherKwh: number,
+  hoursUntilProductionEnd?: number,
+): number {
+  return Math.max(0, remainingWeatherKwh) * eveningResidualTaper(hoursUntilProductionEnd);
+}
+
+/**
+ * Upper bound for adjusted forecast A when allowed above baseline.
+ * - Real ceiling: min(B·cap, Ist + R·f_max) — never the max of both.
+ * - Near/past baseline: weather-rest is often overstated → only small residual room.
+ * - Within 2 h of production end: residual room collapses with evening taper.
+ */
+export function adjustedSoftCap(input: {
+  actualKwh: number;
+  baselineKwh: number;
+  remainingWeatherKwh: number;
+  allowAboveBaseline: boolean;
+  localHour?: number;
+  hoursUntilProductionEnd?: number;
+}): number {
+  const actual = Math.max(0, input.actualKwh);
+  const baseline = Math.max(0, input.baselineKwh);
+  const remaining = Math.max(0, input.remainingWeatherKwh);
+  const hour = input.localHour ?? 12;
+  const taper = eveningResidualTaper(input.hoursUntilProductionEnd);
+  const weatherOpt = actual + remaining * CORRECTION_MAX * taper;
+
+  if (!input.allowAboveBaseline || baseline <= 0) {
+    return Math.max(baseline, actual);
+  }
+
+  // Near or past display baseline: R is often still large while day is almost done
+  if (actual >= baseline * 0.92) {
+    let residualRoom = hour >= 18 ? 1.2 : hour >= 16 ? 2.0 : hour >= 14 ? 3.0 : 4.0;
+    residualRoom *= Math.max(taper, 0.05); // keep tiny room until fully flat
+    if (taper <= 0) {
+      residualRoom = 0.2;
+    }
+    return Math.min(weatherOpt, Math.max(actual, baseline) + residualRoom);
+  }
+
+  // Mid-day ahead of model but still clearly under baseline
+  return Math.min(Math.max(baseline * AHEAD_BASELINE_CAP, actual), weatherOpt);
+}
 
 export interface PvForecastInputs {
   hours: HourlyIrradiance[];
@@ -242,11 +314,12 @@ export function monotoneActualKwh(previous: number | undefined, raw: number): nu
 
 /**
  * Kern der Nachberechnung (Antizipation Tagesende):
- *   A = E_ist + R_Wetter · f
+ *   A = E_ist + R_eff · f
+ *   R_eff = R_Wetter · eveningTaper (ab 2 h vor Produktionsende → 0)
  *
  * - Hinter dem Wettermodell: A ≤ Baseline (kein Hochrechnen ins Blaue)
  * - Voraus / Ist überholt A_prev: A darf über Baseline steigen (Rest · f bleibt drin)
- * - Abends nur bei kleinem Rest eng an Ist; solange R groß → weiter antizipieren
+ * - Ab 2 h vor Sonnenuntergang/Produktionsende: Parabel flacht ab → kaum noch Rest
  */
 export function computeWeatherRestLandingPoint(input: {
   actualKwh: number;
@@ -255,12 +328,16 @@ export function computeWeatherRestLandingPoint(input: {
   remainingWeatherKwh: number;
   correctionFactor?: number;
   localHour?: number;
+  /** Hours until last meaningful PV production (sunset / GTI end). */
+  hoursUntilProductionEnd?: number;
   /** Previous displayed A — used to detect overtake. */
   previousAdjustedKwh?: number;
 }): number {
   const actual = Math.max(0, input.actualKwh);
   const expected = Math.max(0, input.expectedKwhSoFar);
-  const remaining = Math.max(0, input.remainingWeatherKwh);
+  const remainingRaw = Math.max(0, input.remainingWeatherKwh);
+  const remaining = effectiveRemainingWeatherKwh(remainingRaw, input.hoursUntilProductionEnd);
+  const taper = eveningResidualTaper(input.hoursUntilProductionEnd);
   const baseline = Math.max(0, input.baselineKwh);
   const hour = input.localHour ?? 12;
   const prev =
@@ -276,7 +353,7 @@ export function computeWeatherRestLandingPoint(input: {
   }
   f = Math.max(CORRECTION_MIN, Math.min(CORRECTION_MAX, f));
 
-  // Pure anticipation: today's actual + weather rest scaled by performance so far
+  // Pure anticipation: today's actual + tapered weather rest · performance so far
   let A = actual + remaining * f;
   A = Math.max(A, actual);
 
@@ -284,21 +361,29 @@ export function computeWeatherRestLandingPoint(input: {
     expected >= MIN_EXPECTED_KWH_FOR_CORRECTION && actual > expected * 1.05;
   const overtookPrevious = prev != null && actual + 0.05 >= prev && remaining > 0.2;
   const overBaseline = baseline > 0 && actual >= baseline * 0.98;
+  const allowAbove = aheadOfModel || overtookPrevious || overBaseline;
 
   if (baseline > 0) {
-    if (aheadOfModel || overtookPrevious || overBaseline) {
-      // Re-anticipate above morning baseline — still cap wild overshoot
-      const softCap = Math.max(baseline * AHEAD_BASELINE_CAP, actual + remaining * CORRECTION_MAX);
-      A = Math.min(A, softCap);
-    } else {
-      // Behind schedule: stay at/under baseline, never below actual
-      A = Math.min(A, Math.max(baseline, actual));
-    }
+    A = Math.min(
+      A,
+      adjustedSoftCap({
+        actualKwh: actual,
+        baselineKwh: baseline,
+        remainingWeatherKwh: remainingRaw,
+        allowAboveBaseline: allowAbove,
+        localHour: hour,
+        hoursUntilProductionEnd: input.hoursUntilProductionEnd,
+      }),
+    );
   }
 
-  // Late day: only collapse residual when little weather energy left
-  if (hour >= 19 || remaining < 0.5) {
+  // Production parabola flat (≤2 h to end): glue near actual
+  if (taper <= 0.25 || remaining < 0.35) {
+    A = Math.min(A, actual + Math.max(0.2, Math.min(0.8, remaining * f)));
+  } else if (hour >= 19 || remaining < 0.5) {
     A = Math.min(A, actual + Math.max(0.3, Math.min(1.2, remaining * f)));
+  } else if (hour >= 18) {
+    A = Math.min(A, actual + Math.max(0.5, Math.min(2.0, remaining * f)));
   } else if (hour >= 17 && remaining < 2) {
     A = Math.min(A, actual + Math.max(remaining * f, Math.min(2.5, remaining * CORRECTION_MAX)));
   }
@@ -318,12 +403,25 @@ export function shouldReanticipateAdjusted(input: {
   actualKwh: number;
   previousAdjustedKwh: number;
   remainingWeatherKwh: number;
+  hoursUntilProductionEnd?: number;
 }): ReanticipateReason {
   const actual = Math.max(0, input.actualKwh);
   const prev = Math.max(0, input.previousAdjustedKwh);
-  const rem = Math.max(0, input.remainingWeatherKwh);
+  const rem = effectiveRemainingWeatherKwh(
+    input.remainingWeatherKwh,
+    input.hoursUntilProductionEnd,
+  );
 
   if (prev <= 0) {
+    return 'none';
+  }
+
+  // Flat evening: no upward re-anticipation (curve already finished)
+  const taper = eveningResidualTaper(input.hoursUntilProductionEnd);
+  if (taper <= 0.15) {
+    if (prev > actual + 0.3) {
+      return 'below'; // pull A down toward actual
+    }
     return 'none';
   }
 
@@ -435,6 +533,11 @@ export interface AdjustedForecastBlendInput {
   curveEstimate?: number;
   previousAdjustedKwh?: number;
   localHour: number;
+  /**
+   * Hours until last meaningful PV (from irradiance series / sunset).
+   * Within last 2 h residual is tapered (parabola flattens).
+   */
+  hoursUntilProductionEnd?: number;
   /** Previous EMA of f (returned usage: pass smoothed into correctionFactor). */
   previousCorrectionEma?: number;
   /**
@@ -447,17 +550,23 @@ export interface AdjustedForecastBlendInput {
 
 /**
  * Nachberechnete Tagesprognose — antizipiert Tagesende:
- *   A = E_ist + R_Wetter · f_smooth
+ *   A = E_ist + R_eff · f_smooth
+ *   R_eff = R · eveningTaper (2 h vor Ende → 0)
  * Re-Antizipation wenn Ist die Linie überholt oder uneinholbar darunter bleibt.
  */
 export function blendAdjustedForecast(input: AdjustedForecastBlendInput): number {
   const actual = Math.max(0, input.actualKwh);
   const baseline = Math.max(0, input.baselineKwh);
   const expectedSoFar = Math.max(0, input.expectedKwhSoFar);
-  const remainingWeather =
+  const remainingRaw =
     typeof input.remainingWeatherKwh === 'number' && Number.isFinite(input.remainingWeatherKwh)
       ? Math.max(0, input.remainingWeatherKwh)
       : Math.max(0, baseline - expectedSoFar);
+  const remainingWeather = effectiveRemainingWeatherKwh(
+    remainingRaw,
+    input.hoursUntilProductionEnd,
+  );
+  const taper = eveningResidualTaper(input.hoursUntilProductionEnd);
   const reanticipate = input.reanticipate ?? 'none';
 
   const instantF = computeInstantCorrectionFactor(actual, expectedSoFar);
@@ -471,9 +580,10 @@ export function blendAdjustedForecast(input: AdjustedForecastBlendInput): number
     actualKwh: actual,
     baselineKwh: baseline,
     expectedKwhSoFar: expectedSoFar,
-    remainingWeatherKwh: remainingWeather,
+    remainingWeatherKwh: remainingRaw,
     correctionFactor: fSmooth,
     localHour: input.localHour,
+    hoursUntilProductionEnd: input.hoursUntilProductionEnd,
     previousAdjustedKwh: input.previousAdjustedKwh,
   });
 
@@ -491,7 +601,7 @@ export function blendAdjustedForecast(input: AdjustedForecastBlendInput): number
 
   result = Math.max(result, actual);
 
-  // Step limits — looser when re-anticipating (above/below)
+  // Step limits — looser when re-anticipating (above/below); no up-steps in flat evening
   if (input.previousAdjustedKwh != null && input.previousAdjustedKwh > 0) {
     const prev = input.previousAdjustedKwh;
     let maxUp = Math.max(MAX_UP_ABS_KWH, prev * MAX_UP_FRAC);
@@ -500,7 +610,10 @@ export function blendAdjustedForecast(input: AdjustedForecastBlendInput): number
         ? Math.max(3.0, prev * 0.15)
         : Math.max(1.5, prev * 0.08);
 
-    if (reanticipate === 'above') {
+    if (taper <= 0.25) {
+      maxUp = 0.15; // parabola flat — no significant upward moves
+      maxDown = Math.max(maxDown, 2.0);
+    } else if (reanticipate === 'above') {
       maxUp = Math.max(MAX_UP_ABS_REANTICIPATE, prev * MAX_UP_FRAC_REANTICIPATE, remainingWeather * 0.5);
     } else if (reanticipate === 'below') {
       maxDown = Math.max(MAX_DOWN_ABS_UNCATCHABLE, prev * MAX_DOWN_FRAC_UNCATCHABLE);
@@ -510,31 +623,40 @@ export function blendAdjustedForecast(input: AdjustedForecastBlendInput): number
     result = Math.max(result, actual);
   }
 
-  // Caps: behind → ≤ baseline; ahead/overtake → soft cap
+  // Caps: behind → ≤ baseline; ahead/overtake → real soft ceiling (min, not max)
   const ahead =
     expectedSoFar >= MIN_EXPECTED_KWH_FOR_CORRECTION && actual > expectedSoFar * 1.05;
   const overtook =
     input.previousAdjustedKwh != null && actual + 0.05 >= input.previousAdjustedKwh;
+  const allowAbove =
+    ahead || overtook || reanticipate === 'above' || actual >= baseline * 0.98;
   if (baseline > 0) {
-    if (ahead || overtook || reanticipate === 'above' || actual >= baseline * 0.98) {
-      const softCap = Math.max(
-        baseline * AHEAD_BASELINE_CAP,
-        actual + remainingWeather * CORRECTION_MAX,
-      );
-      result = Math.min(result, softCap);
-    } else {
-      result = Math.min(result, Math.max(baseline, actual));
-    }
+    result = Math.min(
+      result,
+      adjustedSoftCap({
+        actualKwh: actual,
+        baselineKwh: baseline,
+        remainingWeatherKwh: remainingRaw,
+        allowAboveBaseline: allowAbove,
+        localHour: input.localHour,
+        hoursUntilProductionEnd: input.hoursUntilProductionEnd,
+      }),
+    );
   }
 
   // Keep near weather target (allow residual above actual)
   if (!(t < 0.3 && actual < baseline * 0.45 && reanticipate === 'none')) {
-    result = Math.min(result, Math.max(target, actual) + (reanticipate === 'above' ? 1.5 : 0.5));
+    const slack = reanticipate === 'above' && taper > 0.25 ? 1.5 : 0.5;
+    result = Math.min(result, Math.max(target, actual) + slack * Math.max(taper, 0.1));
   }
 
-  // Late collapse only with small residual
-  if (input.localHour >= 19 || remainingWeather < 0.5) {
+  // Late collapse — evening taper or clock hour
+  if (taper <= 0.25 || remainingWeather < 0.35) {
+    result = Math.min(result, actual + Math.max(0.2, Math.min(0.8, remainingWeather)));
+  } else if (input.localHour >= 19 || remainingWeather < 0.5) {
     result = Math.min(result, actual + Math.max(0.3, Math.min(1.2, remainingWeather)));
+  } else if (input.localHour >= 18) {
+    result = Math.min(result, actual + Math.max(0.5, Math.min(2.0, remainingWeather)));
   }
 
   result = Math.max(result, actual);

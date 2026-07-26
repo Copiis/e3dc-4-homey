@@ -1,12 +1,16 @@
 import {describe, it} from 'node:test';
 import assert from 'node:assert';
 import {
+  adjustedSoftCap,
   applyBaselineDayScale,
   blendAdjustedForecast,
   computeInstantCorrectionFactor,
   computeWeatherRestLandingPoint,
   DEFAULT_BASELINE_DAY_SCALE,
+  effectiveRemainingWeatherKwh,
+  eveningResidualTaper,
   estimateDailyProductionLandingPoint,
+  EVENING_FLATTEN_HOURS,
   monotoneActualKwh,
   nextCorrectionEma,
   shouldReanticipateAdjusted,
@@ -37,10 +41,25 @@ describe('computeWeatherRestLandingPoint', () => {
       correctionFactor: 1.1,
       localHour: 15,
     });
-    // A ≈ 24 + 12*1.1 = 37.2, soft-capped near baseline*1.2 or actual+R*fmax
+    // A ≈ 24 + 12*1.1 = 37.2, soft-capped by min(B·1.10, weatherOpt)
     assert.ok(result >= 24);
     assert.ok(result > 32, `should re-anticipate above baseline when ahead, got ${result}`);
-    assert.ok(result <= 24 + 12 * 1.1 + 0.2, `not wild overshoot, got ${result}`);
+    assert.ok(result <= 32 * 1.1 + 0.15, `must respect baseline soft cap, got ${result}`);
+  });
+
+  it('does not explode when near baseline with inflated remaining (Insights 25.07.)', () => {
+    // 18:10 local: B≈31.6, Ist≈31.4, A was 37.7 with R still large
+    const result = computeWeatherRestLandingPoint({
+      actualKwh: 31.4,
+      baselineKwh: 31.6,
+      expectedKwhSoFar: 30,
+      remainingWeatherKwh: 6,
+      correctionFactor: 1.1,
+      localHour: 18,
+      previousAdjustedKwh: 35,
+    });
+    assert.ok(result >= 31.4);
+    assert.ok(result <= 33.0, `no +6 kWh overshoot near end, got ${result}`);
   });
 
   it('when actual overtook previous A, keeps residual above actual', () => {
@@ -306,6 +325,107 @@ describe('blendAdjustedForecast (weather-rest + hard caps)', () => {
       localHour: 13,
     });
     assert.ok(result <= 30.1, `must not explode above baseline, got ${result}`);
+  });
+
+  it('caps evening overshoot when actual near baseline (Insights 25.07. CSV)', () => {
+    // Peak A was 37.7 vs B 31.6 / end Ist 32.9 — softCap used max() so B·1.2 never bound
+    const result = blendAdjustedForecast({
+      actualKwh: 31.4,
+      baselineKwh: 31.6,
+      expectedKwhSoFar: 30,
+      correctionFactor: 1.1,
+      remainingWeatherKwh: 6,
+      previousAdjustedKwh: 36,
+      localHour: 18,
+      reanticipate: 'above',
+    });
+    assert.ok(result >= 31.4);
+    assert.ok(result <= 33.5, `evening A must not sit +6 over B, got ${result}`);
+  });
+});
+
+describe('adjustedSoftCap', () => {
+  it('uses min of ceilings not max', () => {
+    const cap = adjustedSoftCap({
+      actualKwh: 31.4,
+      baselineKwh: 31.6,
+      remainingWeatherKwh: 6,
+      allowAboveBaseline: true,
+      localHour: 18,
+    });
+    // residual room 1.2 at hour>=18 → ~32.8, not 37.7
+    assert.ok(cap <= 33.0, `got ${cap}`);
+    assert.ok(cap >= 31.4);
+  });
+
+  it('still allows mid-day lift under baseline when ahead of model', () => {
+    const cap = adjustedSoftCap({
+      actualKwh: 24,
+      baselineKwh: 32,
+      remainingWeatherKwh: 12,
+      allowAboveBaseline: true,
+      localHour: 15,
+    });
+    assert.ok(cap > 32, `got ${cap}`);
+    assert.ok(cap <= 32 * 1.1 + 0.05, `got ${cap}`);
+  });
+
+  it('collapses residual within 2 h of production end', () => {
+    const cap = adjustedSoftCap({
+      actualKwh: 31.4,
+      baselineKwh: 31.6,
+      remainingWeatherKwh: 6,
+      allowAboveBaseline: true,
+      localHour: 19,
+      hoursUntilProductionEnd: 0.5,
+    });
+    assert.ok(cap <= 32.0, `flat evening softCap, got ${cap}`);
+  });
+});
+
+describe('eveningResidualTaper (parabola flattens 2 h before end)', () => {
+  it('is full until 2 hours before end', () => {
+    assert.strictEqual(eveningResidualTaper(EVENING_FLATTEN_HOURS), 1);
+    assert.strictEqual(eveningResidualTaper(3), 1);
+    assert.strictEqual(eveningResidualTaper(undefined), 1);
+  });
+
+  it('is parabolic inside the window', () => {
+    assert.ok(Math.abs(eveningResidualTaper(1) - 0.25) < 1e-9);
+    assert.ok(Math.abs(eveningResidualTaper(0.5) - 0.0625) < 1e-9);
+    assert.strictEqual(eveningResidualTaper(0), 0);
+    assert.strictEqual(eveningResidualTaper(-1), 0);
+  });
+
+  it('scales remaining weather', () => {
+    assert.strictEqual(effectiveRemainingWeatherKwh(8, 1), 2);
+    assert.strictEqual(effectiveRemainingWeatherKwh(8, 0), 0);
+  });
+
+  it('blend does not re-anticipate up when end is within 1 h', () => {
+    const result = blendAdjustedForecast({
+      actualKwh: 31.5,
+      baselineKwh: 31.6,
+      expectedKwhSoFar: 30,
+      correctionFactor: 1.1,
+      remainingWeatherKwh: 6,
+      previousAdjustedKwh: 34,
+      localHour: 20,
+      hoursUntilProductionEnd: 0.8,
+      reanticipate: 'above',
+    });
+    assert.ok(result <= 32.5, `must glue near actual near sunset, got ${result}`);
+    assert.ok(result >= 31.5);
+  });
+
+  it('shouldReanticipate pulls down when taper nearly zero and A high', () => {
+    const reason = shouldReanticipateAdjusted({
+      actualKwh: 32,
+      previousAdjustedKwh: 36,
+      remainingWeatherKwh: 5,
+      hoursUntilProductionEnd: 0.2,
+    });
+    assert.strictEqual(reason, 'below');
   });
 });
 
