@@ -1,4 +1,8 @@
 {
+  "1.8.69": {
+    "de": "- **HKW-Widget:** PV-Symbol ist jetzt eine **Sonne** (statt Panel), 50 % größer.\n- **HKW-Widget:** Sonne und Netz-Blitz in **dunklerem Gold** (gleiche Farbe).\n- **HKW-Widget:** kWh-/Nebenwerte mit gleicher Schriftstärke wie W/kW (bessere Lesbarkeit).",
+    "en": "- **HKW widget:** PV symbol is now a **sun** (instead of panel), 50% larger.\n- **HKW widget:** Sun and grid lightning in **darker gold** (same color).\n- **HKW widget:** kWh/secondary values use the same font weight as W/kW (better readability)."
+  },
   "1.8.62": {
     "de": "- **Crash-Härtung HKW offline (EHOSTUNREACH):** Globaler Socket-`connect`-Patch: jeder TCP-Connect hat vorab einen Error-Listener — verhindert Homey-Crash-Mails mit Stack `TCPConnectWrap.afterConnect` (auch wenn easy-rscp/Listener zu spät kommen).\n- Bekannte Netzfehler (EHOSTUNREACH, ECONNREFUSED, …) in process-Handlern nur noch als Log, nicht als harter App-Crash-Pfad.",
     "en": "- **Crash hardening when HPS offline (EHOSTUNREACH):** Global socket `connect` patch ensures every TCP connect has an error listener first — stops Homey crash mails with stack `TCPConnectWrap.afterConnect` (even if easy-rscp listeners attach late).\n- Known network errors (EHOSTUNREACH, ECONNREFUSED, …) logged in process handlers instead of escalating as app crash path."
