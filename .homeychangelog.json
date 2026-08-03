@@ -1,4 +1,8 @@
 {
+  "1.8.71": {
+    "de": "- **PV-Prognose (nachberechnet):** Treffergenauigkeit verbessert (Insights 7 Tage) — weniger Nachmittag-Überschuss über dem Tages-Ist.\n- Wetter-Rest wird ab mittags mit der **aktuellen Produktions-Steigung** (Pace) begrenzt, wenn Open-Meteo zu optimistisch ist.\n- Korrekturfaktor f 0,60–1,08; über Baseline nur bei Ist ≥ 88 % der Baseline; Abend-Parabel ab 2,5 h vor Produktionsende.",
+    "en": "- **PV forecast (recalculated):** Better end-of-day accuracy (7-day Insights) — less mid-afternoon overshoot above actual daily production.\n- Weather residual is capped from midday using **recent production pace** when Open-Meteo is too optimistic.\n- Correction factor f 0.60–1.08; above baseline only when actual ≥ 88% of baseline; evening parabola from 2.5 h before production end."
+  },
   "1.8.70": {
     "de": "- **PV-Prognose (nachberechnet):** Soft-Cap korrigiert — kein +6 kWh-Überschuss mehr abends (Insights 25.07.).\n- **PV-Prognose (nachberechnet):** Ab **2 h vor Produktionsende** (Tages-Parabel flacht ab) wird der Wetter-Rest quadratisch ausgetapert; kaum noch Aufwärts-Antizipation, A nähert sich dem Ist.",
     "en": "- **PV forecast (recalculated):** Soft cap fixed — no more ~+6 kWh evening overshoot (Insights 25 Jul).\n- **PV forecast (recalculated):** From **2 h before production end** (daily parabola flattens) weather residual is tapered quadratically; little upward re-anticipation, A converges toward actual."

@@ -4,15 +4,19 @@ import {
   adjustedSoftCap,
   applyBaselineDayScale,
   blendAdjustedForecast,
+  capRemainingByPace,
   computeInstantCorrectionFactor,
   computeWeatherRestLandingPoint,
   DEFAULT_BASELINE_DAY_SCALE,
   effectiveRemainingWeatherKwh,
   eveningResidualTaper,
   estimateDailyProductionLandingPoint,
+  estimatePaceRemainingKwh,
   EVENING_FLATTEN_HOURS,
+  mayExceedBaseline,
   monotoneActualKwh,
   nextCorrectionEma,
+  recentProductionRateKwhPerHour,
   shouldReanticipateAdjusted,
   smoothCorrectionFactor,
   updateDayScaleFromOutcome,
@@ -32,19 +36,30 @@ describe('computeWeatherRestLandingPoint', () => {
     assert.ok(result <= 32.1, `no overshoot when behind, got ${result}`);
   });
 
-  it('allows lift over baseline when clearly ahead (re-anticipate residual)', () => {
-    const result = computeWeatherRestLandingPoint({
+  it('allows lift over baseline only when Ist is near B (not mere ahead-of-model)', () => {
+    // actual 24 / B 32 = 0.75 — mayExceedBaseline false → A capped at B
+    const mid = computeWeatherRestLandingPoint({
       actualKwh: 24,
       baselineKwh: 32,
       expectedKwhSoFar: 20,
       remainingWeatherKwh: 12,
-      correctionFactor: 1.1,
+      correctionFactor: 1.08,
       localHour: 15,
     });
-    // A ≈ 24 + 12*1.1 = 37.2, soft-capped by min(B·1.10, weatherOpt)
-    assert.ok(result >= 24);
-    assert.ok(result > 32, `should re-anticipate above baseline when ahead, got ${result}`);
-    assert.ok(result <= 32 * 1.1 + 0.15, `must respect baseline soft cap, got ${result}`);
+    assert.ok(mid >= 24);
+    assert.ok(mid <= 32.1, `mid-day far under B must not exceed B, got ${mid}`);
+
+    // actual near B → may exceed slightly (cap +5%)
+    const near = computeWeatherRestLandingPoint({
+      actualKwh: 29,
+      baselineKwh: 32,
+      expectedKwhSoFar: 25,
+      remainingWeatherKwh: 8,
+      correctionFactor: 1.08,
+      localHour: 16,
+    });
+    assert.ok(near >= 29);
+    assert.ok(near <= 32 * 1.05 + 0.15, `near-B soft cap +5%, got ${near}`);
   });
 
   it('does not explode when near baseline with inflated remaining (Insights 25.07.)', () => {
@@ -156,9 +171,10 @@ describe('correction / scale helpers', () => {
     assert.strictEqual(f, 1, 'too little model energy → f=1');
   });
 
-  it('clamps f to 0.85–1.10', () => {
-    assert.ok(computeInstantCorrectionFactor(20, 10) <= 1.10);
-    assert.ok(computeInstantCorrectionFactor(8, 12) >= 0.85);
+  it('clamps f to 0.60–1.08', () => {
+    assert.ok(computeInstantCorrectionFactor(20, 10) <= 1.08);
+    assert.ok(computeInstantCorrectionFactor(5, 12) >= 0.60);
+    assert.ok(computeInstantCorrectionFactor(5, 12) < 0.85, 'behind model may go below old 0.85 floor');
   });
 
   it('EMA smooths spikes', () => {
@@ -183,7 +199,45 @@ describe('correction / scale helpers', () => {
 
   it('nextCorrectionEma advances', () => {
     const e = nextCorrectionEma(20, 18, 1.0);
-    assert.ok(e >= 0.85 && e <= 1.1);
+    assert.ok(e >= 0.60 && e <= 1.08);
+  });
+
+  it('pace residual is below optimistic weather mid-afternoon', () => {
+    // Insights 02.08. ~16:00: rate ~3.5 kWh/h, ~4 h left → pace rest ~5, not 12
+    const pace = estimatePaceRemainingKwh({
+      recentRateKwhPerHour: 3.5,
+      hoursUntilProductionEnd: 4,
+      localHour: 16,
+    });
+    assert.ok(pace < 6, `pace rest should be modest, got ${pace}`);
+    assert.ok(pace > 3, `pace rest should not collapse, got ${pace}`);
+    const capped = capRemainingByPace(12, pace, 16);
+    assert.ok(capped < 12, `must cap weather residual, got ${capped}`);
+    assert.ok(capped <= pace * 1.08 + 0.4);
+  });
+
+  it('mayExceedBaseline requires Ist near B', () => {
+    assert.strictEqual(
+      mayExceedBaseline({ actualKwh: 20, baselineKwh: 32, expectedKwhSoFar: 18 }),
+      false,
+    );
+    assert.strictEqual(
+      mayExceedBaseline({ actualKwh: 29, baselineKwh: 32, expectedKwhSoFar: 28 }),
+      true,
+    );
+  });
+
+  it('recentProductionRateKwhPerHour from history', () => {
+    const now = Date.now();
+    const rate = recentProductionRateKwhPerHour(
+      [
+        { ts: now - 2 * 3600 * 1000, kwh: 20 },
+        { ts: now - 3600 * 1000, kwh: 24 },
+        { ts: now, kwh: 28 },
+      ],
+      now,
+    );
+    assert.ok(rate != null && rate > 3.5 && rate < 4.5, `expected ~4 kWh/h, got ${rate}`);
   });
 });
 
@@ -333,14 +387,35 @@ describe('blendAdjustedForecast (weather-rest + hard caps)', () => {
       actualKwh: 31.4,
       baselineKwh: 31.6,
       expectedKwhSoFar: 30,
-      correctionFactor: 1.1,
+      correctionFactor: 1.08,
       remainingWeatherKwh: 6,
       previousAdjustedKwh: 36,
       localHour: 18,
       reanticipate: 'above',
+      hoursUntilProductionEnd: 1.5,
     });
     assert.ok(result >= 31.4);
     assert.ok(result <= 33.5, `evening A must not sit +6 over B, got ${result}`);
+  });
+
+  it('pace cap pulls mid-afternoon A down (Insights 02.08. pattern)', () => {
+    // B=33.2, Ist=26.6 @16h, weather R still large (~10), rate ~3.5 kWh/h, ~4h left
+    // Old A climbed to 36.5; EOD Ist was 30.1 — must stay nearer 30–32
+    const result = blendAdjustedForecast({
+      actualKwh: 26.6,
+      baselineKwh: 33.2,
+      expectedKwhSoFar: 28,
+      correctionFactor: 0.95,
+      remainingWeatherKwh: 10,
+      previousAdjustedKwh: 34.6,
+      localHour: 16,
+      hoursUntilProductionEnd: 4,
+      recentRateKwhPerHour: 3.5,
+      reanticipate: 'below',
+    });
+    assert.ok(result >= 26.6);
+    assert.ok(result <= 33.3, `must not climb above B with weak pace, got ${result}`);
+    assert.ok(result <= 32.0, `pace should keep A near realistic EOD, got ${result}`);
   });
 });
 
@@ -367,10 +442,10 @@ describe('adjustedSoftCap', () => {
       localHour: 15,
     });
     assert.ok(cap > 32, `got ${cap}`);
-    assert.ok(cap <= 32 * 1.1 + 0.05, `got ${cap}`);
+    assert.ok(cap <= 32 * 1.05 + 0.05, `ahead cap +5%, got ${cap}`);
   });
 
-  it('collapses residual within 2 h of production end', () => {
+  it('collapses residual within evening flatten of production end', () => {
     const cap = adjustedSoftCap({
       actualKwh: 31.4,
       baselineKwh: 31.6,
@@ -383,22 +458,25 @@ describe('adjustedSoftCap', () => {
   });
 });
 
-describe('eveningResidualTaper (parabola flattens 2 h before end)', () => {
-  it('is full until 2 hours before end', () => {
+describe('eveningResidualTaper (parabola flattens before production end)', () => {
+  it('is full until flatten window starts', () => {
     assert.strictEqual(eveningResidualTaper(EVENING_FLATTEN_HOURS), 1);
-    assert.strictEqual(eveningResidualTaper(3), 1);
+    assert.strictEqual(eveningResidualTaper(EVENING_FLATTEN_HOURS + 0.5), 1);
     assert.strictEqual(eveningResidualTaper(undefined), 1);
   });
 
   it('is parabolic inside the window', () => {
-    assert.ok(Math.abs(eveningResidualTaper(1) - 0.25) < 1e-9);
-    assert.ok(Math.abs(eveningResidualTaper(0.5) - 0.0625) < 1e-9);
+    // EVENING_FLATTEN_HOURS = 2.5 → taper(h) = (h/2.5)²
+    const half = EVENING_FLATTEN_HOURS / 2;
+    assert.ok(Math.abs(eveningResidualTaper(half) - 0.25) < 1e-9);
+    assert.ok(Math.abs(eveningResidualTaper(EVENING_FLATTEN_HOURS * 0.2) - 0.04) < 1e-9);
     assert.strictEqual(eveningResidualTaper(0), 0);
     assert.strictEqual(eveningResidualTaper(-1), 0);
   });
 
   it('scales remaining weather', () => {
-    assert.strictEqual(effectiveRemainingWeatherKwh(8, 1), 2);
+    const half = EVENING_FLATTEN_HOURS / 2;
+    assert.strictEqual(effectiveRemainingWeatherKwh(8, half), 2);
     assert.strictEqual(effectiveRemainingWeatherKwh(8, 0), 0);
   });
 

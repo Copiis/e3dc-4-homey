@@ -34,6 +34,7 @@ import {
   localDateString,
   monotoneActualKwh,
   nextCorrectionEma,
+  recentProductionRateKwhPerHour,
   roundKwh,
   shouldReanticipateAdjusted,
   updateDayScaleFromOutcome,
@@ -442,6 +443,8 @@ class PvForecastDevice extends Homey.Device {
             forecast.expectedKwhSoFar || 0,
             workingDayState.correctionEma,
           );
+          // Pace from production history caps optimistic Open-Meteo residual
+          const recentRate = recentProductionRateKwhPerHour(history, nowMs);
           adjustedKwh = blendAdjustedForecast({
             actualKwh,
             baselineKwh: baselineDisplayKwh,
@@ -453,6 +456,7 @@ class PvForecastDevice extends Homey.Device {
             localHour,
             hoursUntilProductionEnd,
             reanticipate,
+            recentRateKwhPerHour: recentRate,
           });
 
           workingDayState = {
