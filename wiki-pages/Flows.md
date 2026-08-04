@@ -1,34 +1,41 @@
 # Flows & EMS
 
-## Power Modes (EMS)
-- Auto
-- Idle
-- Charge / Discharge
-- Grid Charge (Akkunetzladen) – mit Dauer oder untilSoc
+Details: [Docs – Flows](https://copiis.github.io/e3dc-4-homey/flows/)
 
-Wichtig: Aktive Pläne (Ladeplaner-Widget) haben Vorrang vor manuellen Flow-Befehlen.
+## Power Modes (HKW)
 
-## Wichtige Flow-Karten (HKW)
-- Power Limits setzen/entfernen
-- Manueller Batterie-Ladevorgang (Wh oder %)
-- Emergency Reserve
-- Island Mode („Inselbetrieb (Notstrom) begonnen/beendet“) — für Push bei Stromausfall
-- Power Mode (mit Dauer)
-- PV Surplus Trigger, SoC Trigger
+- Auto  
+- Idle  
+- Charge / Discharge  
+- Grid Charge (Akkunetzladen)  
+
+**Aktive Pläne (HKW-Ladeplaner-Widget) haben Vorrang** vor manuellen Flow-Befehlen.
+
+## Wichtige HKW-Karten
+
+- Lade-/Entladelimits setzen/entfernen  
+- Manuelle Speicherladung (Wh oder %)  
+- Notstromreserve  
+- **Inselbetrieb begonnen/beendet** — Push bei Stromausfall  
+- Power Mode  
+- PV-Überschuss-Trigger, SoC-unter-Schwellwert  
 
 ### Island Mode / Stromausfall
-- Trigger, sobald das HKW in den **Inselbetrieb** wechselt (Notstrom aktiv), nicht „Netzspannung = 0“ in der ersten Millisekunde.
-- HKW-Umschaltung dauert typisch ca. **5 s**; Homey/Router (idealerweise USV) **und** der Pfad zum HKW (Switch/Kabel/**WLAN-Repeater**) müssen den Ausfall überstehen — sonst kein Poll und kein Push. Repeater ohne Notstrom = HKW „offline“, auch wenn Homey auf USV läuft.
 
-## Wallbox Flows
-- Erlauben / Blockieren
-- Sonnenmodus
-- Stromstärke
-- Batterie vor Auto / Mix-Modus
-- Entlade Hausakku bis %
+- Trigger, sobald das HKW **Inselbetrieb** meldet (nicht in der ersten Millisekunde)  
+- Umschaltung HKW typisch ca. **5 s**  
+- Homey **und** Netzpfad zum HKW (Switch/Kabel/Repeater) müssen erreichbar bleiben — sonst „HKW offline“ und ggf. **nachträglicher** Insel-Trigger nach Reconnect  
 
-RSCP Read-Back wird verwendet, um Doppelbefehle zu vermeiden.
+## Wallbox-Flows
 
-## Tipps für externe EMS
-Nutze die PV-Überschuss- und SoC-Trigger für Apps wie Ultimate EMS, Tibber, Power by the Hour etc.
+- Laden freigeben / sperren  
+- Sonnenmodus ein/aus  
+- Stromstärke  
+- Batterie vor Auto / Mix / entladen bis %  
+- Fahrzeug-SOC setzen  
 
+RSCP-Read-Back verhindert Doppelbefehle.
+
+## Externes EMS
+
+PV-Überschuss- und SoC-Trigger + Energy Summary / HKW-Leistungen (Ultimate EMS, Tibber-Helfer, …).

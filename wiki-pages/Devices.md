@@ -1,34 +1,31 @@
 # Geräte
 
+Ausführlich: [copiis.github.io/e3dc-4-homey – Devices](https://copiis.github.io/e3dc-4-homey/)
+
 ## Home Power Station (HKW / HPS)
-Das zentrale Gerät. Liefert Live-Daten: PV, Hausverbrauch, Netz, Batterie, Firmware, Notstrom etc.
 
-**Wichtige Capabilities:**
-- measure_power (PV)
-- measure_house_consumption
-- measure_grid_delivery
-- measure_battery_delivery
-- measure_battery (SoC)
-- etc.
+Zentrales Gerät. Live: PV, Hausverbrauch, Netz, Batterie, Firmware, Notstrom, Diagnose, Ladeplan aktiv.
 
-## Grid Meter
-Für Homey Energy: Import/Export heute + kumuliert.
+## Grid Meter (Netz)
 
-## Battery Module
-Pro Modul: Temperatur, Kapazität, Lade-/Entladezähler. Zeigt System-Gesamtleistung.
+Import/Export heute + kumuliert für Homey Energy.
+
+## Battery Module (Batteriemonitor)
+
+Temperaturen, Kapazität, Spannung, Lade-/Entladezähler, Leistung (V×I wo möglich).
 
 ## Wallbox
-- Leistung, Solaranteil
-- Steckstatus, Ladevorgang
-- Sonnenmodus, Freigabe/Block
-- Erweiterte E3DC-Einstellungen (Batterie-Mix etc.)
 
-## Energy Summary
-Live-Aggregation inkl. Wallbox und PV-Überschuss – ideal für externe EMS.
+`evcharger`: Leistung, Solaranteil, Fahrzeug-SOC, Stecker, Sonnenmodus, Freigabe, Ladepriorisierung, Ladeplan.
 
-## PV Forecast
-Wetterbasierte Vorhersage (Open-Meteo), bis 3 Flächen, Baseline + angepasst.
+## Energy Summary (Energieübersicht)
 
-## Statistics
-Periodenwerte (heute, gestern, Monat...).
+Live-Aggregation inkl. Wallbox und **PV-Überschuss** — ideal für externes EMS.
 
+## PV Forecast (PV-Prognose)
+
+Open-Meteo: **PV-Prognose** (Baseline) + **PV-Prognose (nachberechnet)** + Ist heute; bis 3 Flächen.
+
+## Statistics (Statistiken)
+
+Periodenwerte (heute, gestern, Monat…): PV, Verbrauch, Netz, Batterie, Autarkie, Eigenverbrauch.

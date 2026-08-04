@@ -1,14 +1,24 @@
 # Widgets
 
-## Live Energy Flow
-Animierte Darstellung der Energieströme (PV → Haus, Batterie, Netz, Wallbox). Batterieladung wird korrekt als PV- oder Netz-Ladung angezeigt.
+Details: [Docs – Widgets](https://copiis.github.io/e3dc-4-homey/widgets/)
 
-## HKW Overview
-Konfigurierbare Live-Übersicht.
+## E3DC-HKW (Live Energy Flow)
 
-## Ladeplaner-Widgets
-- HKW-Ladeplaner: Zeitgesteuerte Power-Modi (inkl. Netzladen)
-- Wallbox-Ladeplaner: Zeitgesteuert + Priorisierung
+Animierte Energieströme PV ↔ Haus ↔ Netz ↔ Batterie ↔ Wallbox.
 
-Die Widgets schreiben direkt in die emsSchedules-Einstellung.
+- PV als Sonne, Netz als Blitz  
+- Batterie-Flows auf **gleicher Höhe** wie Netz-Flows  
+- Nebenwerte: kWh heute, SoC, Fahrzeug-SOC  
+- Einstellung: Mindestleistung für sichtbare Flows (W)  
 
+## Wallbox
+
+Live-Steuerung der Wallbox (HKW-Zuordnung bei mehreren Anlagen).
+
+## HKW Ladeplaner
+
+Zeitgesteuerte Power-Modi (inkl. Netzladen). Schreibt in die EMS-Pläne; **aktive Pläne haben Vorrang** vor manuellen Flow-Power-Modes.
+
+## Wallbox Ladeplaner
+
+Zeitfenster und Priorisierung; Status auf dem Wallbox-Gerät (`wallbox_ladeplan_*`).

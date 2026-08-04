@@ -9,3 +9,5 @@ Die Verbindung zwischen Hauskraftwerk und Homey läuft vollständig in deinem he
 3. „Profil“ wählen
 4. Nach unten scrollen und ein RSCP-Passwort setzen
 5. Fertig
+
+Zusätzlich: Homey Energy (Netz-Zähler), PV-Prognose, Live-Energiefluss-Widget, Ladeplaner und EMS-Power-Modes. Doku: https://copiis.github.io/e3dc-4-homey/

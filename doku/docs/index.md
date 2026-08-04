@@ -1,27 +1,55 @@
 # E3DC 4 Homey
 
-E3DC 4 Homey is an UNOFFICIAL app for the Homey smart home hub to access E3DC home power stations.
+Unofficial Homey app for **E3DC home power stations** (community fork [Copiis/e3dc-4-homey](https://github.com/Copiis/e3dc-4-homey)).
 
-E3DC is a brand of HagerEnergy Gmbh ([website](https://www.e3dc.com/)). I have nothing to do with the company, except that I own a home power plant from E3DC and wanted to include it in my SmartHome. This "desire" gave birth to E3DC 4 Homey.
+E3DC is a brand of HagerEnergy GmbH ([e3dc.com](https://www.e3dc.com/)). This project is not affiliated with E3DC.
 
-**Community & support:** [Homey forum thread — App für E3DC Hauskraftwerke](https://community.homey.app/t/app-pro-e3dc-hauskraftwerke/105181) (feedback, test versions, help). See also [Community & Support](about/community.md).
+**Current stable:** `v1.8.72` · [App Store](https://homey.app/de-de/app/de.jnkconsulting.e3dc.v2/E3DC---HKW/) · [Forum](https://community.homey.app/t/app-pro-e3dc-hauskraftwerke/105181)
 
 ## How it works
-The E3DC house power plants provide a TCP/IP interface for read and write access. This interface and the content is completely proprietary and is called RSCP.
-The interface must first be activated on the home power station itself. You can find instructions on how to do this in the [setup](setup/setup.md) area.
 
-All data is read directly from or written to the in-house power plant. There is no communication with the E3DC Cloud.
-The access data is only requested by the RSCP interface for authentication.
+E3DC stations expose a local TCP interface (**RSCP**, port **5033**). All live data and control stay **on your LAN** — no E3DC cloud is required for normal operation.
+
+You must enable RSCP once on the station itself. See [Setup](setup/setup.md).
+
+Portal username/password are used only for **RSCP authentication** on the station (not for cloud control).
 
 ## Features
-- Fully local communication between Homey and the home power station
-- Provision of live energy data
-- Provision of energy data from the past
-- Control of various home power station functions (charging power, emergency power, etc.)
-- Query the wallbox information
-- Monitoring the battery module
 
-## Help wanted!
-The E3DC interface is not documented and I have to find out a lot by trial and error. I also only have one home power station and can therefore only test to a limited extent.
-If you encounter a problem, have a different model or are missing a feature: post in the [Homey forum thread](https://community.homey.app/t/app-pro-e3dc-hauskraftwerke/105181) or open a [GitHub issue](https://github.com/Copiis/e3dc-4-homey/issues).
-I will do my best to help you find a solution.
+- Fully **local** RSCP communication
+- Live energy: PV, house load, grid, battery, wallbox
+- **Homey Energy** via grid meter + battery devices
+- EMS-style **power modes** (auto / idle / charge / discharge / grid charge)
+- **Wallbox** as `evcharger` devices with sun mode, prioritization, vehicle SOC
+- **PV forecast** (Open-Meteo): baseline + recalculated daily kWh (up to 3 surfaces)
+- Dashboard **widgets**: live energy flow, wallbox, HKW/wallbox charge planners
+- Island / emergency-power triggers and timeline messages
+- Optional diagnostic report for support
+
+## Devices
+
+| Device | Role |
+|--------|------|
+| [**HKW / HPS**](devices/hps.md) | Main connection — pair this first |
+| [**Grid meter**](devices/grid-meter.md) | Import/export for Homey Energy |
+| [**Battery monitor**](devices/battery.md) | Per-module monitoring |
+| [**Wallbox**](devices/wallbox.md) | One device per charge point |
+| [**Statistics**](devices/statistics.md) | Period totals (today, yesterday, month, …) |
+| [**Energy summary**](devices/energy-summary.md) | Live aggregate + PV surplus (EMS-friendly) |
+| [**PV forecast**](devices/pv-forecast.md) | Daily forecast baseline + recalculated |
+
+## Widgets
+
+See [Widgets](widgets.md): live energy flow (**E3DC-HKW**), wallbox control, HKW/wallbox charge planners.
+
+## Flows
+
+See [Flows & EMS](flows.md) for HKW and wallbox cards (limits, power modes, island mode, sun mode, vehicle SOC, …).
+
+## Help
+
+- Forum: [App für E3DC Hauskraftwerke](https://community.homey.app/t/app-pro-e3dc-hauskraftwerke/105181)
+- Issues: [GitHub](https://github.com/Copiis/e3dc-4-homey/issues)
+- [Community & support](about/community.md) · [Release notes](about/release-notes.md)
+
+The RSCP protocol is not officially documented; behaviour can vary by model and firmware. When reporting issues, include model, firmware, and a diagnostic report from the HKW device settings (no passwords).

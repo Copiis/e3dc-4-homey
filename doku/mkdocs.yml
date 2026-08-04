@@ -8,9 +8,14 @@ nav:
   - Setup: setup/setup.md
   - Homey devices:
       - HKW/HPS: devices/hps.md
-      - Statistics: devices/statistics.md
+      - Grid meter: devices/grid-meter.md
       - Battery: devices/battery.md
       - Wallbox: devices/wallbox.md
+      - Statistics: devices/statistics.md
+      - Energy summary: devices/energy-summary.md
+      - PV forecast: devices/pv-forecast.md
+  - Widgets: widgets.md
+  - Flows & EMS: flows.md
   - Community: about/community.md
   - Release Notes: about/release-notes.md
 theme:

@@ -1,24 +1,22 @@
 # Fehlerbehebung
 
+Siehe auch [Setup](https://copiis.github.io/e3dc-4-homey/setup/setup/) und [Forum](https://community.homey.app/t/app-pro-e3dc-hauskraftwerke/105181).
+
 ## Häufige Probleme
-- **Keine Verbindung:** IP prüfen, RSCP-Passwort korrekt, Port 5033 offen, feste IP.
-- **Falsche Werte:** Vorzeichen bei Grid/Batterie beachten (E3DC-Konvention).
-- **Ladepläne unterbrechen sich:** War ein bekanntes Problem mit 30s-Refresh – in aktuellen Versionen auf 10s Keep-Alive korrigiert.
-- **Wallbox reagiert nicht:** Flow prüfen, ob Plan aktiv ist (Pläne haben Vorrang).
-- **Stromausfall / Timeline-Meldungen:**
-  1. HKW offline → **„HKW nicht erreichbar — Strom- oder Internetausfall?“**
-  2. Wieder erreichbar + Inselbetrieb → **„Netzausfall — HKW im Inselbetrieb!“** + Flow **„Inselbetrieb begonnen“** (auch **nachträglich**, wenn der Wechsel offline verpasst wurde)
-  3. Wieder Normalbetrieb → **„Netz wieder da — HKW im Normalbetrieb!“** + Flow **„Inselbetrieb beendet“**
-- **Repeater ohne Notstrom:** Während Offline kein Live-Trigger; sobald das HKW wieder antwortet, werden Insel-Flows **nachträglich** ausgelöst, wenn der Zustand erkannt wird. Live ohne Delay nur mit durchgehendem Netzpfad (USV/Notstrom). HKW-Umschaltung selbst ca. **5 s**.
+
+- **Keine Verbindung:** IP, RSCP-Passwort, Port 5033, gleiches Netz, feste IP, **Repair**  
+- **App-Crash bei offline HKW:** ab v1.8.61/62 gehärtet — bei alten Builds updaten  
+- **Falsche Werte:** Vorzeichen Grid/Batterie (E3DC-Konvention); Kapazität manuell am HKW setzen  
+- **Wallbox reagiert nicht:** Ladeplan aktiv? Bedingungen nutzen; Diagnosebericht  
+- **Fahrzeug-SOC 0 %:** Wallbox-Einstellung Auto / Homey-Auto-Gerät; Flow „Fahrzeug-SOC setzen“  
+- **Stromausfall / Timeline:**  
+  1. HKW offline → „HKW nicht erreichbar…“  
+  2. Wieder erreichbar + Insel → „Netzausfall — HKW im Inselbetrieb!“ + Flow (auch nachträglich)  
+  3. Normalbetrieb → „Netz wieder da…“  
+- **Repeater ohne Notstrom:** während Offline kein Live-Insel-Trigger  
 
 ## Diagnose
-In den Einstellungen des HKW-Geräts:
-- „Detaillierte Diagnoseaufzeichnung aktivieren“
-- Bericht exportieren und im Forum posten (ohne sensible Daten).
 
-## Logs
-Homey-App-Logs und RSCP-Debug (im Gerät) nutzen.
+HKW-Einstellungen → detaillierte Diagnose (opt-in, ~60 min Auto-Aus) → Bericht exportieren (ohne Passwörter).
 
-## Weitere Hilfe
-Immer Modell, Firmware und den Diagnosebericht angeben.
-
+Immer Modell, Firmware und App-Version angeben.

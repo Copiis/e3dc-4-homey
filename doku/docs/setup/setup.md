@@ -1,49 +1,77 @@
-# Setting up the RSCP interface at the home power plant
+# Setup
 
-By default, the RSCP interface is disabled on the home power plant. Therefore you have to go to the home power station once and activate the RSCP interface. Details can be found in the manual of your home power station.
+## 1. Enable RSCP on the home power station
 
-As an example I show the setup on my S10X (On other models it should be similar). The pictures are in german (sorry for that), but it should be easy to adapt.
+RSCP is disabled by default. You need physical access once (or remote screen if available). Details are also in the E3DC manual.
 
-## Setup on the S10X home power plant
+Example on **S10X** (other models are similar; screenshots are in German):
 
 <figure markdown>
   ![Main Page](img/setup_main_screen.jpeg){ width=75% }
-  <figcaption>Switch from the main page to the main menu</figcaption>
+  <figcaption>From the main page open the main menu</figcaption>
 </figure>
-
 
 <figure markdown>
   ![Main menu](img/setup_main_menu.jpeg){ width=75% }
-  <figcaption>Select "Personalize" in the main menu</figcaption>
+  <figcaption>Select “Personalize”</figcaption>
 </figure>
-
 
 <figure markdown>
   ![Personalization page](img/setup_personalize.jpeg){ width=75% }
-  <figcaption>Select "Profile" here</figcaption>
+  <figcaption>Select “Profile”</figcaption>
 </figure>
-
 
 <figure markdown>
   ![Profile page 1](img/setup_profile_1.jpeg){ width=75% }
   <figcaption>Go to the next page</figcaption>
 </figure>
 
-
 <figure markdown>
   ![Profile page 2](img/setup_profile_2.jpeg){ width=75% }
-  <figcaption>Set password and confirm -> The small lamp must now light up green</figcaption>
+  <figcaption>Set the RSCP password and confirm — the small lamp must light green</figcaption>
 </figure>
 
+## 2. Network
 
-## Using the APP
+- Homey and HKW on the **same LAN** (or routed with open **TCP 5033**)
+- Prefer a **fixed IP** for the station (DHCP reservation)
+- For island/outage flows: keep Homey **and** the path to the HKW (switch/cable/repeater) on UPS or notstrom — a dead Wi‑Fi repeater looks like “HKW offline”
 
-First you need to add an HKW/HPS device. This is the central access point, also for all other devices.
+## 3. Pair the HKW in Homey
 
-You will need the following data:
+Install **E3DC – HKW** from the [App Store](https://homey.app/de-de/app/de.jnkconsulting.e3dc.v2/E3DC---HKW/) (or a [test build](https://homey.app/de-de/app/de.jnkconsulting.e3dc.v2/E3DC---HKW/test/) when announced in the forum).
 
-- Portal username and password: There is no(!) portal access. The RSCP interface itself, however, requests authentication with the user data on the portal
-- RSCP password: This is the password that you have set on the home power station. This is used to encrypt the communication.
-- IP: Address of the home power station in your network. Please make sure that your home power station has a fixed IP! You can set this on your router
-- Port: The value should actually always be 5033.
+Add device **HKW / HPS** first. You need:
 
+| Field | Purpose |
+|-------|---------|
+| Portal username + password | RSCP authentication only (not continuous cloud control) |
+| RSCP password | Encryption password set on the station |
+| IP | Station address |
+| Port | Usually **5033** |
+
+Then add optional devices: Grid meter, Battery monitor, Wallbox(es), Statistics, Energy summary, PV forecast — each linked to the HKW.
+
+Use **Repair** on the HKW to change IP/credentials without deleting the device.
+
+## 4. Homey Energy
+
+1. Add **Grid meter**  
+2. Add **Battery monitor**  
+3. Check Homey Energy import/export and battery graphs  
+
+## 5. Widgets
+
+Dashboard → add **E3DC-HKW**, optional Wallbox / Ladeplaner widgets. Select plant if you have more than one HKW. See [Widgets](../widgets.md).
+
+## 6. Troubleshooting
+
+| Symptom | Check |
+|---------|--------|
+| No connection | IP, RSCP password, port 5033, same network, station online |
+| Frequent offline | Wi‑Fi/repeater, VLAN, DHCP change → fixed IP + Repair |
+| Wrong battery size | HKW battery settings override |
+| Wallbox ignores flow | Active Ladeplaner may take priority; use conditions + diagnostic report |
+| No island push | Path to HKW during outage; see [Flows – island mode](../flows.md) |
+
+Enable **detailed diagnostics** on the HKW only while reproducing a problem, then export the report (no passwords) for the [forum](https://community.homey.app/t/app-pro-e3dc-hauskraftwerke/105181).
