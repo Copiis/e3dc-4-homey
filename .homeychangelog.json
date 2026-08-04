@@ -1,4 +1,8 @@
 {
+  "1.8.72": {
+    "de": "- **HKW-Widget:** Batterie-Flows (Laden/Entladen) liegen auf **gleicher Höhe** wie die Netz-Flows (Bezug/Einspeisung) — optisch symmetrisch.",
+    "en": "- **HKW widget:** Battery flow lines (charge/discharge) are at the **same height** as the grid flow lines (import/export) — visually symmetric."
+  },
   "1.8.71": {
     "de": "- **PV-Prognose (nachberechnet):** Treffergenauigkeit verbessert (Insights 7 Tage) — weniger Nachmittag-Überschuss über dem Tages-Ist.\n- Wetter-Rest wird ab mittags mit der **aktuellen Produktions-Steigung** (Pace) begrenzt, wenn Open-Meteo zu optimistisch ist.\n- Korrekturfaktor f 0,60–1,08; über Baseline nur bei Ist ≥ 88 % der Baseline; Abend-Parabel ab 2,5 h vor Produktionsende.",
     "en": "- **PV forecast (recalculated):** Better end-of-day accuracy (7-day Insights) — less mid-afternoon overshoot above actual daily production.\n- Weather residual is capped from midday using **recent production pace** when Open-Meteo is too optimistic.\n- Correction factor f 0.60–1.08; above baseline only when actual ≥ 88% of baseline; evening parabola from 2.5 h before production end."
