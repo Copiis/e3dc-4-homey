@@ -61,6 +61,8 @@ export class SafeSocketFactory implements SocketFactory {
             const onError = (error: Error) => settleReject(error);
 
             const timeoutId = setTimeout(() => {
+                // Plain object → normalizeError builds CONNECTION_TIMEOUT with short stack
+                // (no settleReject frames) so Homey does not treat this as an app crash.
                 settleReject({
                     name: 'CONNECTION_TIMEOUT',
                     message: 'Unable to establish an connection to '

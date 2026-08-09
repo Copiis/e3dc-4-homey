@@ -26,7 +26,8 @@ import { Wallbox } from '../../src/model/wallbox';
 import { GridMeterConfig } from '../../src/model/grid-meter.config';
 import { GridMeter } from '../../src/model/grid-meter';
 
-import { formatError } from '../../src/utils/error-utils';
+import { formatError, formatErrorMessage } from '../../src/utils/error-utils';
+import { isBenignNetworkError } from '../../src/net-socket-safety';
 import { formatSohPercent, resolveUsableCapacityWh } from '../../src/utils/battery-capacity';
 import { BatteryData } from '../../src/model/battery-data';
 import {
@@ -397,12 +398,17 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
    * and the user see the HPS is offline — without crashing the app process.
    */
   private handleLiveSyncFailure(err: unknown): void {
-    const message = formatError(err);
+    // Message only (no stack) for network timeouts — Homey treats this.error+stack as crash mail
+    const message = isBenignNetworkError(err) ? formatErrorMessage(err) : formatError(err);
     this.syncErrorCount++;
     this.diagnosticManager?.recordSyncFailure('Live-Sync / live sync: ' + message);
-    this.error(
-      `Live sync failed (${this.syncErrorCount}/${MAX_ALLOWED_ERROR_BEFORE_UNAVAILABLE}): ${message}`,
-    );
+    const line =
+      `Live sync failed (${this.syncErrorCount}/${MAX_ALLOWED_ERROR_BEFORE_UNAVAILABLE}): ${message}`;
+    if (isBenignNetworkError(err)) {
+      this.log(line);
+    } else {
+      this.error(line);
+    }
     if (this.syncErrorCount >= MAX_ALLOWED_ERROR_BEFORE_UNAVAILABLE) {
       const unavailableMessage = this.homey.__('messages.hps-not-available');
       this.diagnosticManager?.recordAnalysisEvent('warn', 'HKW nicht verfügbar / unavailable: ' + unavailableMessage);

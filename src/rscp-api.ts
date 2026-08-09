@@ -42,7 +42,8 @@ import {WallboxLiveStateConverter} from './converter/wallbox-live-state-converte
 import {SummaryData} from './model/summary-data';
 import {SummaryType} from './model/summary.config';
 import {Logger} from './internal-api/logger';
-import {formatError, normalizeError, rejectAsError} from './utils/error-utils';
+import {formatError, formatErrorMessage, normalizeError, rejectAsError} from './utils/error-utils';
+import {isBenignNetworkError} from './net-socket-safety';
 import {SafeSocketFactory} from './rscp-safe-socket-factory';
 import {startOfLocalCalendarDay} from './utils/grid-cumulative-archive';
 import {BatteryData, DCBData} from './model/battery-data';
@@ -133,10 +134,17 @@ export class RscpApi {
                 return serial
             })
             .catch(e => {
-                log.error('getOpenConnection: Creating new connection failed')
-                log.error(formatError(e))
+                const normalized = normalizeError(e)
+                // Offline HKW / timeout: info log only — error()+stack becomes Homey crash mail
+                if (isBenignNetworkError(normalized)) {
+                    log.log('getOpenConnection: Creating new connection failed (network): '
+                        + formatErrorMessage(normalized))
+                } else {
+                    log.error('getOpenConnection: Creating new connection failed')
+                    log.error(formatError(normalized))
+                }
                 pool.evictConnection(key)
-                throw normalizeError(e)
+                throw normalized
             })
             .finally(() => {
                 pool.clearPendingOpen(key)

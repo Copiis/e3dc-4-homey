@@ -1,7 +1,8 @@
 import { LiveData } from '../model/live-data';
 import { RscpApi } from '../rscp-api';
 import { Logger } from '../internal-api/logger';
-import { formatError } from '../utils/error-utils';
+import { formatError, formatErrorMessage } from '../utils/error-utils';
+import { isBenignNetworkError } from '../net-socket-safety';
 
 export interface PollerLogger extends Logger {}  // compatible with RscpApi's Logger expectation
 
@@ -112,7 +113,12 @@ export class LiveDataPoller {
 
       return data;
     } catch (err) {
-      this.logger.error('LiveDataPoller fetch failed: ' + formatError(err));
+      // HKW offline / timeout: log only — this.error() + stack triggers Homey crash mails
+      if (isBenignNetworkError(err)) {
+        this.logger.log('LiveDataPoller fetch failed (network): ' + formatErrorMessage(err));
+      } else {
+        this.logger.error('LiveDataPoller fetch failed: ' + formatError(err));
+      }
       this.errorListeners.forEach(listener => {
         try {
           listener(err);

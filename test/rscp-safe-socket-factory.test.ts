@@ -3,6 +3,7 @@ import assert from 'node:assert';
 import { Socket } from 'net';
 import { SafeSocketFactory } from '../src/rscp-safe-socket-factory';
 import { installNetSocketSafety, isBenignNetworkError } from '../src/net-socket-safety';
+import { formatError, formatErrorMessage, normalizeError } from '../src/utils/error-utils';
 import type { E3dcConnectionData } from 'easy-rscp';
 
 /**
@@ -107,5 +108,23 @@ describe('installNetSocketSafety', () => {
       code: 'EHOSTUNREACH',
     });
     assert.strictEqual(isBenignNetworkError(err), true);
+  });
+
+  it('classifies CONNECTION_TIMEOUT as benign (no crash path)', () => {
+    const err = normalizeError({
+      name: 'CONNECTION_TIMEOUT',
+      message: 'Unable to establish an connection to 192.168.3.27:5033 within the configured timeout of 5000ms',
+    });
+    assert.strictEqual(isBenignNetworkError(err), true);
+    assert.strictEqual(err.name, 'CONNECTION_TIMEOUT');
+    // Short stack only — must not list settleReject / normalizeError frames
+    assert.ok(err.stack);
+    assert.ok(!err.stack!.includes('settleReject'));
+    assert.ok(!err.stack!.includes('normalizeError'));
+    assert.strictEqual(
+      formatErrorMessage(err),
+      'CONNECTION_TIMEOUT: Unable to establish an connection to 192.168.3.27:5033 within the configured timeout of 5000ms',
+    );
+    assert.ok(!formatError(err, { includeStack: false }).includes('\n'));
   });
 });

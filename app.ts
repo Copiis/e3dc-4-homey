@@ -1,5 +1,5 @@
 import Homey from 'homey';
-import {formatError, normalizeError} from './src/utils/error-utils';
+import {formatError, formatErrorMessage, normalizeError} from './src/utils/error-utils';
 import {readHomePowerPlantsForHomey} from './src/utils/home-power-plants';
 import {installNetSocketSafety, isBenignNetworkError} from './src/net-socket-safety';
 
@@ -18,7 +18,8 @@ class MyApp extends Homey.App {
     process.on('unhandledRejection', (reason: unknown) => {
       const err = normalizeError(reason);
       if (isBenignNetworkError(err)) {
-        this.log('Network rejection (HKW offline/unreachable): ' + formatError(err));
+        // No stack: Homey crash mails often mirror this.error/formatError stacks
+        this.log('Network rejection (HKW offline/unreachable): ' + formatErrorMessage(err));
         return;
       }
       this.error('Unhandled promise rejection: ' + formatError(err));
@@ -27,7 +28,7 @@ class MyApp extends Homey.App {
       const e = normalizeError(err);
       if (isBenignNetworkError(e)) {
         // Sollte durch Socket-Patch selten greifen; falls doch: nicht eskalieren.
-        this.log('Network exception (HKW offline/unreachable): ' + formatError(e));
+        this.log('Network exception (HKW offline/unreachable): ' + formatErrorMessage(e));
         return;
       }
       this.error('Uncaught exception: ' + formatError(e));

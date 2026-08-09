@@ -1,4 +1,8 @@
 {
+  "1.8.74": {
+    "de": "- **Keine Crash-Mails mehr bei HKW-Timeout:** Wenn das Hauskraftwerk nicht erreichbar ist (`CONNECTION_TIMEOUT` / offline), erscheint das nur noch als normaler Log — nicht mehr als Homey-Crash mit Stack-Trace.\n- Gerät wird weiterhin nach mehreren Fehlversuchen als „nicht verfügbar“ markiert (gewollt).",
+    "en": "- **No more crash mails on HPS timeout:** When the home power station is unreachable (`CONNECTION_TIMEOUT` / offline), this is logged normally — no longer as a Homey crash with stack trace.\n- After several failed attempts the device is still marked unavailable (intended)."
+  },
   "1.8.73": {
     "de": "- **HKW Reparieren:** Fehler `unknown_error_getting_file` behoben — Repair-Dialog (IP/Zugangsdaten) lädt wieder unter my.homey.app und in der App.\n- Repair speichert die Verbindungsdaten zuverlässig beim Abschluss des Assistenten.",
     "en": "- **HPS Repair:** Fixed `unknown_error_getting_file` — the repair dialog (IP/credentials) loads again on my.homey.app and in the app.\n- Repair reliably saves connection settings when finishing the wizard."

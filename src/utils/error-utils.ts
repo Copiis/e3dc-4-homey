@@ -1,12 +1,11 @@
 /**
- * Erzeugt einen lesbaren String für Logs und Homey.error().
- * Vermeidet "[object Object]" bei Errors oder plain Objects.
- * Gibt Stack-Trace mit aus, wenn vorhanden.
+ * Nur Name + Message (kein Stack). Für erwartete Netzwerkfehler und Homey-Logs,
+ * die bei `this.error(...stack...)` sonst als „Crash“ gemeldet werden.
  */
-export function formatError(reason: unknown): string {
+export function formatErrorMessage(reason: unknown): string {
     if (reason instanceof Error) {
-        const stack = reason.stack?.trim();
-        return stack ? `${reason.message}\n${stack}` : reason.message;
+        const name = reason.name && reason.name !== 'Error' ? reason.name : '';
+        return name ? `${name}: ${reason.message}` : reason.message;
     }
     if (typeof reason === 'string') {
         return reason;
@@ -29,8 +28,29 @@ export function formatError(reason: unknown): string {
 }
 
 /**
+ * Erzeugt einen lesbaren String für Logs und Homey.error().
+ * Vermeidet "[object Object]" bei Errors oder plain Objects.
+ * Stack nur bei echten Bugs — für Netzwerkfehler {@link formatErrorMessage} nutzen
+ * oder `includeStack: false`.
+ */
+export function formatError(reason: unknown, options?: { includeStack?: boolean }): string {
+    const includeStack = options?.includeStack !== false;
+    if (reason instanceof Error) {
+        if (!includeStack) {
+            return formatErrorMessage(reason);
+        }
+        const stack = reason.stack?.trim();
+        return stack ? `${reason.message}\n${stack}` : reason.message;
+    }
+    return formatErrorMessage(reason);
+}
+
+/**
  * Konvertiert plain-object Rejections (von easy-rscp oder Socket) in echte Error-Objekte.
  * Wird benötigt, damit Homey die Fehler korrekt im UI anzeigt.
+ *
+ * Synthetische Netzwerk-Timeouts bekommen einen kurzen Stack (nur Message-Zeile),
+ * damit Athom-Diagnose nicht `normalizeError`/`settleReject` als „Crash-Ort“ zeigt.
  */
 export function normalizeError(reason: unknown): Error {
     if (reason instanceof Error) {
@@ -46,10 +66,14 @@ export function normalizeError(reason: unknown): Error {
             if (typeof record.name === 'string') {
                 err.name = record.name;
             }
+            // Synthetic connect failures: no internal factory frames in crash mails
+            if (err.name === 'CONNECTION_TIMEOUT' || err.name === 'DISCONNECT') {
+                err.stack = `${err.name}: ${err.message}`;
+            }
             return err;
         }
     }
-    return new Error(formatError(reason));
+    return new Error(formatErrorMessage(reason));
 }
 
 /**
