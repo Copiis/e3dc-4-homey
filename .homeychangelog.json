@@ -1,4 +1,8 @@
 {
+  "1.8.73": {
+    "de": "- **HKW Reparieren:** Fehler `unknown_error_getting_file` behoben — Repair-Dialog (IP/Zugangsdaten) lädt wieder unter my.homey.app und in der App.\n- Repair speichert die Verbindungsdaten zuverlässig beim Abschluss des Assistenten.",
+    "en": "- **HPS Repair:** Fixed `unknown_error_getting_file` — the repair dialog (IP/credentials) loads again on my.homey.app and in the app.\n- Repair reliably saves connection settings when finishing the wizard."
+  },
   "1.8.72": {
     "de": "- **HKW-Widget:** Batterie-Flows (Laden/Entladen) liegen auf **gleicher Höhe** wie die Netz-Flows (Bezug/Einspeisung) — optisch symmetrisch.",
     "en": "- **HKW widget:** Battery flow lines (charge/discharge) are at the **same height** as the grid flow lines (import/export) — visually symmetric."

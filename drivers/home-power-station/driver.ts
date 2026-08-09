@@ -65,33 +65,51 @@ class HomePowerStationDriver extends Homey.Driver {
 
       this.registerConnectionHandlers(session, () => repairSettings);
 
-      session.setHandler('done', async () => {
+      // Persist credentials when the user finishes the repair wizard.
+      // Homey does not auto-emit "done" for the system done template — save on
+      // showView("done") and as a fallback when the session disconnects after connect.
+      let saved = false;
+      const saveRepairSettings = async (reason: string) => {
+        if (saved) {
+          return true;
+        }
         try {
-          repairSettings.stationPort = parseInt(repairSettings.stationPort.toString());
-          if (repairSettings.timeout == undefined) {
+          repairSettings.stationPort = parseInt(String(repairSettings.stationPort), 10);
+          if (repairSettings.timeout == undefined || Number.isNaN(Number(repairSettings.timeout))) {
             repairSettings.timeout = 5;
+          } else {
+            repairSettings.timeout = parseInt(String(repairSettings.timeout), 10);
           }
           await device.setSettings(repairSettings);
 
-          // Try to recover the device even if it was in bad state
           if (!device.getAvailable()) {
             await device.setAvailable().catch(() => {});
           }
 
           // Force a sync after repair so data comes back quickly
-          if (typeof (device as any).sync === 'function') {
-            (device as any).sync().catch(() => {});
+          const maybeSync = (device as Homey.Device & { sync?: () => Promise<void> }).sync;
+          if (typeof maybeSync === 'function') {
+            maybeSync.call(device).catch(() => {});
           }
 
-          this.log('Repair completed successfully for device ' + device.getName());
+          saved = true;
+          this.log(`Repair completed (${reason}) for device ${device.getName()}`);
           return true;
         } catch (e) {
-          this.error('Repair "done" handler failed: ' + formatError(e));
-          // Still try to mark available
+          this.error(`Repair save (${reason}) failed: ` + formatError(e));
           await device.setAvailable().catch(() => {});
           return true; // don't let the flow crash
         }
+      };
+
+      session.setHandler('showView', async (viewId: string) => {
+        if (viewId === 'done') {
+          await saveRepairSettings('showView:done');
+        }
       });
+
+      // Some Homey clients emit "done" explicitly; keep as secondary path.
+      session.setHandler('done', async () => saveRepairSettings('done'));
     } catch (e) {
       this.error('onRepair setup failed: ' + formatError(e));
     }

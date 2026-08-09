@@ -5,6 +5,7 @@ Siehe auch [Setup](https://copiis.github.io/e3dc-4-homey/setup/setup/) und [Foru
 ## Häufige Probleme
 
 - **Keine Verbindung:** IP, RSCP-Passwort, Port 5033, gleiches Netz, feste IP, **Repair**  
+- **Repair zeigt `unknown_error_getting_file` (my.homey.app):** Repair-View fehlte unter `drivers/.../repair/` (nur `pair/`). Fix ab nächstem Release; **Workaround:** Zugangsdaten in den **HKW-Geräteeinstellungen** ändern (IP, Portal, RSCP, Port) — speichern genügt.  
 - **App-Crash bei offline HKW:** ab v1.8.61/62 gehärtet — bei alten Builds updaten  
 - **Falsche Werte:** Vorzeichen Grid/Batterie (E3DC-Konvention); Kapazität manuell am HKW setzen  
 - **Wallbox reagiert nicht:** Ladeplan aktiv? Bedingungen nutzen; Diagnosebericht  
