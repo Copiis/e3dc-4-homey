@@ -34,8 +34,12 @@ jobs:
       - name: Typecheck
         run: npx tsc --noEmit
 
+      # Default Node test isolation=process is far too slow for this suite
+      # (20+ min, appeared hung). Compile once, then run in-process.
       - name: Unit tests
-        run: npm test
+        run: |
+          npx tsc
+          node --test --test-isolation=none .homeybuild/test/**/*.test.js
 
       - name: Check versions agree
         run: |
