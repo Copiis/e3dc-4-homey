@@ -22,6 +22,15 @@ Danke für dein Interesse! Dieses Projekt strebt **Athom Code Winner** Qualität
 - Polling nur über LiveDataPoller.
 - Nach Arctic-Änderung: Build + install + commit + push automatisch (siehe Regeln).
 
+## Release (Athom Test)
+
+Versioning and App-Store upload are owned by GitHub Actions:
+
+- `.github/workflows/version.yml` — bump, changelog, tag
+- `.github/workflows/publish.yml` — validate, publish, promote to the **test** channel
+
+Do not hand-bump the version for a store release. Required repo secret: `HOMEY_PAT` from https://tools.developer.homey.app/me.
+
 ## Workflow
 
 - Kleine, fokussierte Changes.
