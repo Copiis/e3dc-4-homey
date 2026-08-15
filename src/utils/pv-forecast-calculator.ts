@@ -27,10 +27,11 @@ export const DAY_SCALE_EMA_ALPHA = 0.30;
  */
 const AHEAD_BASELINE_CAP = 1.05;
 /**
- * Only allow A above baseline once Ist is close (avoids mid-day climb from
- * temporary “ahead of model” while most of the day is still open).
+ * Only allow A above baseline once Ist has actually reached B.
+ * Insights 08.–14.08.: at 0.88·B (~17 h) A jumped over B every day, then
+ * had to be corrected down to EOD Ist. Near-B is not over-B.
  */
-const ALLOW_ABOVE_BASELINE_FRAC = 0.88;
+const ALLOW_ABOVE_BASELINE_FRAC = 1.0;
 /** Max step up per normal hourly recompute. */
 const MAX_UP_FRAC = 0.03;
 const MAX_UP_ABS_KWH = 0.8;
@@ -233,7 +234,7 @@ export function adjustedSoftCap(input: {
   return Math.min(Math.max(baseline * AHEAD_BASELINE_CAP, actual), weatherOpt);
 }
 
-/** Whether A may exceed the display baseline (strict: Ist already near B). */
+/** Whether A may exceed the display baseline (Ist already at/over B). */
 export function mayExceedBaseline(input: {
   actualKwh: number;
   baselineKwh: number;
@@ -246,19 +247,7 @@ export function mayExceedBaseline(input: {
   if (baseline <= 0) {
     return true;
   }
-  if (actual >= baseline * ALLOW_ABOVE_BASELINE_FRAC) {
-    return true;
-  }
-  if (input.reanticipate === 'above' && actual >= baseline * 0.80) {
-    return true;
-  }
-  // Overtake alone is not enough if still far below B (mid-day false ahead)
-  const overtook =
-    input.previousAdjustedKwh != null && actual + 0.05 >= input.previousAdjustedKwh;
-  if (overtook && actual >= baseline * 0.80) {
-    return true;
-  }
-  return false;
+  return actual + 0.05 >= baseline * ALLOW_ABOVE_BASELINE_FRAC;
 }
 
 export interface PvForecastInputs {

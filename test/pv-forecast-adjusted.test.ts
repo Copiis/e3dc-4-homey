@@ -49,7 +49,7 @@ describe('computeWeatherRestLandingPoint', () => {
     assert.ok(mid >= 24);
     assert.ok(mid <= 32.1, `mid-day far under B must not exceed B, got ${mid}`);
 
-    // actual near B → may exceed slightly (cap +5%)
+    // Ist still under B (Insights 14.08. 17 h: 29 vs B 32) — no lift over B
     const near = computeWeatherRestLandingPoint({
       actualKwh: 29,
       baselineKwh: 32,
@@ -59,7 +59,19 @@ describe('computeWeatherRestLandingPoint', () => {
       localHour: 16,
     });
     assert.ok(near >= 29);
-    assert.ok(near <= 32 * 1.05 + 0.15, `near-B soft cap +5%, got ${near}`);
+    assert.ok(near <= 32.1, `under B must stay at/below B, got ${near}`);
+
+    // Ist already at B → small residual above B is ok
+    const atB = computeWeatherRestLandingPoint({
+      actualKwh: 32.1,
+      baselineKwh: 32,
+      expectedKwhSoFar: 30,
+      remainingWeatherKwh: 3,
+      correctionFactor: 1.05,
+      localHour: 17,
+    });
+    assert.ok(atB >= 32.1);
+    assert.ok(atB <= 32 * 1.05 + 0.2, `at/over B may lift slightly, got ${atB}`);
   });
 
   it('does not explode when near baseline with inflated remaining (Insights 25.07.)', () => {
@@ -216,13 +228,17 @@ describe('correction / scale helpers', () => {
     assert.ok(capped <= pace * 1.08 + 0.4);
   });
 
-  it('mayExceedBaseline requires Ist near B', () => {
+  it('mayExceedBaseline requires Ist at or above B', () => {
     assert.strictEqual(
       mayExceedBaseline({ actualKwh: 20, baselineKwh: 32, expectedKwhSoFar: 18 }),
       false,
     );
     assert.strictEqual(
       mayExceedBaseline({ actualKwh: 29, baselineKwh: 32, expectedKwhSoFar: 28 }),
+      false,
+    );
+    assert.strictEqual(
+      mayExceedBaseline({ actualKwh: 32.0, baselineKwh: 32, expectedKwhSoFar: 30 }),
       true,
     );
   });
@@ -396,6 +412,24 @@ describe('blendAdjustedForecast (weather-rest + hard caps)', () => {
     });
     assert.ok(result >= 31.4);
     assert.ok(result <= 33.5, `evening A must not sit +6 over B, got ${result}`);
+  });
+
+  it('does not bump A above B at 17h when Ist is still under B (Insights 14.08.)', () => {
+    // 14.08.: A held 32 until 16h, then 17h jumped to 32.93 (Ist 29.05, B 32),
+    // EOD Ist 30.90 — daily downward correction after a late lift.
+    const result = blendAdjustedForecast({
+      actualKwh: 29.05,
+      baselineKwh: 32,
+      expectedKwhSoFar: 28,
+      correctionFactor: 1.04,
+      remainingWeatherKwh: 5,
+      previousAdjustedKwh: 32,
+      localHour: 17,
+      hoursUntilProductionEnd: 3.5,
+      recentRateKwhPerHour: 2.5,
+    });
+    assert.ok(result >= 29.05);
+    assert.ok(result <= 32.15, `must not lift over B before Ist reaches B, got ${result}`);
   });
 
   it('pace cap pulls mid-afternoon A down (Insights 02.08. pattern)', () => {
