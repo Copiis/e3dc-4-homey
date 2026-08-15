@@ -553,5 +553,9 @@
   "1.8.68": {
     "de": "- **HKW-Widget ohne Wallbox:** Unterkante von Netz (kWh) und Batterie wurde abgeschnitten — viewBox und Widget-Höhe korrigiert.\n- Sekundärtexte im Widget etwas besser lesbar im Dark Mode.",
     "en": "- **HPS widget without wallbox:** Bottom of grid (kWh) and battery was clipped — fixed viewBox and widget height.\n- Secondary widget text slightly more readable in dark mode."
+  },
+  "1.8.75": {
+    "en": "PV forecast (recalculated): no more late-afternoon lift above the baseline. The daily 17:00 bump and the following downward correction are gone — the line may only go above baseline once real production has reached it.",
+    "de": "PV-Prognose (nachberechnet): kein Nachmittag-Lift mehr über die Baseline. Der tägliche 17-Uhr-Bump und die anschließende Korrektur nach unten entfallen — über die Baseline geht es erst, wenn die echte PV sie erreicht hat."
   }
 }
