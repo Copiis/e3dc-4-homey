@@ -557,5 +557,9 @@
   "1.8.75": {
     "en": "PV forecast (recalculated): no more late-afternoon lift above the baseline. The daily 17:00 bump and the following downward correction are gone — the line may only go above baseline once real production has reached it.",
     "de": "PV-Prognose (nachberechnet): kein Nachmittag-Lift mehr über die Baseline. Der tägliche 17-Uhr-Bump und die anschließende Korrektur nach unten entfallen — über die Baseline geht es erst, wenn die echte PV sie erreicht hat."
+  },
+  "1.8.76": {
+    "en": "Charge planner widgets: Start/End date fields stay inside the widget (end field no longer overflows the screen).",
+    "de": "Ladeplaner-Widgets: Start- und Ende-Datum bleiben in der Widget-Breite (Ende ragt nicht mehr aus dem Bildschirm)."
   }
 }
