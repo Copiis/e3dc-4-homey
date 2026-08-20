@@ -561,5 +561,9 @@
   "1.8.76": {
     "en": "Charge planner widgets: Start/End date fields stay inside the widget (end field no longer overflows the screen).",
     "de": "Ladeplaner-Widgets: Start- und Ende-Datum bleiben in der Widget-Breite (Ende ragt nicht mehr aus dem Bildschirm)."
+  },
+  "1.8.77": {
+    "en": "When the power station does not answer for 30 seconds, or login is rejected, Homey no longer reports that as an app crash. Check the station IP, Wi-Fi and RSCP password.",
+    "de": "Wenn das Hauskraftwerk 30 Sekunden nicht antwortet oder der Login abgelehnt wird, meldet Homey das nicht mehr als App-Absturz. IP, WLAN und RSCP-Passwort prüfen."
   }
 }
