@@ -36,7 +36,13 @@ export function installNetSocketSafety(): void {
   };
 }
 
-/** Bekannte „HKW offline / falsches Netz“-Fehler (kein App-Bug). */
+const OPERATIONAL_NAMES = new Set([
+  'CONNECTION_TIMEOUT',
+  'DISCONNECT',
+  'READ_TIMEOUT',
+]);
+
+/** Bekannte „HKW offline / Timeout / Login abgelehnt“-Fehler (kein App-Bug). */
 export function isBenignNetworkError(err: unknown): boolean {
   const e = err as NodeJS.ErrnoException & { name?: string };
   const code = e?.code ?? '';
@@ -53,10 +59,10 @@ export function isBenignNetworkError(err: unknown): boolean {
     return true;
   }
   const name = e?.name ?? '';
-  if (name === 'CONNECTION_TIMEOUT' || name === 'DISCONNECT') {
+  if (OPERATIONAL_NAMES.has(name)) {
     return true;
   }
   const msg = String(e?.message ?? err ?? '');
-  return /EHOSTUNREACH|ENETUNREACH|ECONNREFUSED|ECONNRESET|ETIMEDOUT|EPIPE|EAI_AGAIN|ENOTFOUND|CONNECTION_TIMEOUT|Unable to establish an connection/i
+  return /EHOSTUNREACH|ENETUNREACH|ECONNREFUSED|ECONNRESET|ETIMEDOUT|EPIPE|EAI_AGAIN|ENOTFOUND|CONNECTION_TIMEOUT|READ_TIMEOUT|Unable to establish an connection|No response from the home power station|Authentication failed/i
     .test(msg);
 }

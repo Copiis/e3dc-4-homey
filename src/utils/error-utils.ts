@@ -1,3 +1,5 @@
+import { isBenignNetworkError } from '../net-socket-safety';
+
 /**
  * Nur Name + Message (kein Stack). Für erwartete Netzwerkfehler und Homey-Logs,
  * die bei `this.error(...stack...)` sonst als „Crash“ gemeldet werden.
@@ -49,15 +51,23 @@ export function formatError(reason: unknown, options?: { includeStack?: boolean 
  * Konvertiert plain-object Rejections (von easy-rscp oder Socket) in echte Error-Objekte.
  * Wird benötigt, damit Homey die Fehler korrekt im UI anzeigt.
  *
- * Synthetische Netzwerk-Timeouts bekommen einen kurzen Stack (nur Message-Zeile),
- * damit Athom-Diagnose nicht `normalizeError`/`settleReject` als „Crash-Ort“ zeigt.
+ * Synthetische RSCP-Fehler (Timeout, Disconnect, Auth) bekommen einen kurzen
+ * Stack (nur Message-Zeile), damit Athom-Diagnose nicht `normalizeError` als
+ * „Crash-Ort“ zeigt.
  */
+function withShortOperationalStack(err: Error): Error {
+    if (isBenignNetworkError(err)) {
+        err.stack = formatErrorMessage(err);
+    }
+    return err;
+}
+
 export function normalizeError(reason: unknown): Error {
     if (reason instanceof Error) {
-        return reason;
+        return withShortOperationalStack(reason);
     }
     if (typeof reason === 'string') {
-        return new Error(reason);
+        return withShortOperationalStack(new Error(reason));
     }
     if (typeof reason === 'object' && reason !== null) {
         const record = reason as Record<string, unknown>;
@@ -66,14 +76,10 @@ export function normalizeError(reason: unknown): Error {
             if (typeof record.name === 'string') {
                 err.name = record.name;
             }
-            // Synthetic connect failures: no internal factory frames in crash mails
-            if (err.name === 'CONNECTION_TIMEOUT' || err.name === 'DISCONNECT') {
-                err.stack = `${err.name}: ${err.message}`;
-            }
-            return err;
+            return withShortOperationalStack(err);
         }
     }
-    return new Error(formatErrorMessage(reason));
+    return withShortOperationalStack(new Error(formatErrorMessage(reason)));
 }
 
 /**

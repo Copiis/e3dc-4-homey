@@ -37,8 +37,6 @@ class MyApp extends Homey.App {
     this.registerPlantAutocompleteWidget('wallbox');
     this.registerPlantAutocompleteWidget('hkw-ladeplaner');
     this.registerPlantAutocompleteWidget('wallbox-ladeplaner');
-    this.registerPlantAutocompleteWidget('power-overview');
-    this.registerPlantAutocompleteWidget('live-energy-view');
   }
 
   private registerPlantAutocompleteWidget(widgetId: string): void {
@@ -59,7 +57,7 @@ class MyApp extends Homey.App {
         }
       });
     } catch (e) {
-      this.error(`Widget ${widgetId} setup failed: ` + formatError(e));
+      this.log(`Widget ${widgetId} setup skipped: ` + formatErrorMessage(e));
     }
   }
 

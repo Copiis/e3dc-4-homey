@@ -127,4 +127,28 @@ describe('installNetSocketSafety', () => {
     );
     assert.ok(!formatError(err, { includeStack: false }).includes('\n'));
   });
+
+  it('classifies READ_TIMEOUT as benign (plain object from easy-rscp)', () => {
+    const err = normalizeError({
+      name: 'READ_TIMEOUT',
+      message: 'No response from the home power station (10.0.0.27:5033) within 30000ms received.',
+    });
+    assert.strictEqual(isBenignNetworkError(err), true);
+    assert.strictEqual(err.name, 'READ_TIMEOUT');
+    assert.ok(err.stack);
+    assert.ok(!err.stack!.includes('normalizeError'));
+    assert.ok(!err.stack!.includes('rscp-api'));
+    assert.strictEqual(
+      formatErrorMessage(err),
+      'READ_TIMEOUT: No response from the home power station (10.0.0.27:5033) within 30000ms received.',
+    );
+    assert.ok(!formatError(err).includes('normalizeError'));
+  });
+
+  it('classifies Authentication failed as benign', () => {
+    const err = normalizeError(new Error('Authentication failed'));
+    assert.strictEqual(isBenignNetworkError(err), true);
+    assert.ok(!err.stack!.includes('node_modules'));
+    assert.strictEqual(formatErrorMessage(err), 'Authentication failed');
+  });
 });
