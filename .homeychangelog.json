@@ -565,5 +565,9 @@
   "1.8.77": {
     "en": "When the power station does not answer for 30 seconds, or login is rejected, Homey no longer reports that as an app crash. Check the station IP, Wi-Fi and RSCP password.",
     "de": "Wenn das Hauskraftwerk 30 Sekunden nicht antwortet oder der Login abgelehnt wird, meldet Homey das nicht mehr als App-Absturz. IP, WLAN und RSCP-Passwort prüfen."
+  },
+  "1.8.78": {
+    "en": "HKW charge plans now stay until the house battery actually reaches the target SOC. Until-SOC is on by default; default mode is grid charge. Wallbox until-full no longer completes if charging never started.",
+    "de": "HKW-Ladeplan bleibt, bis der Hausakku den Ziel-SOC wirklich erreicht. „Bis SOC“ ist standardmäßig an, Default-Modus Netzladen. Wallbox „bis voll“ gilt nicht mehr als erfüllt, wenn nie geladen wurde."
   }
 }
