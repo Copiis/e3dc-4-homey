@@ -89,9 +89,8 @@ export class PowerModeManager {
           .catch((e: unknown) => this.logger.error('[Ladeplan] untilSoc revert failed: ' + formatError(e)));
         return;
       }
-    }
-
-    if (state.expiresAt && Date.now() >= state.expiresAt) {
+      // SOC target not yet reached: keep charging, ignore clock expiry
+    } else if (state.expiresAt && Date.now() >= state.expiresAt) {
       this.revertPowerMode(state.scheduleId);
       return;
     }

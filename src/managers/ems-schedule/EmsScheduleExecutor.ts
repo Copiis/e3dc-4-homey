@@ -36,8 +36,14 @@ export class EmsScheduleExecutor {
       (this as any)._fallbackPowerModeState = state;
     }
 
-    // Schedule expire timer for scheduled plans (when we have an ID + expiresAt)
-    if (state?.expiresAt && state?.scheduleId) {
+    if (!state) {
+      this.clearAllExpireTimers();
+      return;
+    }
+
+    // Clock-based expire only for timed plans. untilSoc plans stay until SOC
+    // is actually reached (PowerModeManager keep-alive checks that).
+    if (state.expiresAt && state.scheduleId && !state.untilSoc) {
       this.scheduleExpireTimer(state.scheduleId, state.expiresAt, (id) => {
         this.revertPowerMode(id).catch(() => {});
       });
@@ -133,9 +139,8 @@ export class EmsScheduleExecutor {
         }
         return;
       }
-    }
-
-    if (state.expiresAt && Date.now() >= state.expiresAt) {
+      // keep charging until SOC — do not fall through to clock expiry
+    } else if (state.expiresAt && Date.now() >= state.expiresAt) {
       await this.revertPowerMode(state.scheduleId, removeCompleted);
       return;
     }
@@ -178,6 +183,7 @@ export class EmsScheduleExecutor {
       onExpire(scheduleId);
       this.scheduledExpireTimers.delete(scheduleId);
     }, delay);
+    timer.unref?.();
     this.scheduledExpireTimers.set(scheduleId, timer);
   }
 

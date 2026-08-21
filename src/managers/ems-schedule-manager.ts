@@ -122,6 +122,7 @@ export class EmsScheduleManager {
     if (schedules.length === 0) return;
 
     const now = Date.now();
+    const currentSocPct = this.device.getCurrentSOC() * 100;
 
     for (const s of schedules) {
       if (!s || !s.start || !s.mode) continue;
@@ -133,6 +134,23 @@ export class EmsScheduleManager {
       const endTs = this.validator.computeEndTsForSchedule(s, startTs);
       // Use the clean isInWindow from validator/utils
       const inWindow = this.validator.isInWindow(s, now);
+
+      if (typeof s.untilSoc === 'number' && s.untilSoc > 0 && this.store.hasTriggered(id)) {
+        if (currentSocPct >= s.untilSoc) {
+          this.logger.log(`[Ladeplan] untilSoc ${s.untilSoc}% reached (current ${currentSocPct}%), removing plan ${id}`);
+          this.store.removeCompleted(id);
+          this.store.deleteTriggered(id);
+          const active = this.getPowerModeState();
+          if (active?.scheduleId === id) {
+            this.executor.forceRevertToAuto().catch(() => {});
+          }
+          continue;
+        }
+        // SOC not reached: if keep-alive died, allow re-trigger below
+        if (!this.getPowerModeState()?.scheduleId) {
+          this.store.deleteTriggered(id);
+        }
+      }
 
       if (inWindow && !this.store.hasTriggered(id)) {
         this.logger.log(`[Ladeplan] TRIGGERING id=${id} mode=${s.mode} powerW=${s.powerW}`);
@@ -151,7 +169,7 @@ export class EmsScheduleManager {
         this.store.addTriggered(id);
       }
 
-      // Cleanup triggered wenn Fenster vorbei ist
+      // Cleanup triggered wenn Fenster vorbei ist (not untilSoc — those stay open)
       if (endTs && now > endTs && this.store.hasTriggered(id)) {
         this.store.deleteTriggered(id);
       }

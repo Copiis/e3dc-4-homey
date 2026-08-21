@@ -52,7 +52,9 @@ export function mapEmsModeToNumber(mode: string): number {
  * Compute effective endTs for a schedule (handles untilFull, explicit endTs, end, durationMin).
  */
 export function computeEndTs(s: EmsSchedule, startTs: number): number | null {
-  if (s.untilFull) return null;
+  // untilSoc / untilFull stay open until the goal is actually met — an end
+  // timestamp must not silently drop the plan from the active window.
+  if (s.untilFull || (typeof s.untilSoc === 'number' && s.untilSoc > 0)) return null;
   if (typeof s.endTs === 'number') return s.endTs;
   if (s.end) {
     const parsed = parseDateTime(s.end);

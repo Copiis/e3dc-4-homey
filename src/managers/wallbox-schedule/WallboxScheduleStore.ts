@@ -15,6 +15,7 @@ import { TriggeredWallboxScheduleInfo } from './WallboxScheduleExecutor';
 export class WallboxScheduleStore {
   private triggeredWallboxSchedules: Map<string, TriggeredWallboxScheduleInfo> = new Map();
   private untilFullLowPowerSince: Record<string, number> = {};
+  private untilFullSeenCharging: Record<string, boolean> = {};
 
   constructor(
     private readonly device: {
@@ -59,6 +60,7 @@ export class WallboxScheduleStore {
   deleteTriggered(id: string) {
     this.triggeredWallboxSchedules.delete(id);
     delete this.untilFullLowPowerSince[id];
+    delete this.untilFullSeenCharging[id];
   }
 
   setLowPowerSince(id: string, ts: number) {
@@ -69,9 +71,18 @@ export class WallboxScheduleStore {
     delete this.untilFullLowPowerSince[id];
   }
 
+  markUntilFullChargingSeen(id: string) {
+    this.untilFullSeenCharging[id] = true;
+  }
+
+  hasUntilFullChargingSeen(id: string): boolean {
+    return !!this.untilFullSeenCharging[id];
+  }
+
   clear() {
     this.triggeredWallboxSchedules.clear();
     this.untilFullLowPowerSince = {};
+    this.untilFullSeenCharging = {};
   }
 
   async persistSchedules(schedules: WallboxSchedule[]) {

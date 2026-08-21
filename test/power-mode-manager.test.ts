@@ -118,6 +118,33 @@ describe('PowerModeManager', () => {
     assert.ok(sendCount >= 1);
   });
 
+  it('does not revert an untilSoc plan just because expiresAt is already past', () => {
+    const setPowerCalls: number[] = [];
+    const mockDevice = {
+      getCurrentSOC: () => 0.70, // 70%, target 95%
+      homey: { setTimeout: () => 0 },
+      recordAnalysisEvent: () => {},
+      log: () => {},
+    } as any;
+    const mockApi = () => ({
+      setPowerMode: (mode: number) => {
+        setPowerCalls.push(mode);
+        return Promise.resolve(true);
+      },
+    } as any);
+    const manager = new PowerModeManager(mockDevice, mockApi, mockDevice);
+    manager.setPowerModeState({
+      mode: 4,
+      powerW: 3000,
+      expiresAt: Date.now() - 1000, // already past
+      untilSoc: 95,
+      scheduleId: 'soc-plan',
+    });
+    (manager as any).refreshPowerMode();
+    assert.ok(manager.getPowerModeState(), 'untilSoc plan must stay active while SOC is below target');
+    assert.ok(!setPowerCalls.includes(0), 'must not send AUTO while untilSoc is unfulfilled');
+  });
+
   it('does not schedule refresh when state is cleared (auto)', () => {
     const scheduledDelays: number[] = [];
     const mockDevice = {

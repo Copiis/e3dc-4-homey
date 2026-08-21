@@ -74,18 +74,36 @@ describe('WallboxScheduleHandler', () => {
     assert.strictEqual(handler.hasActivePlan(), true);
   });
 
-  it('handles untilFull logic (power drop case, no vehicle SOC)', async () => {
+  it('does not treat untilFull as done when charging never started (always low power)', async () => {
     const now = Date.now();
     const mockDevice = createMockDevice({
       getCapabilityValue: (key: string) => {
-        if (key === 'measure_power') return 30; // low power
+        if (key === 'measure_power') return 0;
+        if (key === 'measure_vehicle_soc') return 50;
         return 0;
       },
     });
     const handler = new WallboxScheduleHandler(mockDevice);
     const store = (handler as any).store;
     store.addTriggered('p-until', 'allow');
-    // Simulate low power for >5 min (now via store)
+    store.setLowPowerSince('p-until', now - (6 * 60 * 1000));
+    await (handler as any).handleUntilFull([{ id: 'p-until', start: '08:00', action: 'allow', untilFull: true }], now);
+    assert.strictEqual(store.getTriggered().size, 1, 'plan must stay if the car never actually charged');
+  });
+
+  it('completes untilFull only after charging was seen and then power dropped for 5 min', async () => {
+    const now = Date.now();
+    const mockDevice = createMockDevice({
+      getCapabilityValue: (key: string) => {
+        if (key === 'measure_power') return 30; // low after a charge session
+        if (key === 'measure_vehicle_soc') return 99;
+        return 0;
+      },
+    });
+    const handler = new WallboxScheduleHandler(mockDevice);
+    const store = (handler as any).store;
+    store.addTriggered('p-until', 'allow');
+    store.markUntilFullChargingSeen('p-until');
     store.setLowPowerSince('p-until', now - (6 * 60 * 1000));
     await (handler as any).handleUntilFull([{ id: 'p-until', start: '08:00', action: 'allow', untilFull: true }], now);
     assert.strictEqual(store.getTriggered().size, 0);

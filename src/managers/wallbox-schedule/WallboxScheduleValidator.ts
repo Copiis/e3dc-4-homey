@@ -29,7 +29,13 @@ export class WallboxScheduleValidator {
     return now >= startTs && (endTs === null || now < endTs);
   }
 
-  shouldRemoveForUntilFull(absPower: number, lowPowerSince: number | undefined, now: number): boolean {
+  shouldRemoveForUntilFull(
+    absPower: number,
+    lowPowerSince: number | undefined,
+    now: number,
+    seenCharging: boolean = false,
+  ): boolean {
+    if (!seenCharging) return false;
     if (absPower >= this.LOW_POWER_THRESHOLD) return false;
     if (!lowPowerSince) return false;
     return now - lowPowerSince >= this.LOW_POWER_DURATION_MS;

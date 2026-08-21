@@ -45,13 +45,14 @@
       <span style="white-space: nowrap;">Bis SOC</span>
       <input type="number" id="soc" value="95" min="50" max="100" style="width:60px"> %
     </div>
-    <input type="checkbox" id="until-soc">
+    <input type="checkbox" id="until-soc" checked>
   </div>
 
   <div class="row">
     <div>
       <div class="label">Modus</div>
       <select id="mode">
+        <option value="grid_charge">Netzladen</option>
         <option value="charge">Laden</option>
         <option value="discharge">Entladen</option>
         <option value="idle">Sperren</option>
@@ -66,7 +67,7 @@
 
 <button onclick="addPlan()" style="width:100%; margin-top:1px; margin-bottom:1px">Plan hinzufügen</button>
 
-<div id="plans" style="max-height: 40px; overflow-y: auto; display: none;"></div>
+<div id="plans" style="max-height: 88px; overflow-y: auto; display: none;"></div>
 
 <script>
 let Homey = null;
@@ -74,7 +75,7 @@ let plantId = null;
 
 async function onHomeyReady(h) {
   Homey = h;
-  Homey.ready({ height: 310 });
+  Homey.ready({ height: 355 });
 
   const settings = Homey.getSettings();
   plantId = settings.plantId && settings.plantId.id ? settings.plantId.id : settings.plantId;
@@ -157,6 +158,8 @@ async function loadPlans() {
     container.style.marginTop = '4px';
 
     const modeLabels = {
+      'grid_charge': 'Netzladen',
+      'gridcharge': 'Netzladen',
       'charge': 'Laden',
       'discharge': 'Entladen',
       'idle': 'Sperren'

@@ -196,6 +196,80 @@ describe('EmsScheduleManager', () => {
   });
 });
 
+describe('untilSoc plans must stay until SOC is actually reached', () => {
+  it('does not prune an untilSoc plan when its end timestamp is already past', () => {
+    const { pruneExpiredSchedules } = require('../src/utils/ems-schedule-utils');
+    const now = Date.now();
+    const kept = pruneExpiredSchedules([
+      {
+        id: 'soc-keep',
+        start: new Date(now - 2 * 60 * 60 * 1000).toISOString(),
+        end: new Date(now - 60 * 1000).toISOString(),
+        endTs: now - 60 * 1000,
+        mode: 'charge',
+        untilSoc: 95,
+        powerW: 3000,
+      },
+    ], now);
+    assert.strictEqual(kept.length, 1, 'untilSoc plan must not vanish just because an end time passed');
+  });
+
+  it('keeps untilSoc plan in window after end time (SOC not yet reached)', () => {
+    const now = Date.now();
+    const s: EmsSchedule = {
+      id: 'soc-window',
+      start: new Date(now - 2 * 60 * 60 * 1000).toISOString(),
+      startTs: now - 2 * 60 * 60 * 1000,
+      end: new Date(now - 60 * 1000).toISOString(),
+      endTs: now - 60 * 1000,
+      mode: 'charge',
+      untilSoc: 95,
+      powerW: 3000,
+    };
+    const validator = new EmsScheduleValidator();
+    assert.strictEqual(validator.isInWindow(s, now), true);
+    assert.strictEqual(validator.computeEndTsForSchedule(s, s.startTs!), null);
+  });
+
+  it('still triggers untilSoc plan after end time when SOC is below target', () => {
+    const now = Date.now();
+    const plan = {
+      id: 'soc-resume',
+      start: new Date(now - 3 * 60 * 60 * 1000).toISOString(),
+      startTs: now - 3 * 60 * 60 * 1000,
+      end: new Date(now - 60 * 1000).toISOString(),
+      endTs: now - 60 * 1000,
+      mode: 'grid_charge',
+      untilSoc: 95,
+      powerW: 3000,
+    };
+    const calls: number[] = [];
+    const mockDevice = createMockDevice({
+      getSetting: () => JSON.stringify([plan]),
+      getCurrentSOC: () => 0.70,
+    });
+    const mockApi = () => ({
+      setPowerMode: (mode: number) => {
+        calls.push(mode);
+        return Promise.resolve(true);
+      },
+    } as any);
+    const manager = new EmsScheduleManager(mockDevice, mockApi, mockDevice);
+    manager.loadEmsSchedules();
+    manager.checkEmsSchedules();
+    assert.ok(calls.includes(4), 'must keep Netzladen active until 95% even after the end clock');
+  });
+
+  it('does not prune untilSoc-only plan (no end at all)', () => {
+    const { pruneExpiredSchedules } = require('../src/utils/ems-schedule-utils');
+    const now = Date.now();
+    const kept = pruneExpiredSchedules([
+      { id: 'soc-open', start: new Date(now - 8 * 60 * 60 * 1000).toISOString(), mode: 'grid_charge', untilSoc: 95, powerW: 3000 },
+    ], now);
+    assert.strictEqual(kept.length, 1);
+  });
+});
+
 describe('EmsScheduleValidator (new split class)', () => {
   const validator = new EmsScheduleValidator();
 

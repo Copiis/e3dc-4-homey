@@ -112,24 +112,32 @@ export class WallboxScheduleHandler {
       const info = triggered.get(id);
       if (info?.action !== 'allow') continue;
 
-      if (absPower < this.validator.LOW_POWER_THRESHOLD) {
-        if (!lowPowerState[id]) {
-          this.store.setLowPowerSince(id, now);
-          this.device.log(`[WallboxLadeplan] Low power draw (${absPower}W) detected for untilFull plan ${id}`);
-        } else if (this.validator.shouldRemoveForUntilFull(absPower, lowPowerState[id], now)) {
-          this.device.log(`[WallboxLadeplan] untilFull reached for ${id}`);
-          await this.executor.stopForUntilFull();
-          // Ensure discharge restore even for untilFull plans (use the info we already fetched)
-          if (info?.savedDischargeSoc !== undefined) {
-            await this.executor.revertActionForInfo(id, info, true).catch(e => this.device.error('untilFull discharge restore: ' + e));
-          }
-          this.store.deleteTriggered(id);
-          plansToRemove.push(id);
-        }
-      } else {
+      if (absPower >= this.validator.LOW_POWER_THRESHOLD) {
+        this.store.markUntilFullChargingSeen(id);
         if (lowPowerState[id]) {
           this.store.deleteLowPowerSince(id);
         }
+        continue;
+      }
+
+      // Low power only counts as "full" after we have actually seen charging.
+      // Otherwise a plan that never started (0 W) would vanish after 5 minutes.
+      if (!this.store.hasUntilFullChargingSeen(id)) {
+        continue;
+      }
+
+      if (!lowPowerState[id]) {
+        this.store.setLowPowerSince(id, now);
+        this.device.log(`[WallboxLadeplan] Low power draw (${absPower}W) detected for untilFull plan ${id}`);
+      } else if (this.validator.shouldRemoveForUntilFull(absPower, lowPowerState[id], now, true)) {
+        this.device.log(`[WallboxLadeplan] untilFull reached for ${id}`);
+        await this.executor.stopForUntilFull();
+        // Ensure discharge restore even for untilFull plans (use the info we already fetched)
+        if (info?.savedDischargeSoc !== undefined) {
+          await this.executor.revertActionForInfo(id, info, true).catch(e => this.device.error('untilFull discharge restore: ' + e));
+        }
+        this.store.deleteTriggered(id);
+        plansToRemove.push(id);
       }
     }
 
