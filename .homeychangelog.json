@@ -569,5 +569,9 @@
   "1.8.78": {
     "en": "HKW charge plans now stay until the house battery actually reaches the target SOC. Until-SOC is on by default; default mode is grid charge. Wallbox until-full no longer completes if charging never started.",
     "de": "HKW-Ladeplan bleibt, bis der Hausakku den Ziel-SOC wirklich erreicht. „Bis SOC“ ist standardmäßig an, Default-Modus Netzladen. Wallbox „bis voll“ gilt nicht mehr als erfüllt, wenn nie geladen wurde."
+  },
+  "1.8.79": {
+    "en": "Wallbox setting \"E3DC RSCP only\" now shows the local vehicle SOC from E3DC, including 0%, instead of a stale Homey-car value and title. Charge planner widgets pick the only home power plant automatically and retry instead of replacing the widget with a select-HKW error.",
+    "de": "Wallbox-Einstellung „Nur E3DC RSCP“ zeigt den lokalen Fahrzeug-SOC von E3DC, auch 0 %, statt einen alten Homey-Auto-Wert und -Titel. Die Ladeplaner wählen bei nur einem Hauskraftwerk automatisch aus und versuchen es erneut, statt das Widget durch „HKW auswählen“ zu ersetzen."
   }
 }
