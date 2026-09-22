@@ -15,6 +15,11 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      promote_only:
+        description: Skip upload and only move the current version to the Athom test channel
+        type: boolean
+        default: false
 
 jobs:
   publish:
@@ -29,15 +34,18 @@ jobs:
           cache: npm
 
       - name: Install dependencies
+        if: ${{ inputs.promote_only != true }}
         run: npm ci
 
       - name: Typecheck
+        if: ${{ inputs.promote_only != true }}
         run: npx tsc --noEmit
 
       # Full suite (`npm test`, process isolation) ran 20+ min and blocked
       # Athom upload. Publish is gated by typecheck + Homey validate.
       # A small in-process subset still runs; the rest stays local / later CI.
       - name: Unit tests
+        if: ${{ inputs.promote_only != true }}
         run: |
           npx tsc
           node --test --test-isolation=none \
@@ -45,6 +53,7 @@ jobs:
             .homeybuild/test/setup.test.js
 
       - name: Check versions agree
+        if: ${{ inputs.promote_only != true }}
         run: |
           APP_VERSION="$(node -p "require('./.homeycompose/app.json').version")"
           PKG_VERSION="$(node -p "require('./package.json').version")"
@@ -77,14 +86,17 @@ jobs:
           echo "Publishing ${APP_VERSION}" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Validate
+        if: ${{ inputs.promote_only != true }}
         uses: athombv/github-action-homey-app-validate@master
         with:
           level: publish
 
       - name: Check app.json is in sync with .homeycompose
+        if: ${{ inputs.promote_only != true }}
         run: git diff --exit-code -- app.json
 
       - name: Publish
+        if: ${{ inputs.promote_only != true }}
         id: publish
         uses: athombv/github-action-homey-app-publish@master
         with:
@@ -94,8 +106,11 @@ jobs:
         env:
           HOMEY_PAT: ${{ secrets.HOMEY_PAT }}
         run: |
-          npm install --no-save homey-api
-          node .github/scripts/promote-athom-test.js
+          # Validate/publish run in Docker as root and leave node_modules
+          # root-owned, so npm install inside the repo hits EACCES.
+          mkdir -p "$RUNNER_TEMP/homey-promote"
+          npm install --prefix "$RUNNER_TEMP/homey-promote" homey-api
+          NODE_PATH="$RUNNER_TEMP/homey-promote/node_modules" node .github/scripts/promote-athom-test.js
 
       - name: Link to the release
         run: |
