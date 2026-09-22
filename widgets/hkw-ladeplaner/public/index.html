@@ -24,6 +24,7 @@
   </style>
 </head>
 <body>
+<div id="load-error" style="display:none;color:#f88;padding:6px 4px;font-size:15px;"></div>
 <div style="background:#3a2; color:#fff; font-size:8px; padding:2px 4px; border-radius:3px; margin-bottom:4px; line-height:1.2;">
   <strong>Achtung:</strong> Aktive Ladepläne haben Vorrang vor Flows. Solange ein Plan läuft, werden Flow-Befehle für Power-Modi ignoriert.
 </div>
@@ -73,23 +74,70 @@
 let Homey = null;
 let plantId = null;
 
+function settingsPlantId(settings) {
+  const raw = settings && settings.plantId;
+  if (raw == null) return null;
+  if (typeof raw === 'object' && raw.id != null) return String(raw.id);
+  return String(raw);
+}
+
+function showLoadError(msg) {
+  const el = document.getElementById('load-error');
+  if (!el) return;
+  el.style.display = msg ? 'block' : 'none';
+  el.textContent = msg || '';
+}
+
+async function resolvePlant(HomeyApi) {
+  const wanted = settingsPlantId(HomeyApi.getSettings());
+  let plants = [];
+  try {
+    plants = await HomeyApi.api('GET', '/plants');
+  } catch (e) {
+    try {
+      await HomeyApi.api('POST', '/log', { widget: 'hkw-ladeplaner', message: 'listPlants failed: ' + (e && e.message ? e.message : e) });
+    } catch (_) {}
+    plants = [];
+  }
+  if (!Array.isArray(plants)) plants = [];
+  const match = wanted && plants.find(p => String(p.id) === String(wanted));
+  const chosen = match || plants[0];
+  if (chosen) {
+    if (!match) {
+      try { HomeyApi.setSettings({ plantId: { id: chosen.id, name: chosen.name } }); } catch (_) {}
+    }
+    return { plantId: String(chosen.id), plants };
+  }
+  if (wanted) return { plantId: String(wanted), plants };
+  return { plantId: null, plants, error: 'Kein HKW gefunden' };
+}
+
 async function onHomeyReady(h) {
   Homey = h;
   Homey.ready({ height: 355 });
 
-  const settings = Homey.getSettings();
-  plantId = settings.plantId && settings.plantId.id ? settings.plantId.id : settings.plantId;
-
+  const resolved = await resolvePlant(Homey);
+  plantId = resolved.plantId;
   if (!plantId) {
-    document.body.innerHTML = '<div style="color:red;padding:10px">HKW auswählen</div>';
+    showLoadError(resolved.error || 'HKW wird geladen …');
+    const retry = setInterval(async () => {
+      const again = await resolvePlant(Homey);
+      if (again.plantId) {
+        clearInterval(retry);
+        plantId = again.plantId;
+        showLoadError('');
+        finishInit();
+      }
+    }, 1000);
     return;
   }
 
-  const debugEl = document.getElementById('plant-debug');
-  if (debugEl) {
-    const displayName = matched ? matched.name : plantId;
-    debugEl.textContent = `HKW: ${displayName} (${plantId})`;
-  }
+  finishInit();
+}
+
+function finishInit() {
+  if (finishInit.done) return;
+  finishInit.done = true;
 
   // Debug-Hinweis für Logs
   console.log('%c[HKW-Ladeplaner] Widget gestartet. Für App-Logs: Terminal → cd in den App-Ordner → homey app log', 'color: #888');

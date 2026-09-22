@@ -14,6 +14,10 @@ if [[ -f "$HOME/.nvm/nvm.sh" ]]; then
   nvm use
 fi
 
+if [[ -x ./scripts/prepare-machine.sh ]]; then
+  ./scripts/prepare-machine.sh
+fi
+
 echo "=== Build ==="
 npm run build
 

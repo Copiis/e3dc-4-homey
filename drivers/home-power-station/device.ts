@@ -48,6 +48,7 @@ import {
 } from '../../src/utils/plant-power-cache';
 import { LiveDataPoller } from '../../src/polling/live-data-poller';
 import { E3dcCloudClient } from '../../src/services/e3dc-cloud-client';
+import { isRscpOnlyVehicleSocMode } from '../../src/utils/vehicle-soc-display';
 
 // Flow cards now fully encapsulated via FlowCardManager
 import { FlowCardManager } from '../../src/cards/flow-card-manager';
@@ -500,6 +501,13 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
         const wb = d as any;
         const store = wb.getStoreValue?.('settings');
         if (!store || String(store.stationId) !== String(this.getData().id)) continue;
+
+        const wbMode = typeof wb.getSettings === 'function'
+          ? (wb.getSettings() as {vehicleSocSource?: string} | undefined)?.vehicleSocSource
+          : undefined;
+        if (isRscpOnlyVehicleSocMode(wbMode)) {
+          continue;
+        }
 
         const source = (wb as any).lastSocSource || 'none';
         // Do not overwrite live RSCP or Homey-car values with cloud

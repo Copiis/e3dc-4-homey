@@ -47,10 +47,11 @@ class MyApp extends Homey.App {
       const widget = dashboards.getWidget(widgetId);
       widget.registerSettingAutocompleteListener('plantId', async (query: string) => {
         try {
+          const q = (typeof query === 'string' ? query : '').trim().toLowerCase();
           const devices = await this.readHomePowerPlants();
           return devices
-            .filter((item) => item.name.toLowerCase().includes((query || '').toLowerCase()))
-            .map((item) => ({ id: item.id, name: item.name }));
+            .filter((item) => !q || (item.name || '').toLowerCase().includes(q))
+            .map((item) => ({ id: String(item.id), name: item.name || String(item.id) }));
         } catch (e) {
           this.error(`Widget ${widgetId} plantId autocomplete failed: ` + formatError(e));
           return [];

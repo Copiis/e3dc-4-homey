@@ -8,3 +8,6 @@
 /AGENTS.md
 /setup/grok/
 *.bak*
+
+.machine-host
+/tmp/

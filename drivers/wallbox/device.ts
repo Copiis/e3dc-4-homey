@@ -24,6 +24,11 @@ import { WallboxEmsSettingsManager } from '../../src/managers/wallbox-ems-settin
 import { GlobalEmsOverrideManager } from '../../src/managers/global-ems-override-manager';
 import { isPlausibleVehicleSocPercent } from '../../src/utils/vehicle-soc';
 import { resolveExternalVehicleSoc } from '../../src/utils/external-vehicle-soc';
+import {
+  decideVehicleSocDisplay,
+  isRscpOnlyVehicleSocMode,
+  VehicleSocDisplaySource,
+} from '../../src/utils/vehicle-soc-display';
 
 const WALLBOX_LEGACY_CAPABILITIES = [
   'evcharger_charging',
@@ -60,7 +65,8 @@ class WallboxDevice extends Homey.Device implements Wallbox {
 
   // Last known good vehicle SOC (used when RSCP/external momentarily have no data)
   private lastPlausibleVehicleSoc?: number;
-  private lastSocSource: 'local' | 'external' | 'cloud' | 'last_known' | 'none' = 'none';
+  private lastSocSource: VehicleSocDisplaySource = 'none';
+  private lastTitleSource?: VehicleSocDisplaySource;
 
   private async loadLastPlausibleSoc(): Promise<void> {
     try {
@@ -77,23 +83,78 @@ class WallboxDevice extends Homey.Device implements Wallbox {
     } catch {}
   }
 
-  private async updateVehicleSocTitle(source: 'local' | 'external' | 'cloud' | 'last_known' | 'none'): Promise<void> {
+  private getVehicleSocSourceMode(): string {
     try {
-      const titles: Record<typeof source, { en: string; de: string }> = {
-        local: { en: 'Vehicle SOC', de: 'Fahrzeug-SOC' },
-        external: { en: 'Vehicle SOC (Homey car)', de: 'Fahrzeug-SOC (Homey-Auto)' },
-        cloud: { en: 'Vehicle SOC (cloud)', de: 'Fahrzeug-SOC (Cloud)' },
-        last_known: { en: 'Vehicle SOC (last known)', de: 'Fahrzeug-SOC (letzter bekannter Wert)' },
-        none: { en: 'Vehicle SOC', de: 'Fahrzeug-SOC' },
-      };
+      const fromSetting = this.getSetting('vehicleSocSource');
+      if (typeof fromSetting === 'string' && fromSetting.length > 0) {
+        return fromSetting;
+      }
+    } catch {}
+    const settings = this.getSettings() as {vehicleSocSource?: string};
+    return settings?.vehicleSocSource || 'auto_homey_car';
+  }
+
+  private vehicleSocTitles(): Record<VehicleSocDisplaySource, {en: string; de: string}> {
+    return {
+      local: {en: 'Vehicle SOC (E3DC)', de: 'Fahrzeug-SOC (E3DC)'},
+      external: {en: 'Vehicle SOC (Homey car)', de: 'Fahrzeug-SOC (Homey-Auto)'},
+      cloud: {en: 'Vehicle SOC (cloud)', de: 'Fahrzeug-SOC (Cloud)'},
+      last_known: {en: 'Vehicle SOC (last known)', de: 'Fahrzeug-SOC (letzter bekannter Wert)'},
+      none: {en: 'Vehicle SOC', de: 'Fahrzeug-SOC'},
+    };
+  }
+
+  private async updateVehicleSocTitle(source: VehicleSocDisplaySource): Promise<void> {
+    try {
       await this.setCapabilityOptions('measure_vehicle_soc', {
-        title: titles[source],
-        units: { en: '%', de: '%' },
+        title: this.vehicleSocTitles()[source],
+        units: {en: '%', de: '%'},
         decimals: 0,
         uiComponent: 'sensor',
       });
     } catch (e) {
       this.error('Failed to set vehicle SOC title: ' + formatError(e));
+    }
+  }
+
+  /**
+   * Homey often keeps the first capability title. Recreate once when the source
+   * (and therefore the label) actually changes, so "Homey-Auto" can become "E3DC".
+   */
+  private async applyVehicleSocTile(soc: number | undefined, source: VehicleSocDisplaySource): Promise<void> {
+    const titleChanged = this.lastTitleSource !== source;
+    this.lastSocSource = source;
+    if (soc !== undefined && !titleChanged) {
+      updateCapabilityValue('measure_vehicle_soc', soc, this, {force: true});
+    }
+    if (!titleChanged) {
+      return;
+    }
+    this.lastTitleSource = source;
+    const current = typeof soc === 'number' ? soc : this.getCapabilityValue('measure_vehicle_soc');
+    try {
+      if (this.hasCapability('measure_vehicle_soc')) {
+        await this.removeCapability('measure_vehicle_soc');
+      }
+      await this.addCapability('measure_vehicle_soc');
+      await this.setCapabilityOptions('measure_vehicle_soc', {
+        title: this.vehicleSocTitles()[source],
+        units: {en: '%', de: '%'},
+        decimals: 0,
+        uiComponent: 'sensor',
+      });
+      if (typeof current === 'number') {
+        await this.setCapabilityValue('measure_vehicle_soc', current);
+      }
+      await reorderCapabilitiesIfNeeded(this, WALLBOX_CAPABILITY_ORDER);
+      await this.applyLadeplanTileVisibility().catch(() => {});
+      this.log(`Vehicle SOC tile source=${source} value=${current}`);
+    } catch (e) {
+      this.error('Failed to recreate vehicle SOC capability: ' + formatError(e));
+      if (typeof current === 'number') {
+        updateCapabilityValue('measure_vehicle_soc', current, this, {force: true});
+      }
+      await this.updateVehicleSocTitle(source);
     }
   }
 
@@ -119,15 +180,17 @@ class WallboxDevice extends Homey.Device implements Wallbox {
       await this.migrateCapabilities();
       await this.loadLastPlausibleSoc();
 
-      // Immediately set last known good SOC so the tile is not blank after restart
-      if (this.lastPlausibleVehicleSoc !== undefined && this.lastPlausibleVehicleSoc > 0) {
-        updateCapabilityValue('measure_vehicle_soc', this.lastPlausibleVehicleSoc, this, { force: true });
-        this.lastSocSource = 'last_known';
-        await this.updateVehicleSocTitle('last_known');
+      // rscp_only: never seed the tile from Homey-car last-known / fallback
+      const rscpOnly = isRscpOnlyVehicleSocMode(this.getVehicleSocSourceMode());
+      this.log(`Vehicle SOC mode=${this.getVehicleSocSourceMode()}`);
+      if (rscpOnly) {
+        // Drop stale Homey-Auto 60 % immediately; first live poll overwrites with RSCP.
+        await this.applyVehicleSocTile(0, 'local');
+      } else if (this.lastPlausibleVehicleSoc !== undefined && this.lastPlausibleVehicleSoc > 0) {
+        await this.applyVehicleSocTile(this.lastPlausibleVehicleSoc, 'last_known');
       } else {
-        // Try Homey car (Tesla etc.) once at init when RSCP never had a value
         this.tryApplyExternalVehicleSoc();
-        await this.updateVehicleSocTitle(this.lastSocSource);
+        await this.applyVehicleSocTile(undefined, this.lastSocSource);
       }
       this.capabilitiesReady = true;
     } catch (e) {
@@ -529,53 +592,54 @@ class WallboxDevice extends Homey.Device implements Wallbox {
     if (!isPlausibleVehicleSocPercent(socPercent)) {
       return;
     }
+    if (source === 'external' && isRscpOnlyVehicleSocMode(this.getVehicleSocSourceMode())) {
+      this.log(`Ignoring Homey-car SOC ${socPercent}% because source is rscp_only`);
+      return;
+    }
     this.lastPlausibleVehicleSoc = socPercent;
     this.saveLastPlausibleSoc(socPercent).catch(() => {});
-    this.lastSocSource = source;
-    updateCapabilityValue('measure_vehicle_soc', socPercent, this, { force: true });
-    this.updateVehicleSocTitle(source).catch(() => {});
+    this.applyVehicleSocTile(socPercent, source).catch(() => {});
     this.log(`Applied vehicle SOC ${socPercent}% (source=${source})`);
   }
 
   /**
    * Resolve vehicle SOC for the tile:
    * 1) plausible local RSCP
-   * 2) Homey car / configured device (Tesla etc.) when RSCP is 0
-   * 3) last known good value
-   * Never forces a misleading 0 % when no data exists.
+   * 2) Homey car / configured device when RSCP is 0 (unless rscp_only)
+   * 3) last known good value (not Homey-Auto when rscp_only)
+   * rscp_only shows E3DC 0 % instead of keeping Homey-Auto.
    */
   private updateVehicleSocFromLiveState(state: WallboxLiveState): void {
-    const socVal = state.socPercent;
-    if (isPlausibleVehicleSocPercent(socVal)) {
-      this.lastPlausibleVehicleSoc = socVal;
-      this.saveLastPlausibleSoc(socVal!).catch(() => {});
-      this.lastSocSource = 'local';
-      updateCapabilityValue('measure_vehicle_soc', socVal!, this, { force: true });
-      this.updateVehicleSocTitle('local').catch(() => {});
-      this.log(`Vehicle SOC from RSCP: ${socVal}%`);
-      return;
+    const decision = decideVehicleSocDisplay({
+      rscpSoc: state.socPercent,
+      mode: this.getVehicleSocSourceMode(),
+      lastSource: this.lastSocSource,
+      lastPlausibleSoc: this.lastPlausibleVehicleSoc,
+    });
+
+    if (decision.tryExternal) {
+      this.tryApplyExternalVehicleSoc();
     }
 
-    // RSCP 0 / missing — start Homey-car resolve (async, cross-app via Web API)
-    this.tryApplyExternalVehicleSoc();
-
-    if (this.lastPlausibleVehicleSoc !== undefined && this.lastPlausibleVehicleSoc > 0) {
-      // Show last known immediately; async external may overwrite with fresher Tesla SOC
-      if (this.lastSocSource !== 'external' && this.lastSocSource !== 'cloud') {
-        this.lastSocSource = 'last_known';
-        updateCapabilityValue('measure_vehicle_soc', this.lastPlausibleVehicleSoc, this, { force: true });
-        this.updateVehicleSocTitle('last_known').catch(() => {});
-      }
-      return;
+    if (decision.source === 'local' && isPlausibleVehicleSocPercent(decision.soc)) {
+      this.lastPlausibleVehicleSoc = decision.soc;
+      this.saveLastPlausibleSoc(decision.soc!).catch(() => {});
     }
 
-    // No data at all: do not write 0 (misleading). Keep capability as-is; async may fill it.
-    this.lastSocSource = 'none';
-    this.log(
-      'Vehicle SOC: no plausible RSCP value yet, waiting for Homey-car fallback '
-      + `(socRaw=${state.socDiagnostics?.rscpSocRaw ?? 'n/a'}, `
-      + `algHex=${state.socDiagnostics?.algHex ?? 'n/a'})`,
-    );
+    this.applyVehicleSocTile(decision.soc, decision.source).catch(() => {});
+
+    if (decision.source === 'local') {
+      this.log(`Vehicle SOC from RSCP: ${decision.soc}% (mode=${this.getVehicleSocSourceMode()})`);
+      return;
+    }
+    if (decision.source === 'none') {
+      this.log(
+        'Vehicle SOC: no plausible RSCP value'
+        + (decision.tryExternal ? ', waiting for Homey-car fallback ' : ' (rscp_only, no fallback) ')
+        + `(socRaw=${state.socDiagnostics?.rscpSocRaw ?? 'n/a'}, `
+        + `algHex=${state.socDiagnostics?.algHex ?? 'n/a'})`,
+      );
+    }
   }
 
   /** Fire-and-forget external SOC resolve via Homey Web API (cross-app, e.g. Tesla). */
@@ -591,12 +655,20 @@ class WallboxDevice extends Homey.Device implements Wallbox {
       vehicleSocDeviceId?: string;
       vehicleSocCapability?: string;
     };
+    const mode = settings.vehicleSocSource || 'auto_homey_car';
+    if (isRscpOnlyVehicleSocMode(mode)) {
+      return false;
+    }
     const hit = await resolveExternalVehicleSoc(this.homey as any, {
-      mode: settings.vehicleSocSource || 'auto_homey_car',
+      mode,
       deviceId: settings.vehicleSocDeviceId,
       capabilityId: settings.vehicleSocCapability || 'measure_battery',
     });
     if (!hit) {
+      return false;
+    }
+    // Setting may have switched to rscp_only while the Homey API call was in flight
+    if (isRscpOnlyVehicleSocMode(this.getVehicleSocSourceMode())) {
       return false;
     }
     this.applyExternalVehicleSoc(hit.socPercent, 'external');
@@ -634,6 +706,18 @@ class WallboxDevice extends Homey.Device implements Wallbox {
       await this.scheduleHandler.handleManualDeletion(newSettings as Record<string, unknown>);
       // Re-evaluate schedules shortly (new plans may have been added)
       setTimeout(() => this.scheduleHandler.check(), 50);
+    }
+
+    const socKeys = ['vehicleSocSource', 'vehicleSocDeviceId', 'vehicleSocCapability'];
+    if (socKeys.some(k => changedKeys.includes(k))) {
+      this.lastTitleSource = undefined;
+      if (this.lastSyncedState) {
+        this.updateVehicleSocFromLiveState(this.lastSyncedState);
+      } else if (isRscpOnlyVehicleSocMode(String(newSettings.vehicleSocSource || ''))) {
+        await this.applyVehicleSocTile(0, 'local');
+      } else {
+        this.tryApplyExternalVehicleSoc();
+      }
     }
   }
 

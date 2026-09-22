@@ -38,6 +38,19 @@ export interface PowerStatus {
   externalPower: number;
 }
 
+/** Lightweight HKW list for Ladeplaner widgets (no live power, no station.ready). */
+export function listHomePowerPlantIds(homey: HomeyApi): { id: string; name: string }[] {
+  try {
+    const stations = homey.drivers.getDriver('home-power-station').getDevices();
+    return stations.map((station) => ({
+      id: String(station.getData().id),
+      name: station.getName() || String(station.getData().id),
+    }));
+  } catch {
+    return [];
+  }
+}
+
 export async function readHomePowerPlantsForHomey(homey: HomeyApi): Promise<HomePowerPlant[]> {
   const homePowerStations = homey.drivers.getDriver('home-power-station').getDevices();
   const devices: HomePowerPlant[] = [];

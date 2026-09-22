@@ -1,10 +1,14 @@
 'use strict';
 
-const { readHomePowerPlantsForHomey } = require('../../src/utils/home-power-plants.js');
+const { readHomePowerPlantsForHomey, listHomePowerPlantIds } = require('../../src/utils/home-power-plants.js');
 
 module.exports = {
   async readHomePowerPlants({ homey }) {
     return readHomePowerPlantsForHomey(homey);
+  },
+
+  async listPlants({ homey }) {
+    return listHomePowerPlantIds(homey);
   },
 
   async getHkwSchedules({ homey, query }) {

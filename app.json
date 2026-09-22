@@ -3351,6 +3351,10 @@
           "title": {
             "de": "Hauskraftwerk",
             "en": "Home power plant"
+          },
+          "hint": {
+            "de": "Optional. Bei nur einem HKW wird es automatisch verwendet. Zum Suchen ins Feld tippen.",
+            "en": "Optional. With a single HKW it is selected automatically. Type to search."
           }
         }
       ],
@@ -3358,6 +3362,10 @@
         "readHomePowerPlants": {
           "method": "GET",
           "path": "/"
+        },
+        "listPlants": {
+          "method": "GET",
+          "path": "/plants"
         },
         "getHkwSchedules": {
           "method": "GET",
@@ -3449,6 +3457,10 @@
           "title": {
             "de": "Hauskraftwerk",
             "en": "Home power plant"
+          },
+          "hint": {
+            "de": "Optional. Bei nur einem HKW wird es automatisch verwendet. Zum Suchen ins Feld tippen.",
+            "en": "Optional. With a single HKW it is selected automatically. Type to search."
           }
         }
       ],
@@ -3456,6 +3468,10 @@
         "readHomePowerPlants": {
           "method": "GET",
           "path": "/"
+        },
+        "listPlants": {
+          "method": "GET",
+          "path": "/plants"
         },
         "getWallboxes": {
           "method": "GET",

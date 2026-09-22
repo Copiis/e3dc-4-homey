@@ -25,6 +25,7 @@
   </style>
 </head>
 <body>
+<div id="load-error" style="display:none;color:#f88;padding:6px 4px;font-size:15px;"></div>
 <div style="background:#3a2; color:#fff; font-size:8px; padding:2px 4px; border-radius:3px; margin-bottom:4px; line-height:1.2;">
   <strong>Hinweis:</strong> Aktive Pläne haben Vorrang. Flows für Charging/Sun/Current werden ignoriert, solange ein Plan läuft.<br>
   Bei „Hausakku entladen bis“ wird der Wert nur temporär gesetzt und nach Plan-Ende automatisch auf den ursprünglichen Wert zurückgesetzt.
@@ -82,15 +83,61 @@ let Homey = null;
 let plantId = null;
 let wallboxes = [];
 
+function settingsPlantId(settings) {
+  const raw = settings && settings.plantId;
+  if (raw == null) return null;
+  if (typeof raw === 'object' && raw.id != null) return String(raw.id);
+  return String(raw);
+}
+
+function showLoadError(msg) {
+  const el = document.getElementById('load-error');
+  if (!el) return;
+  el.style.display = msg ? 'block' : 'none';
+  el.textContent = msg || '';
+}
+
+async function resolvePlant(HomeyApi) {
+  const wanted = settingsPlantId(HomeyApi.getSettings());
+  let plants = [];
+  try {
+    plants = await HomeyApi.api('GET', '/plants');
+  } catch (e) {
+    try {
+      await HomeyApi.api('POST', '/log', { widget: 'wallbox-ladeplaner', message: 'listPlants failed: ' + (e && e.message ? e.message : e) });
+    } catch (_) {}
+    plants = [];
+  }
+  if (!Array.isArray(plants)) plants = [];
+  const match = wanted && plants.find(p => String(p.id) === String(wanted));
+  const chosen = match || plants[0];
+  if (chosen) {
+    if (!match) {
+      try { HomeyApi.setSettings({ plantId: { id: chosen.id, name: chosen.name } }); } catch (_) {}
+    }
+    return { plantId: String(chosen.id), plants };
+  }
+  if (wanted) return { plantId: String(wanted), plants };
+  return { plantId: null, plants, error: 'Kein HKW gefunden' };
+}
+
 async function onHomeyReady(h) {
   Homey = h;
   Homey.ready({ height: 480 });
 
-  const s = Homey.getSettings();
-  plantId = s.plantId && s.plantId.id ? s.plantId.id : s.plantId;
-
+  const resolved = await resolvePlant(Homey);
+  plantId = resolved.plantId;
   if (!plantId) {
-    document.body.innerHTML = '<div style="color:red;padding:10px">HKW auswählen</div>';
+    showLoadError(resolved.error || 'HKW wird geladen …');
+    const retry = setInterval(async () => {
+      const again = await resolvePlant(Homey);
+      if (again.plantId) {
+        clearInterval(retry);
+        plantId = again.plantId;
+        showLoadError('');
+        setupWallboxUi();
+      }
+    }, 1000);
     return;
   }
 
@@ -98,6 +145,8 @@ async function onHomeyReady(h) {
 }
 
 function setupWallboxUi() {
+  if (setupWallboxUi.done) return;
+  setupWallboxUi.done = true;
   // Disable end input when "Bis voll" ...
   const untilFullCb = document.getElementById('until-full');
   const endInputWb = document.getElementById('end');
