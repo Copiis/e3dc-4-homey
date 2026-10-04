@@ -573,5 +573,9 @@
   "1.8.79": {
     "en": "Wallbox setting \"E3DC RSCP only\" now shows the local vehicle SOC from E3DC, including 0%, instead of a stale Homey-car value and title. Charge planner widgets pick the only home power plant automatically and retry instead of replacing the widget with a select-HKW error.",
     "de": "Wallbox-Einstellung „Nur E3DC RSCP“ zeigt den lokalen Fahrzeug-SOC von E3DC, auch 0 %, statt einen alten Homey-Auto-Wert und -Titel. Die Ladeplaner wählen bei nur einem Hauskraftwerk automatisch aus und versuchen es erneut, statt das Widget durch „HKW auswählen“ zu ersetzen."
+  },
+  "1.8.80": {
+    "en": "Statistics: total consumption including the wallbox, and house consumption without the wallbox. House consumption is the period total minus wallbox energy for the same period.",
+    "de": "Statistik: Gesamtverbrauch (Summe inklusive Wallbox) und Hausverbrauch ohne Wallbox. Der Hausverbrauch ist der Gesamtverbrauch minus die Wallbox-Energie derselben Periode."
   }
 }
