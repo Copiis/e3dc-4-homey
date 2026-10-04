@@ -577,5 +577,9 @@
   "1.8.80": {
     "en": "Statistics: total consumption including the wallbox, and house consumption without the wallbox. House consumption is the period total minus wallbox energy for the same period.",
     "de": "Statistik: Gesamtverbrauch (Summe inklusive Wallbox) und Hausverbrauch ohne Wallbox. Der Hausverbrauch ist der Gesamtverbrauch minus die Wallbox-Energie derselben Periode."
+  },
+  "1.8.81": {
+    "en": "Manual battery charge: the card \"Charge … additionally into the battery\" now accepts Wh or a percent of usable battery capacity. Percent is converted into additional Wh (at least 200 Wh).",
+    "de": "Manuelle Speicherladung: Die Karte „Lade … zusätzlich in die Batterie“ akzeptiert jetzt Wh oder Prozent der nutzbaren Batteriekapazität. Prozent wird in zusätzliche Wh umgerechnet (mindestens 200 Wh)."
   }
 }
