@@ -10,7 +10,8 @@ Name: **HKW - Statistiken** / **HPS - Statistics**.
 |------------|---------|
 | `date_range` | Selected period |
 | `measure_pv_summary` | PV generation in period (kWh) |
-| `measure_house_consumption_summary` | House consumption in period (kWh) |
+| `measure_house_consumption_summary` | Total consumption in period, including the wallbox (kWh). Tile title: Gesamtverbrauch |
+| `measure_house_without_wallbox_summary` | House consumption in period without the wallbox (kWh). Tile title: Hausverbrauch. Total minus the wallbox meter delta over the same period |
 | `measure_grid_out` | Grid import in period (kWh) |
 | `measure_grid_in` | Grid export in period (kWh) |
 | `measure_battery_in` | Battery charged in period (kWh) |

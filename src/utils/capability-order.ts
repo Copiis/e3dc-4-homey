@@ -50,6 +50,7 @@ export const BATTERY_MODULE_TILE_HIDDEN_CAPABILITIES = [
 export const SUMMARY_CAPABILITY_ORDER = [
   'measure_pv_summary',
   'measure_house_consumption_summary',
+  'measure_house_without_wallbox_summary',
   'measure_grid_out',
   'measure_grid_in',
   'measure_battery_in',

@@ -7,6 +7,11 @@ import {I18n} from '../../src/internal-api/i18n';
 import {clearTimeout} from 'node:timers';
 import {reorderCapabilitiesIfNeeded, SUMMARY_CAPABILITY_ORDER} from '../../src/utils/capability-order';
 import {formatError} from '../../src/utils/error-utils';
+import {
+  HOUSE_WITHOUT_WALLBOX_CAPABILITY,
+  readHouseConsumptionWithoutWallboxKwh,
+  wallboxMeterSource,
+} from '../../src/utils/house-without-wallbox';
 
 const SYNC_INTERVAL_SUMMARY = 1000 * 60 * 5; // 5 min
 // const SYNC_INTERVAL = 1000 * 20; // 20 sec
@@ -34,7 +39,11 @@ class SummaryDevice extends Homey.Device implements I18n{
   async onInit() {
     this.log('SummaryDevice has been initialized');
     try {
+      if (!this.hasCapability(HOUSE_WITHOUT_WALLBOX_CAPABILITY)) {
+        await this.addCapability(HOUSE_WITHOUT_WALLBOX_CAPABILITY);
+      }
       await reorderCapabilitiesIfNeeded(this, SUMMARY_CAPABILITY_ORDER);
+      await this.applySummaryTitles();
     } catch (e) {
       this.error('Summary capability migration failed: ' + formatError(e));
     }
@@ -79,7 +88,7 @@ class SummaryDevice extends Homey.Device implements I18n{
         const syncType = ownConfig.type
         api
             .readSummaryData(syncType, true, this, this.homey.clock.getTimezone())
-            .then(result => {
+            .then(async result => {
               updateCapabilityValue('measure_pv_summary', result.pvDelivery / 1000.0, this)
               updateCapabilityValue('measure_house_consumption_summary', result.houseConsumption / 1000.0, this)
               updateCapabilityValue('measure_battery_in', result.batteryIn / 1000.0, this)
@@ -88,6 +97,7 @@ class SummaryDevice extends Homey.Device implements I18n{
               updateCapabilityValue('measure_grid_out', result.gridOut / 1000.0, this)
               updateCapabilityValue('measure_self_consumption', result.selfConsumption * 100, this)
               updateCapabilityValue('measure_autarky', result.selfSufficiency * 100, this)
+              await this.updateHouseWithoutWallbox(result.houseConsumption, stationId, syncType)
 
               this.syncErrorCount = 0
               if (!this.getAvailable()) {
@@ -113,6 +123,52 @@ class SummaryDevice extends Homey.Device implements I18n{
       }
     })
   }
+  /**
+   * Homey keeps the title from pairing. The sum used to be labeled Hausverbrauch;
+   * existing devices only pick up Gesamtverbrauch / Hausverbrauch through options.
+   */
+  private async applySummaryTitles() {
+    const titles: Record<string, {en: string; de: string}> = {
+      measure_house_consumption_summary: {en: 'Total consumption', de: 'Gesamtverbrauch'},
+      [HOUSE_WITHOUT_WALLBOX_CAPABILITY]: {en: 'House consumption', de: 'Hausverbrauch'},
+    }
+    for (const [capabilityId, title] of Object.entries(titles)) {
+      if (!this.hasCapability(capabilityId)) {
+        continue
+      }
+      await this.setCapabilityOptions(capabilityId, {
+        title,
+        units: {en: 'kWh', de: 'kWh'},
+        decimals: 1,
+        uiComponent: 'sensor',
+      })
+    }
+  }
+
+  private async updateHouseWithoutWallbox(totalWh: number, stationId: string, summaryType: SummaryConfig['type']) {
+    try {
+      const wallboxes = this.homey.drivers.getDriver('wallbox').getDevices()
+          .map(device => wallboxMeterSource(device))
+          .filter((source): source is NonNullable<typeof source> => source != null)
+      const withoutWallbox = await readHouseConsumptionWithoutWallboxKwh({
+        homey: this.homey,
+        wallboxes,
+        stationId,
+        summaryType,
+        totalWh,
+        timezone: this.homey.clock.getTimezone(),
+        log: message => this.log(message),
+      })
+      if (withoutWallbox == null) {
+        this.log('House consumption without wallbox left unchanged')
+        return
+      }
+      updateCapabilityValue(HOUSE_WITHOUT_WALLBOX_CAPABILITY, withoutWallbox, this)
+    } catch (error) {
+      this.error('House consumption without wallbox failed: ' + formatError(error))
+    }
+  }
+
   async onAdded() {
     this.log('SummaryDevice has been added');
   }

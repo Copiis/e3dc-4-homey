@@ -1104,6 +1104,7 @@
       "capabilities": [
         "measure_pv_summary",
         "measure_house_consumption_summary",
+        "measure_house_without_wallbox_summary",
         "measure_grid_out",
         "measure_grid_in",
         "measure_battery_in",
@@ -1113,6 +1114,18 @@
         "date_range"
       ],
       "capabilitiesOptions": {
+        "measure_house_consumption_summary": {
+          "title": {
+            "en": "Total consumption",
+            "de": "Gesamtverbrauch"
+          }
+        },
+        "measure_house_without_wallbox_summary": {
+          "title": {
+            "en": "House consumption",
+            "de": "Hausverbrauch"
+          }
+        },
         "measure_grid_out": {
           "title": {
             "en": "Grid import",
@@ -3834,6 +3847,23 @@
       "decimals": 2
     },
     "measure_house_consumption_summary": {
+      "type": "number",
+      "title": {
+        "en": "Total consumption",
+        "de": "Gesamtverbrauch"
+      },
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "units": {
+        "en": "kWh",
+        "de": "kWh"
+      },
+      "icon": "/assets/images/home.svg",
+      "insights": true,
+      "decimals": 1
+    },
+    "measure_house_without_wallbox_summary": {
       "type": "number",
       "title": {
         "en": "House consumption",

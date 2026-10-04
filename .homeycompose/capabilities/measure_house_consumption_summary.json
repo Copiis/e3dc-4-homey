@@ -1,8 +1,8 @@
 {
   "type": "number",
   "title": {
-    "en": "House consumption",
-    "de": "Hausverbrauch"
+    "en": "Total consumption",
+    "de": "Gesamtverbrauch"
   },
   "getable": true,
   "setable": false,
