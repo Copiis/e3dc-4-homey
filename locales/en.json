@@ -79,6 +79,7 @@
     "activating-of-powerlimits-failed-by-hps": "The home power station has refused to activate the charge/discharge limits. Response: __RESULTCODE__",
     "deactivating-of-powerlimits-failed-by-hps": "The home power station has refused to deactivate the charge/discharge limits. Response: __RESULTCODE__",
     "manual-charge-input-wrong-wh-to-low": "An energy quantity of at least __MIN__Wh must be specified",
+    "manual-charge-capacity-unknown": "The usable battery capacity is unknown. Percent cannot be converted to Wh.",
     "manual-charge-rejected-by-hps": "Manual storage tank charging was rejected by the home power station without explanation. A charge may have already been carried out today",
     "manual-charge-already-running": "A manual charging process is already active"
   },

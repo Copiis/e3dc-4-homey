@@ -81,6 +81,7 @@
     "activating-of-powerlimits-failed-by-hps": "Das Hauskraftwerk hat die Aktivierung der Lade-/Entladelimits abgelehnt. Antwort: __RESULTCODE__",
     "deactivating-of-powerlimits-failed-by-hps": "Das Hauskraftwerk hat die Deaktivierung der Lade-/Entladelimits abgelehnt. Antwort: __RESULTCODE__",
     "manual-charge-input-wrong-wh-to-low": "Es muss mindesens eine Energiemenge von __MIN__Wh angegeben werden",
+    "manual-charge-capacity-unknown": "Die nutzbare Batteriekapazität ist nicht bekannt. Prozent kann nicht in Wh umgerechnet werden.",
     "manual-charge-rejected-by-hps": "Manuelle Speicherladung wurde vom Hauskraftwerk ohne Begründung abgelehnt. Evtl. wurde heute bereits eine Ladung durchgeführt",
     "manual-charge-already-running": "Es ist bereits ein manueller Ladevorgang aktiv"
   },

@@ -28,7 +28,7 @@ Flow cards are registered on the **HKW** and **Wallbox** drivers (device-level c
 - Set / remove max charge power, max discharge power, all limits
 - Activate / deactivate configured station limits
 - Provide current charging configuration (tokens)
-- Manual charge by amount (Wh) or to SoC %; stop manual charge
+- Manual charge by additional amount (Wh, or % of usable capacity) or to a target SoC %; stop manual charge
 - **Power modes:** auto · idle · force charge · force discharge · **grid charge**
 - Configure / remove emergency reserve
 - Export diagnostic report

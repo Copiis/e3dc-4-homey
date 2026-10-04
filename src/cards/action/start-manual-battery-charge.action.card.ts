@@ -1,13 +1,14 @@
 import {HomePowerStation} from '../../model/home-power-station';
 import {RunListener} from '../run-listener';
 import {formatError} from '../../utils/error-utils';
+import {MIN_MANUAL_CHARGE_WH, resolveAdditionalChargeWh} from '../../utils/additional-charge';
 
 function startCharge(amount: number,
                       hps: HomePowerStation,
                       resolve: ((value: unknown | PromiseLike<unknown>) => void),
                       reject: ((reason?: unknown) => void)) {
-    if (amount < 200) {
-        reject(hps.translate('messages.manual-charge-input-wrong-wh-to-low', {MIN: 200}))
+    if (amount < MIN_MANUAL_CHARGE_WH) {
+        reject(hps.translate('messages.manual-charge-input-wrong-wh-to-low', {MIN: MIN_MANUAL_CHARGE_WH}))
     }
     else {
         hps.getApi()
@@ -78,14 +79,44 @@ export class StartManualBatteryChargeWhActionCard implements RunListener {
         return new Promise<unknown>(async (resolve, reject) => {
             const hps: HomePowerStation = args.device as HomePowerStation;
             const amount: number = (args.amount as number) ?? 0
-            hps.log('StartManualBatteryChargingActionCardWh: triggered -> ' + amount)
+            const unit: string = (args.unit as string) ?? 'wh'
+            hps.log('StartManualBatteryChargingActionCardWh: triggered -> ' + amount + ' ' + unit)
             const currentState = hps.getManualChargeState()
-            if (!currentState?.active) {
-                startCharge(amount, hps, resolve, reject)
-            }
-            else {
+            if (currentState?.active) {
                 hps.log('Manual charge is already running')
                 reject(hps.translate('messages.manual-charge-already-running'))
+                return
+            }
+
+            const begin = (capacityWh: number) => {
+                const resolved = resolveAdditionalChargeWh(amount, unit, capacityWh)
+                if ('error' in resolved) {
+                    if (resolved.error === 'invalid-percentage') {
+                        reject(hps.translate('messages.invalid-percentage'))
+                        return
+                    }
+                    if (resolved.error === 'no-capacity') {
+                        reject(hps.translate('messages.manual-charge-capacity-unknown'))
+                        return
+                    }
+                    reject(hps.translate('messages.manual-charge-input-wrong-wh-to-low', {MIN: MIN_MANUAL_CHARGE_WH}))
+                    return
+                }
+                hps.log('StartManualBatteryChargingActionCardWh: charging ' + resolved.wh + ' Wh')
+                startCharge(resolved.wh, hps, resolve, reject)
+            }
+
+            if (unit === 'percentage') {
+                hps.getBatteryCapacity()
+                    .then(capacity => begin(capacity))
+                    .catch(reason => {
+                        hps.log('Unable to start manual charge. Error reading battery capacity')
+                        hps.error(formatError(reason))
+                        reject(reason)
+                    })
+            }
+            else {
+                begin(0)
             }
         })
     }

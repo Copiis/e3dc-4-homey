@@ -2568,12 +2568,12 @@
           "en": "Start a manual battery charge"
         },
         "titleFormatted": {
-          "de": "Lade [[amount]] Wh zusätzlich in die Batterie",
-          "en": "Charge [[amount]] Wh additionally into the battery"
+          "de": "Lade [[amount]] [[unit]] zusätzlich in die Batterie",
+          "en": "Charge [[amount]] [[unit]] additionally into the battery"
         },
         "hint": {
-          "de": "Es wird ein manueller Ladevorgang gestartet. Es wird die angegebene Energiemenge in Wh zusätzlich zum jetzigen Ladestand geladen (Bis max 100%). Achtung: Bei den meisten Hauskraftwerken kann eine manuelle Speicherladung nur einmal am Tag ausgelöst werden",
-          "en": "A manual charging process is started. The specified amount of energy in Wh is charged in addition to the current charge level (up to max. 100%). Attention: With most home power stations, manual storage charging can only be triggered once a day"
+          "de": "Es wird ein manueller Ladevorgang gestartet. Die Menge wird zusätzlich zum jetzigen Ladestand geladen (bis max. 100 %). Wh: Energiemenge, mindestens 200 Wh. %: Anteil der nutzbaren Batteriekapazität. Achtung: Bei den meisten Hauskraftwerken kann eine manuelle Speicherladung nur einmal am Tag ausgelöst werden",
+          "en": "A manual charging process is started. The amount is charged in addition to the current charge level (up to max. 100%). Wh: energy amount, at least 200 Wh. %: share of the usable battery capacity. Attention: With most home power stations, manual storage charging can only be triggered once a day"
         },
         "args": [
           {
@@ -2589,8 +2589,33 @@
               "en": "Amount of energy"
             },
             "required": true,
-            "min": 200,
+            "min": 1,
             "step": 1
+          },
+          {
+            "type": "dropdown",
+            "name": "unit",
+            "title": {
+              "de": "Einheit",
+              "en": "Unit"
+            },
+            "required": true,
+            "values": [
+              {
+                "id": "wh",
+                "label": {
+                  "de": "Wh",
+                  "en": "Wh"
+                }
+              },
+              {
+                "id": "percentage",
+                "label": {
+                  "de": "%",
+                  "en": "%"
+                }
+              }
+            ]
           }
         ]
       },
