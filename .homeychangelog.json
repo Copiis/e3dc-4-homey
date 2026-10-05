@@ -581,5 +581,9 @@
   "1.8.81": {
     "en": "Manual battery charge: the card \"Charge … additionally into the battery\" now accepts Wh or a percent of usable battery capacity. Percent is converted into additional Wh (at least 200 Wh).",
     "de": "Manuelle Speicherladung: Die Karte „Lade … zusätzlich in die Batterie“ akzeptiert jetzt Wh oder Prozent der nutzbaren Batteriekapazität. Prozent wird in zusätzliche Wh umgerechnet (mindestens 200 Wh)."
+  },
+  "1.8.82": {
+    "en": "**PV forecast:** New value House consumption forecast (kWh, without the wallbox), estimated from the last 14 completed days. Days clearly below the average leave the average. One high day yesterday raises the forecast by half the gap. If one of the two days before is high as well, the forecast is all of yesterday.",
+    "de": "**PV-Prognose:** Neuer Wert Hausverbrauch Prognose (kWh, ohne Wallbox) aus den letzten 14 abgeschlossenen Tagen. Tage klar unter dem Schnitt fallen heraus. Liegt nur gestern klar darüber, steigt die Prognose um die Hälfte des Abstands. Liegt zusätzlich einer der zwei Tage davor darüber, gilt der ganze gestrige Tag."
   }
 }
