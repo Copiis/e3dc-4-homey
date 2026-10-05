@@ -230,7 +230,49 @@ export function houseWithoutWallboxFromSeries(
   return houseWithoutWallboxKwh(totalKwh, wallboxKwh);
 }
 
+/** Hourly meter log covering the last 14 days, for the house-consumption forecast. */
+export const HOUSE_FORECAST_METER_RESOLUTION = 'last14Days';
+
 const HOMEY_DEVICE_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+/**
+ * Wallbox meter series for one station. An empty list means the station has
+ * no wallbox. Null means the log could not be read, so the day must not be
+ * treated as wallbox-free.
+ */
+export async function loadStationWallboxSeries(args: {
+  homey: HomeyInsightsHost;
+  wallboxes: WallboxMeterSource[];
+  stationId: string;
+  resolution?: string;
+  log?: (message: string) => void;
+}): Promise<MeterSeries[] | null> {
+  const matched = args.wallboxes.filter(wallbox => wallboxBelongsToStation(wallbox, args.stationId));
+  if (matched.length === 0) {
+    return [];
+  }
+  const resolved = await resolveWallboxUuids(args.homey, matched, args.log);
+  if (resolved == null) {
+    return null;
+  }
+  const resolution = args.resolution ?? HOUSE_FORECAST_METER_RESOLUTION;
+  const seriesList: MeterSeries[] = [];
+  for (const wallbox of resolved) {
+    let parsed: MeterSeries | null;
+    try {
+      parsed = await fetchMeterSeries(args.homey, wallbox.id, resolution);
+    } catch (error) {
+      args.log?.('Wallbox insight read failed for ' + wallbox.id + ': ' + (error instanceof Error ? error.message : 'unknown'));
+      return null;
+    }
+    if (!parsed || parsed.samples.length === 0) {
+      args.log?.('Wallbox insight series empty for ' + resolution);
+      return null;
+    }
+    seriesList.push(parsed);
+  }
+  return seriesList;
+}
 
 export function wallboxBelongsToStation(wallbox: WallboxMeterSource, stationId: string): boolean {
   if (wallbox.stationId === stationId) {

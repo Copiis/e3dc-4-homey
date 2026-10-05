@@ -20,6 +20,15 @@ import {
   PvForecastStoreConfig,
   PvSegmentConfig,
 } from '../../src/model/pv-forecast.config';
+import {startOfLocalCalendarDay} from '../../src/utils/grid-cumulative-archive';
+import {
+  HOUSE_FORECAST_CAPABILITY,
+  HOUSE_FORECAST_DAY_COUNT,
+  HOUSE_FORECAST_REFRESH_MS,
+  closedDayHouseKwh,
+  forecastHouseConsumptionKwh,
+} from '../../src/utils/house-consumption-forecast';
+import {loadStationWallboxSeries, wallboxMeterSource} from '../../src/utils/house-without-wallbox';
 import {SummaryType} from '../../src/model/summary.config';
 import {DailyIrradianceForecast, fetchTodayTiltedIrradianceForecast} from '../../src/services/open-meteo-forecast';
 import {updateCapabilityValue} from '../../src/utils/capability-utils';
@@ -54,6 +63,13 @@ const STORE_DAY_STATE_KEY = 'pvForecastDayState';
 const STORE_WEATHER_KEY = 'pvForecastWeatherBySurface';
 /** Cross-day learned baseline scale (actual/rawBaseline EMA). */
 const STORE_DAY_SCALE_KEY = 'pvForecastDayScale';
+const STORE_HOUSE_FORECAST_KEY = 'houseConsumptionForecast';
+
+interface HouseForecastCache {
+  localDate: string;
+  fetchedAt: number;
+  kwh: number;
+}
 
 type WeatherCache = Record<string, DailyIrradianceForecast>;
 
@@ -62,6 +78,8 @@ class PvForecastDevice extends Homey.Device {
   private loopId: NodeJS.Timeout | null = null;
   private syncErrorCount = 0;
   private cachedWeather: WeatherCache = {};
+  private houseForecastTask: Promise<void> | null = null;
+  private houseForecastFailedAt = 0;
 
   /**
    * Initialisiert die PV-Prognose.
@@ -71,6 +89,7 @@ class PvForecastDevice extends Homey.Device {
     this.log('PvForecastDevice has been initialized');
     this.cachedWeather = this.getStoreValue(STORE_WEATHER_KEY) ?? {};
     await this.migrateLegacySettingsOnce();
+    await this.ensureHouseForecastCapability();
     this.restoreDisplayFromCache();
     setTimeout(() => this.autoSync(), 4000);
   }
@@ -160,6 +179,23 @@ class PvForecastDevice extends Homey.Device {
     if (dayState.actualKwh != null) {
       updateCapabilityValue('measure_pv_actual_today', dayState.actualKwh, this);
     }
+    const houseForecast = this.getStoreValue(STORE_HOUSE_FORECAST_KEY) as HouseForecastCache | undefined;
+    if (typeof houseForecast?.kwh === 'number') {
+      updateCapabilityValue(HOUSE_FORECAST_CAPABILITY, houseForecast.kwh, this);
+    }
+  }
+
+  private async ensureHouseForecastCapability(): Promise<void> {
+    if (!this.hasCapability(HOUSE_FORECAST_CAPABILITY)) {
+      await this.addCapability(HOUSE_FORECAST_CAPABILITY);
+    }
+    await this.setCapabilityOptions(HOUSE_FORECAST_CAPABILITY, {
+      title: {en: 'House consumption forecast', de: 'Hausverbrauch Prognose'},
+      units: {en: 'kWh', de: 'kWh'},
+      decimals: 1,
+    }).catch(reason => {
+      this.error('House forecast title failed: ' + formatError(reason));
+    });
   }
 
   private resolveLinkedStation(): HomePowerStation | null {
@@ -315,6 +351,89 @@ class PvForecastDevice extends Homey.Device {
   }
 
   /**
+   * Hausverbrauch des aktuellen Tages aus den letzten 14 abgeschlossenen Tagen.
+   * Ein Fehlschlag lässt den letzten Wert stehen und blockiert die PV-Prognose nicht.
+   */
+  private refreshHouseConsumptionForecast(station: HomePowerStation, timezone: string): Promise<void> {
+    const today = localDateString(timezone);
+    const cached = this.getStoreValue(STORE_HOUSE_FORECAST_KEY) as HouseForecastCache | undefined;
+    if (
+      cached?.localDate === today
+      && typeof cached.kwh === 'number'
+      && Date.now() - cached.fetchedAt < HOUSE_FORECAST_REFRESH_MS
+    ) {
+      updateCapabilityValue(HOUSE_FORECAST_CAPABILITY, cached.kwh, this);
+      return Promise.resolve();
+    }
+    if (Date.now() - this.houseForecastFailedAt < HOUSE_FORECAST_REFRESH_MS) {
+      return Promise.resolve();
+    }
+    if (this.houseForecastTask) {
+      return this.houseForecastTask;
+    }
+    this.houseForecastTask = this.fetchHouseConsumptionForecast(station, timezone, today)
+      .catch(reason => {
+        this.houseForecastFailedAt = Date.now();
+        this.log('House consumption forecast failed: ' + formatError(reason));
+      })
+      .finally(() => {
+        this.houseForecastTask = null;
+      });
+    return this.houseForecastTask;
+  }
+
+  private async fetchHouseConsumptionForecast(
+    station: HomePowerStation,
+    timezone: string,
+    today: string,
+  ): Promise<void> {
+    const quiet = {
+      log: () => undefined,
+      error: (...args: unknown[]) => this.error(...args),
+    };
+    const now = new Date();
+    const wallboxes = this.homey.drivers.getDriver('wallbox').getDevices()
+      .map(device => wallboxMeterSource(device))
+      .filter((source): source is NonNullable<typeof source> => source != null);
+    const seriesList = await loadStationWallboxSeries({
+      homey: this.homey,
+      wallboxes,
+      stationId: station.getId(),
+      log: message => this.log(message),
+    });
+    if (seriesList == null) {
+      this.houseForecastFailedAt = Date.now();
+      this.log('House consumption forecast left unchanged (wallbox log missing)');
+      return;
+    }
+
+    const days: Array<number | null> = [];
+    for (let offset = -HOUSE_FORECAST_DAY_COUNT; offset <= -1; offset++) {
+      const start = startOfLocalCalendarDay(timezone, offset, now);
+      const summary = await station.getApi().readClosedDaySummary(start, true, quiet);
+      days.push(closedDayHouseKwh(summary.houseConsumption, seriesList, start));
+    }
+
+    const forecast = forecastHouseConsumptionKwh(days);
+    if (forecast == null) {
+      this.houseForecastFailedAt = Date.now();
+      this.log('House consumption forecast left unchanged (no completed days)');
+      return;
+    }
+
+    const kwh = roundKwh(forecast);
+    updateCapabilityValue(HOUSE_FORECAST_CAPABILITY, kwh, this);
+    const used = days.filter(value => value != null).length;
+    this.log(`House consumption forecast: ${kwh} kWh from ${used} days`);
+    this.houseForecastFailedAt = 0;
+    await this.setStoreValue(STORE_HOUSE_FORECAST_KEY, {
+      localDate: today,
+      fetchedAt: Date.now(),
+      kwh,
+    });
+  }
+
+  /**
    * Führt den vollen Sync der PV-Prognose durch.
    * Holt aktuelle Wetterdaten, berechnet Forecast und aktualisiert Capabilities.
    */
@@ -346,6 +465,7 @@ class PvForecastDevice extends Homey.Device {
     let dayState = this.loadDayState(today, configHash);
 
     try {
+      await this.refreshHouseConsumptionForecast(station, timezone);
       const weatherBySurface = await this.fetchWeatherForSegments(settings, timezone, dayState, nowMs);
       const segmentInputs = settings.segments.map(segment => {
         const key = weatherCacheKey(segment.tilt, segment.openMeteoAzimuth);

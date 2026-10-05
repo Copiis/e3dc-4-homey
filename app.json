@@ -649,7 +649,8 @@
       "capabilities": [
         "measure_pv_forecast_baseline",
         "measure_pv_forecast_adjusted",
-        "measure_pv_actual_today"
+        "measure_pv_actual_today",
+        "measure_house_consumption_forecast"
       ],
       "platforms": [
         "local"
@@ -3870,6 +3871,23 @@
       "icon": "/assets/images/home.svg",
       "insights": true,
       "decimals": 2
+    },
+    "measure_house_consumption_forecast": {
+      "type": "number",
+      "title": {
+        "en": "House consumption forecast",
+        "de": "Hausverbrauch Prognose"
+      },
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "units": {
+        "en": "kWh",
+        "de": "kWh"
+      },
+      "icon": "/assets/images/home.svg",
+      "insights": true,
+      "decimals": 1
     },
     "measure_house_consumption_summary": {
       "type": "number",

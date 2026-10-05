@@ -182,6 +182,25 @@ export class RscpApi {
         })
     }
 
+    /**
+     * One closed local day. `start` is local midnight. Same 24h frame as the
+     * statistics "yesterday" request. A fortnight does not fit in one frame.
+     */
+    readClosedDaySummary(start: Date, allowReconnect: boolean = true, log: Logger): Promise<SummaryData> {
+        return new Promise<SummaryData>((resolve, reject) => {
+            this.getOpenConnection(log)
+                .then(con => {
+                    const request = this.buildClosedDayFrame(start, log)
+                    con.send(request)
+                        .then(response => {
+                            resolve(this.parseSummaryData(request, response, SummaryType.YESTERDAY))
+                        })
+                        .catch(e => this.handleClosedDaySummaryError(start, allowReconnect, e, resolve, reject, log))
+                })
+                .catch(e => this.handleClosedDaySummaryError(start, allowReconnect, e, resolve, reject, log))
+        })
+    }
+
     readSummaryData(summaryType: SummaryType, allowReconnect: boolean = true, log: Logger, timezone?: string): Promise<SummaryData> {
         return new Promise<SummaryData>((resolve, reject) => {
             log.log('readSummaryData: Requesting connection ...')
@@ -496,6 +515,27 @@ export class RscpApi {
             selfConsumption: rscpResult.selfConsumption,
             selfSufficiency: rscpResult.selfSufficiency
         }
+    }
+
+    private buildClosedDayFrame(start: Date, log: Logger): Frame {
+        const seconds = 24 * 60 * 60
+        log.log('Closed day startdate: ' + start.toISOString() + ' - duration (seconds): ' + seconds)
+        return new FrameBuilder()
+            .addData(
+                new DataBuilder().tag(DBTag.REQ_HISTORY_DATA_DAY).container(
+                    new DataBuilder().tag(DBTag.REQ_HISTORY_TIME_START).timestamp(start).build(),
+                    new DataBuilder().tag(DBTag.REQ_HISTORY_TIME_INTERVAL).duration({
+                        seconds,
+                        nanos: 0
+                    }).build(),
+                    new DataBuilder().tag(DBTag.REQ_HISTORY_TIME_SPAN).duration({
+                        seconds,
+                        nanos: 0
+                    }).build()
+                )
+                    .build()
+            )
+            .build()
     }
 
     private buildFrameBySummaryType(summaryType: SummaryType, log: Logger, timezone?: string): Frame {
@@ -962,6 +1002,38 @@ export class RscpApi {
         }
         else {
             log.log('readLiveData: Received error. Error: ' + formatError(causingError))
+            log.log(causingError)
+            rejectAsError(reject, causingError)
+        }
+    }
+
+    private handleClosedDaySummaryError(
+        start: Date,
+        allowReconnect: boolean,
+        causingError: Error,
+        resolve: ((value: SummaryData | PromiseLike<SummaryData>) => void),
+        reject: ((reason?: unknown) => void),
+        log: Logger,
+    ) {
+        if (allowReconnect) {
+            log.log('readClosedDaySummary: Received error. Try to reconnect ... ')
+            log.log(causingError)
+            const currentConnection = pool.getConnection(this.getKey())
+            this.closeConnection(currentConnection, log)
+                .finally(() => {
+                    this.readClosedDaySummary(start, false, log)
+                        .then(data => {
+                            log.log('readClosedDaySummary: Retry was successfull')
+                            resolve(data)
+                        })
+                        .catch(e => {
+                            log.log('readClosedDaySummary: Retry failed also: ' + formatError(e))
+                            rejectAsError(reject, e)
+                        })
+                })
+        }
+        else {
+            log.log('readClosedDaySummary: Received error.')
             log.log(causingError)
             rejectAsError(reject, causingError)
         }

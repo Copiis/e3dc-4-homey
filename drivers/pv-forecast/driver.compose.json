@@ -7,7 +7,8 @@
   "capabilities": [
     "measure_pv_forecast_baseline",
     "measure_pv_forecast_adjusted",
-    "measure_pv_actual_today"
+    "measure_pv_actual_today",
+    "measure_house_consumption_forecast"
   ],
   "platforms": [
     "local"

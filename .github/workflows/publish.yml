@@ -50,6 +50,7 @@ jobs:
           npx tsc
           node --test --test-isolation=none \
             .homeybuild/test/additional-charge.test.js \
+            .homeybuild/test/house-consumption-forecast.test.js \
             .homeybuild/test/pv-forecast-adjusted.test.js \
             .homeybuild/test/setup.test.js
 
