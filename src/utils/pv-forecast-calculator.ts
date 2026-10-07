@@ -50,6 +50,27 @@ const MAX_DOWN_ABS_UNCATCHABLE = 6.0;
 export const EVENING_FLATTEN_HOURS = 2.5;
 
 /**
+ * Abschlag auf die Tagesend-Schätzung ab 13 Uhr (voll ab 15 Uhr).
+ * Insights 30.09.–07.10.: die Nachberechnung lag bis ~16 Uhr 0,5–2,2 kWh
+ * über dem Tages-Ist und wurde erst 17–21 Uhr nach unten gezogen.
+ * Eine Korrektur nach oben ist erwünscht — der Abschlag legt A etwas
+ * unter die reine Wetter-Landung, sobald der Nachmittag erkennbar ist.
+ */
+export function afternoonUndershootKwh(baselineKwh: number, localHour: number): number {
+  if (localHour < 13 || !(baselineKwh > 0)) {
+    return 0;
+  }
+  const full = Math.min(1.8, Math.max(0.4, baselineKwh * 0.08));
+  if (localHour >= 15) {
+    return full;
+  }
+  if (localHour >= 14) {
+    return full * 0.65;
+  }
+  return full * 0.35;
+}
+
+/**
  * Scale factor for remaining weather energy as the daily curve flattens.
  * Full credit until 2 h before end; then (h/2)² → 0 at end (parabolic taper).
  */
@@ -555,6 +576,15 @@ export function computeWeatherRestLandingPoint(input: {
     A = Math.min(A, actual + Math.max(remaining * f, Math.min(2.5, remaining * CORRECTION_MAX)));
   }
 
+  // Hat das Ist die Linie schon erreicht, nicht wieder nach unten ziehen.
+  const overtook = prev != null && actual + 0.05 >= prev;
+  if (!overtook) {
+    const cut = afternoonUndershootKwh(baseline, hour);
+    const room = Math.max(0, A - actual);
+    const applied = Math.min(cut, room * 0.45);
+    A -= applied;
+  }
+
   A = Math.max(A, actual);
   return roundKwh(A);
 }
@@ -772,14 +802,14 @@ export function blendAdjustedForecast(input: AdjustedForecastBlendInput): number
 
   let result = target;
 
-  // Early afternoon + little actual: soft anchor at baseline (no crash under B)
-  const t = Math.max(0, Math.min(1, (input.localHour - 12) / 7));
-  if (t < 0.3 && baseline > 0 && actual < baseline * 0.45 && reanticipate === 'none') {
+  // Bis 13 Uhr bei wenig Ist: an der Baseline bleiben. Danach darf der
+  // Nachmittags-Abschlag die zu hohe Linie früher senken.
+  if (input.localHour < 13 && baseline > 0 && actual < baseline * 0.45 && reanticipate === 'none') {
     const anchor =
       input.previousAdjustedKwh != null && input.previousAdjustedKwh > 0
         ? Math.min(input.previousAdjustedKwh, baseline)
         : baseline;
-    result = Math.max(actual, anchor * (1 - t) + target * t);
+    result = Math.max(actual, anchor);
   }
 
   result = Math.max(result, actual);
@@ -848,7 +878,7 @@ export function blendAdjustedForecast(input: AdjustedForecastBlendInput): number
   }
 
   // Keep near weather/pace target (allow residual above actual)
-  if (!(t < 0.3 && actual < baseline * 0.45 && reanticipate === 'none')) {
+  if (!(input.localHour < 13 && actual < baseline * 0.45 && reanticipate === 'none')) {
     const slack = reanticipate === 'above' && taper > 0.25 ? 1.0 : 0.4;
     result = Math.min(result, Math.max(target, actual) + slack * Math.max(taper, 0.1));
   }

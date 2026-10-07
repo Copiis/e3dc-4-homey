@@ -45,15 +45,24 @@ export class WallboxScheduleExecutor {
     try {
       const info: TriggeredWallboxScheduleInfo = { action: s.action };
 
-      // Delegate ALL global EMS overrides (discharge + priorities) to the central manager
+      // Snapshot "Batterie entladen bis" before any override so untilFull and
+      // manual deletion can put the user value back. The live device applies
+      // the override through GlobalEmsOverrideManager (one RSCP write). Without
+      // that manager the executor writes the percent itself.
       const planOverrides: any = {};
-      if (typeof s.dischargeSoc === 'number') planOverrides.dischargeBatteryUntilPercent = s.dischargeSoc;
+      if (typeof s.dischargeSoc === 'number') {
+        const current = this.currentDischargePercent();
+        if (typeof current === 'number') info.savedDischargeSoc = current;
+        planOverrides.dischargeBatteryUntilPercent = s.dischargeSoc;
+      }
       if (s.batteryToCar !== undefined) planOverrides.batteryToCarAllowed = s.batteryToCar;
       if (s.batteryBeforeCar !== undefined) planOverrides.batteryBeforeCar = s.batteryBeforeCar;
       if (s.batteryDischargeMixBlocked !== undefined) planOverrides.batteryDischargeMixBlocked = s.batteryDischargeMixBlocked;
 
       if (Object.keys(planOverrides).length > 0 && this.device.globalEmsOverrideManager) {
         await this.device.globalEmsOverrideManager.applyOverrides(id, planOverrides);
+      } else if (typeof s.dischargeSoc === 'number') {
+        await this.writeDischargePercent(s.dischargeSoc, false);
       }
 
       if (s.action === 'allow') {
@@ -92,10 +101,29 @@ export class WallboxScheduleExecutor {
       await this.device.applySunMode(true, undefined, force);
     }
 
-    // Restore using the central manager
+    // One restore path. The manager owns the snapshot on the live device.
+    // The saved percent is the fallback when that manager is absent.
     if (this.device.globalEmsOverrideManager && id) {
       await this.device.globalEmsOverrideManager.restoreOverrides(id);
+    } else if (typeof info?.savedDischargeSoc === 'number') {
+      await this.writeDischargePercent(info.savedDischargeSoc, true);
     }
+  }
+
+  private currentDischargePercent(): number | undefined {
+    const fromGetter = this.device.getCurrentDischargeBatteryUntil();
+    if (typeof fromGetter === 'number') return fromGetter;
+    const fromCap = this.device.getCapabilityValue('measure_wallbox_discharge_soc');
+    return typeof fromCap === 'number' ? fromCap : undefined;
+  }
+
+  private async writeDischargePercent(percent: number, restore: boolean): Promise<void> {
+    await this.device.setDischargeBatteryUntil(percent);
+    this.device.invalidateAssociatedEmsCache?.();
+    const text = restore
+      ? `Ladeplan beendet – "Batterie entladen bis" auf ${percent}% zurückgesetzt`
+      : `Ladeplan hat "Batterie entladen bis" auf ${percent}% gesetzt`;
+    this.device.postTimelineNotification?.(text);
   }
 
   /**

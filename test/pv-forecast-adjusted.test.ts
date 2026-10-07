@@ -3,6 +3,7 @@ import assert from 'node:assert';
 import {
   adjustedSoftCap,
   applyBaselineDayScale,
+  afternoonUndershootKwh,
   blendAdjustedForecast,
   capRemainingByPace,
   computeInstantCorrectionFactor,
@@ -126,6 +127,43 @@ describe('computeWeatherRestLandingPoint', () => {
       localHour: 17,
     });
     assert.ok(result >= 30);
+  });
+
+  it('lowers an optimistic landing by mid-afternoon (Insights 03.–06.10.)', () => {
+    // A hielt ~21 bis 16 Uhr, Tages-Ist endete bei ~18,8. Um 15 Uhr Ist 16,7, Rest ~4,5.
+    const early = computeWeatherRestLandingPoint({
+      actualKwh: 16.7,
+      baselineKwh: 20,
+      expectedKwhSoFar: 16,
+      remainingWeatherKwh: 4.5,
+      correctionFactor: 1,
+      localHour: 15,
+      previousAdjustedKwh: 21,
+      hoursUntilProductionEnd: 4.5,
+    });
+    assert.ok(early < 20.0, `15:00 must leave the high plateau, got ${early}`);
+    assert.ok(early > 17.2, `keep a forecast above Ist so a later rise can correct up, got ${early}`);
+
+    const morning = computeWeatherRestLandingPoint({
+      actualKwh: 4,
+      baselineKwh: 20,
+      expectedKwhSoFar: 4,
+      remainingWeatherKwh: 17,
+      correctionFactor: 1,
+      localHour: 11,
+      previousAdjustedKwh: 21,
+      hoursUntilProductionEnd: 8,
+    });
+    assert.ok(morning > 19, `morning projection stays high, got ${morning}`);
+  });
+
+  it('afternoon undershoot grows until 15:00 and stays off before 13:00', () => {
+    assert.strictEqual(afternoonUndershootKwh(20, 12), 0);
+    const at13 = afternoonUndershootKwh(20, 13);
+    const at15 = afternoonUndershootKwh(20, 15);
+    assert.ok(at13 > 0 && at13 < at15, `ramp 13→15, got ${at13} → ${at15}`);
+    assert.strictEqual(at15, afternoonUndershootKwh(20, 18));
+    assert.ok(at15 <= 1.8 && at15 >= 1.4, `about 8 % of a 20 kWh day, got ${at15}`);
   });
 
   it('evening hour binds near actual when residual small path', () => {
@@ -430,6 +468,21 @@ describe('blendAdjustedForecast (weather-rest + hard caps)', () => {
     });
     assert.ok(result >= 29.05);
     assert.ok(result <= 32.15, `must not lift over B before Ist reaches B, got ${result}`);
+  });
+
+  it('steps the high plateau down by 15:00 instead of waiting for evening', () => {
+    const result = blendAdjustedForecast({
+      actualKwh: 16.7,
+      baselineKwh: 20,
+      expectedKwhSoFar: 16,
+      correctionFactor: 1,
+      remainingWeatherKwh: 4.5,
+      previousAdjustedKwh: 21,
+      localHour: 15,
+      hoursUntilProductionEnd: 4.5,
+    });
+    assert.ok(result <= 19.6, `15:00 A should already be off the morning plateau, got ${result}`);
+    assert.ok(result >= 17.2, `still a forecast above Ist, got ${result}`);
   });
 
   it('pace cap pulls mid-afternoon A down (Insights 02.08. pattern)', () => {

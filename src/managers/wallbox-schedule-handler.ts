@@ -132,10 +132,8 @@ export class WallboxScheduleHandler {
       } else if (this.validator.shouldRemoveForUntilFull(absPower, lowPowerState[id], now, true)) {
         this.device.log(`[WallboxLadeplan] untilFull reached for ${id}`);
         await this.executor.stopForUntilFull();
-        // Ensure discharge restore even for untilFull plans (use the info we already fetched)
-        if (info?.savedDischargeSoc !== undefined) {
-          await this.executor.revertActionForInfo(id, info, true).catch(e => this.device.error('untilFull discharge restore: ' + e));
-        }
+        // Plan end: put charging and any EMS override (dischargeSoc and the other flags) back.
+        await this.executor.revertActionForInfo(id, info, true).catch(e => this.device.error('untilFull discharge restore: ' + e));
         this.store.deleteTriggered(id);
         plansToRemove.push(id);
       }
