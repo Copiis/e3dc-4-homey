@@ -585,5 +585,9 @@
   "1.8.82": {
     "en": "**PV forecast:** New value House consumption forecast (kWh, without the wallbox), estimated from the last 14 completed days. Days clearly below the average leave the average. One high day yesterday raises the forecast by half the gap. If one of the two days before is high as well, the forecast is all of yesterday.",
     "de": "**PV-Prognose:** Neuer Wert Hausverbrauch Prognose (kWh, ohne Wallbox) aus den letzten 14 abgeschlossenen Tagen. Tage klar unter dem Schnitt fallen heraus. Liegt nur gestern klar darüber, steigt die Prognose um die Hälfte des Abstands. Liegt zusätzlich einer der zwei Tage davor darüber, gilt der ganze gestrige Tag."
+  },
+  "1.8.83": {
+    "en": "**PV forecast:** The recalculated forecast now comes down from 13:00 and fully from 15:00, instead of staying above the day's production until evening. If production has already reached the line, it may still rise. **Wallbox charge plan:** A plan that set \"Battery discharge until\" restores the previous value when it ends, including when the car is full.",
+    "de": "**PV-Prognose:** Die nachberechnete Prognose sinkt ab 13 Uhr und voll ab 15 Uhr, statt bis zum Abend über der Tageserzeugung zu bleiben. Hat die Erzeugung die Linie schon erreicht, darf sie weiter steigen. **Wallbox-Ladeplan:** Ein Plan, der „Batterie entladen bis“ gesetzt hat, stellt den vorherigen Wert am Ende wieder her, auch wenn das Auto voll ist."
   }
 }
