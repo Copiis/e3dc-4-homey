@@ -589,5 +589,9 @@
   "1.8.83": {
     "en": "**PV forecast:** The recalculated forecast now comes down from 13:00 and fully from 15:00, instead of staying above the day's production until evening. If production has already reached the line, it may still rise. **Wallbox charge plan:** A plan that set \"Battery discharge until\" restores the previous value when it ends, including when the car is full.",
     "de": "**PV-Prognose:** Die nachberechnete Prognose sinkt ab 13 Uhr und voll ab 15 Uhr, statt bis zum Abend über der Tageserzeugung zu bleiben. Hat die Erzeugung die Linie schon erreicht, darf sie weiter steigen. **Wallbox-Ladeplan:** Ein Plan, der „Batterie entladen bis“ gesetzt hat, stellt den vorherigen Wert am Ende wieder her, auch wenn das Auto voll ist."
+  },
+  "1.8.84": {
+    "en": "**Language:** Wallbox and charge-planner widgets, charge-plan messages, and flow errors are now available in German and English. The forecast tile is titled Haus Prognose.",
+    "de": "**Sprache:** Wallbox- und Ladeplaner-Widgets, Ladeplan-Meldungen und Flow-Fehler gibt es jetzt auf Deutsch und Englisch. Die Prognose-Kachel heißt Haus Prognose."
   }
 }
