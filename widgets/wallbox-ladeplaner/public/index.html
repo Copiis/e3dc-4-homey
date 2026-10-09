@@ -27,54 +27,55 @@
 <body>
 <div id="load-error" style="display:none;color:#f88;padding:6px 4px;font-size:15px;"></div>
 <div style="background:#3a2; color:#fff; font-size:8px; padding:2px 4px; border-radius:3px; margin-bottom:4px; line-height:1.2;">
-  <strong>Hinweis:</strong> Aktive Pläne haben Vorrang. Flows für Charging/Sun/Current werden ignoriert, solange ein Plan läuft.<br>
-  Bei „Hausakku entladen bis“ wird der Wert nur temporär gesetzt und nach Plan-Ende automatisch auf den ursprünglichen Wert zurückgesetzt.
+  <strong data-i18n="widget.ui.wb-plan.notice-label" data-i18n-fallback="Hinweis:">Hinweis:</strong>
+  <span data-i18n="widget.ui.wb-plan.notice" data-i18n-fallback="Aktive Pläne haben Vorrang. Flows für Laden, Sonnenmodus und Stromstärke werden ignoriert, solange ein Plan läuft.">Aktive Pläne haben Vorrang. Flows für Laden, Sonnenmodus und Stromstärke werden ignoriert, solange ein Plan läuft.</span><br>
+  <span data-i18n="widget.ui.wb-plan.notice-restore" data-i18n-fallback="Bei „Hausakku entladen bis“ wird der Wert nur temporär gesetzt und nach Plan-Ende automatisch auf den ursprünglichen Wert zurückgesetzt.">Bei „Hausakku entladen bis“ wird der Wert nur temporär gesetzt und nach Plan-Ende automatisch auf den ursprünglichen Wert zurückgesetzt.</span>
 </div>
 
 <div class="section">
-  <div class="label">Neuer Wallbox-Plan</div>
+  <div class="label" data-i18n="widget.ui.wb-plan.new-plan" data-i18n-fallback="Neuer Wallbox-Plan">Neuer Wallbox-Plan</div>
   
   <div class="row dates-row" style="flex-wrap: nowrap;">
     <div class="date-col">
-      <div class="label">Start</div>
+      <div class="label" data-i18n="widget.ui.wb-plan.start" data-i18n-fallback="Start">Start</div>
       <input type="datetime-local" id="start">
     </div>
     <div class="date-col">
-      <div class="label" id="end-label">Ende</div>
+      <div class="label" id="end-label" data-i18n="widget.ui.wb-plan.end" data-i18n-fallback="Ende">Ende</div>
       <input type="datetime-local" id="end">
     </div>
   </div>
   <div class="checkbox" style="margin-top:2px; margin-bottom:2px; margin-left:0; white-space: nowrap; display: flex; justify-content: space-between; align-items: center; width: 100%;">
-    <span style="white-space: nowrap;">Bis voll</span>
+    <span style="white-space: nowrap;" data-i18n="widget.ui.wb-plan.until-full" data-i18n-fallback="Bis voll">Bis voll</span>
     <input type="checkbox" id="until-full">
   </div>
 
   <div class="row">
     <div>
-      <div class="label">Wallbox</div>
+      <div class="label" data-i18n="widget.ui.wb-plan.wallbox" data-i18n-fallback="Wallbox">Wallbox</div>
       <select id="wallbox"></select>
     </div>
   </div>
 
   <div class="row">
     <div>
-      <div class="label">Stromstärke (A)</div>
+      <div class="label" data-i18n="widget.ui.wb-plan.current-a" data-i18n-fallback="Stromstärke (A)">Stromstärke (A)</div>
       <input type="number" id="current" value="16" min="6" max="32">
     </div>
   </div>
 
   <div class="row">
     <div>
-      <div class="label">Entlade Hausakku bis %</div>
+      <div class="label" data-i18n="widget.ui.wb-plan.discharge-until" data-i18n-fallback="Entlade Hausakku bis %">Entlade Hausakku bis %</div>
       <input type="number" id="discharge-soc" value="100" min="0" max="100">
-      <div class="small" style="color:#9cf; margin-top:1px; line-height:1.15;">
+      <div class="small" style="color:#9cf; margin-top:1px; line-height:1.15;" data-i18n="widget.ui.wb-plan.discharge-hint" data-i18n-fallback="Nur für die Dauer dieses Plans. Der ursprüngliche Wert wird nach Ablauf automatisch wiederhergestellt.">
         Nur für die Dauer dieses Plans. Der ursprüngliche Wert wird nach Ablauf automatisch wiederhergestellt.
       </div>
     </div>
   </div>
 </div>
 
-<button onclick="addPlan()" style="margin-top:3px; margin-bottom:2px">Plan hinzufügen</button>
+<button onclick="addPlan()" style="margin-top:3px; margin-bottom:2px" data-i18n="widget.ui.wb-plan.add-plan" data-i18n-fallback="Plan hinzufügen">Plan hinzufügen</button>
 
 <div id="plans" style="margin-top: 0; max-height: 88px; overflow-y: auto; display: none;"></div>
 
@@ -82,6 +83,31 @@
 let Homey = null;
 let plantId = null;
 let wallboxes = [];
+
+function tx(key, fallback, tags) {
+  var value = null;
+  try {
+    if (Homey && typeof Homey.__ === 'function') {
+      value = tags ? Homey.__(key, tags) : Homey.__(key);
+    }
+  } catch (e) {}
+  if (!value || value === key) value = fallback;
+  if (tags && value) {
+    value = String(value).replace(/__([A-Z0-9_]+)__/g, function (_, name) {
+      return tags[name] == null ? '' : String(tags[name]);
+    });
+  }
+  return value;
+}
+
+function applyStaticI18n() {
+  document.querySelectorAll('[data-i18n]').forEach(function (el) {
+    var key = el.getAttribute('data-i18n');
+    var fallback = el.getAttribute('data-i18n-fallback');
+    if (fallback == null) fallback = el.textContent;
+    el.textContent = tx(key, fallback);
+  });
+}
 
 function settingsPlantId(settings) {
   const raw = settings && settings.plantId;
@@ -118,17 +144,18 @@ async function resolvePlant(HomeyApi) {
     return { plantId: String(chosen.id), plants };
   }
   if (wanted) return { plantId: String(wanted), plants };
-  return { plantId: null, plants, error: 'Kein HKW gefunden' };
+  return { plantId: null, plants, error: tx('widget.ui.wb-plan.no-plant', 'Kein HKW gefunden') };
 }
 
 async function onHomeyReady(h) {
   Homey = h;
+  applyStaticI18n();
   Homey.ready({ height: 480 });
 
   const resolved = await resolvePlant(Homey);
   plantId = resolved.plantId;
   if (!plantId) {
-    showLoadError(resolved.error || 'HKW wird geladen …');
+    showLoadError(resolved.error || tx('widget.ui.wb-plan.loading-plant', 'HKW wird geladen …'));
     const retry = setInterval(async () => {
       const again = await resolvePlant(Homey);
       if (again.plantId) {
@@ -169,7 +196,7 @@ function setupWallboxUi() {
   loadWallboxes().then(loadPlans).catch(err => {
     console.error('Wallbox Ladeplaner load failed:', err);
     const c = document.getElementById('plans');
-    if (c) c.innerHTML = '<div style="color:#f88">Fehler beim Laden. Siehe Logs.</div>';
+    if (c) c.innerHTML = '<div style="color:#f88">' + tx('widget.ui.wb-plan.load-error', 'Fehler beim Laden. Siehe Logs.') + '</div>';
   });
   setInterval(() => { loadPlans().catch(() => {}); }, 60000);
 }
@@ -193,7 +220,7 @@ async function loadWallboxes() {
   } catch (err) {
     console.error('loadWallboxes failed:', err);
     const sel = document.getElementById('wallbox');
-    if (sel) sel.innerHTML = '<option>Fehler beim Laden der Wallboxen</option>';
+    if (sel) sel.innerHTML = '<option>' + tx('widget.ui.wb-plan.wallboxes-error', 'Fehler beim Laden der Wallboxen') + '</option>';
     throw err;
   }
 }
@@ -205,7 +232,7 @@ async function loadPlans() {
     const sel = document.getElementById('wallbox');
     const wbId = sel.value || (wallboxes[0] && wallboxes[0].id);
     if (!wbId) {
-      if (c) c.innerHTML = '<div class="small">Keine Wallbox für dieses HKW gefunden</div>';
+      if (c) c.innerHTML = '<div class="small">' + tx('widget.ui.wb-plan.no-wallbox', 'Keine Wallbox für dieses HKW gefunden') + '</div>';
       return;
     }
 
@@ -236,18 +263,22 @@ async function loadPlans() {
     plans.forEach((p, i) => {
       const d = document.createElement('div');
       d.className = 'plan';
-      const end = p.untilFull ? 'bis voll (Leistung)' : (p.end ? new Date(p.end).toLocaleString() : '');
-      const displayAction = p.action === 'allow' ? 'Laden' : p.action;
+      const end = p.untilFull
+        ? tx('widget.ui.wb-plan.until-full-power', 'bis voll (Leistung)')
+        : (p.end ? new Date(p.end).toLocaleString() : '');
+      const displayAction = p.action === 'allow'
+        ? tx('widget.ui.wb-plan.charging', 'Laden')
+        : p.action;
       let details = displayAction;
       if (p.current) details += ` ${p.current}A`;
 
       let dischargePart = '';
       let dischargeNote = '';
       if (typeof p.dischargeSoc === 'number' && !isNaN(p.dischargeSoc)) {
-        dischargePart = ` • Entladen bis ${p.dischargeSoc}%`;
+        dischargePart = ' • ' + tx('widget.ui.wb-plan.discharge', 'Entladen bis ' + p.dischargeSoc + '%', { PERCENT: p.dischargeSoc });
         dischargeNote = `
           <div class="small" style="color:#9cf; margin-top:1px;">
-            (wird nach Plan-Ende auf Ursprungswert zurückgesetzt)
+            ${tx('widget.ui.wb-plan.restore-note', '(wird nach Plan-Ende auf Ursprungswert zurückgesetzt)')}
           </div>`;
       }
 
@@ -263,7 +294,7 @@ async function loadPlans() {
     });
   } catch (err) {
     console.error('loadPlans failed:', err);
-    if (c) c.innerHTML = '<div style="color:#f88">Fehler beim Laden der Pläne</div>';
+    if (c) c.innerHTML = '<div style="color:#f88">' + tx('widget.ui.wb-plan.plans-error', 'Fehler beim Laden der Pläne') + '</div>';
   }
 }
 
@@ -278,17 +309,17 @@ async function addPlan() {
     const dischargeInput = document.getElementById('discharge-soc').value;
     const discharge = parseInt(dischargeInput, 10);
 
-    if (!start || !wallboxId) return alert('Start und Wallbox nötig');
+    if (!start || !wallboxId) return alert(tx('widget.ui.wb-plan.start-and-wallbox', 'Start und Wallbox nötig'));
 
     if (!until) {
       if (!end) {
-        alert('Bitte ein Ende angeben oder "Bis voll" aktivieren');
+        alert(tx('widget.ui.wb-plan.end-or-full', 'Bitte ein Ende angeben oder "Bis voll" aktivieren'));
         return;
       }
       const sD = new Date(start);
       const eD = new Date(end);
       if (eD <= sD) {
-        alert('Das Ende muss nach dem Start liegen');
+        alert(tx('widget.ui.wb-plan.end-after-start', 'Das Ende muss nach dem Start liegen'));
         return;
       }
     }
@@ -328,7 +359,7 @@ async function addPlan() {
     loadPlans();
   } catch (err) {
     console.error('addPlan failed:', err);
-    alert('Fehler beim Hinzufügen des Plans: ' + (err.message || err));
+    alert(tx('widget.ui.wb-plan.add-error', 'Fehler beim Hinzufügen des Plans: ' + (err.message || err), { DETAIL: err.message || err }));
   }
 }
 
@@ -357,7 +388,7 @@ async function del(index) {
     loadPlans();
   } catch (err) {
     console.error('del failed:', err);
-    alert('Fehler beim Löschen des Plans');
+    alert(tx('widget.ui.wb-plan.delete-error', 'Fehler beim Löschen des Plans'));
   }
 }
 </script>

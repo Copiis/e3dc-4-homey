@@ -200,7 +200,7 @@
         <div id="laden-circle" class="circle">
           <span class="icon">⚡</span>
         </div>
-        <div class="label">Laden</div>
+        <div class="label" data-i18n="widget.ui.wallbox.charging" data-i18n-fallback="Laden">Laden</div>
         <div id="laden-status" class="status"></div>
       </div>
 
@@ -209,46 +209,46 @@
         <div id="sonne-circle" class="circle">
           <span class="icon">☀</span>
         </div>
-        <div class="label">Sonnenmodus</div>
+        <div class="label" data-i18n="widget.ui.wallbox.sun-mode" data-i18n-fallback="Sonnenmodus">Sonnenmodus</div>
         <div id="sonne-status" class="status"></div>
       </div>
     </div>
 
     <!-- Ladepriorisierung matching the E3DC settings UI -->
     <div class="ladeprio-section" style="margin-top:6px; margin-bottom:4px;">
-      <div style="font-size:16px; font-weight:600; margin-bottom:3px; color:#ccc;">Ladepriorisierung</div>
+      <div style="font-size:16px; font-weight:600; margin-bottom:3px; color:#ccc;" data-i18n="widget.ui.wallbox.priority-title" data-i18n-fallback="Ladepriorisierung">Ladepriorisierung</div>
       <div style="background:#222; border-radius:6px; padding:4px; margin-bottom:4px;">
-        <div style="font-size:14px; color:#aaa; margin-bottom:2px;">Ladepriorität (Nur im Sonnenmodus)</div>
+        <div style="font-size:14px; color:#aaa; margin-bottom:2px;" data-i18n="widget.ui.wallbox.priority-sun-only" data-i18n-fallback="Ladepriorität (Nur im Sonnenmodus)">Ladepriorität (Nur im Sonnenmodus)</div>
         <div style="display:flex; gap:4px;">
-          <button id="prio-battery" class="toggle-btn" style="flex:1; font-size:15px; padding:4px 8px;">Batterie zuerst</button>
-          <button id="prio-wallbox" class="toggle-btn" style="flex:1; font-size:15px; padding:4px 8px;">Wallbox zuerst</button>
+          <button id="prio-battery" class="toggle-btn" style="flex:1; font-size:15px; padding:4px 8px;" data-i18n="widget.ui.wallbox.battery-first" data-i18n-fallback="Batterie zuerst">Batterie zuerst</button>
+          <button id="prio-wallbox" class="toggle-btn" style="flex:1; font-size:15px; padding:4px 8px;" data-i18n="widget.ui.wallbox.wallbox-first" data-i18n-fallback="Wallbox zuerst">Wallbox zuerst</button>
         </div>
       </div>
 
       <div style="background:#222; border-radius:6px; padding:4px;">
-        <div style="font-size:14px; font-weight:600; color:#ccc; margin-bottom:3px;">Batterieentladung durch Wallbox</div>
+        <div style="font-size:14px; font-weight:600; color:#ccc; margin-bottom:3px;" data-i18n="widget.ui.wallbox.battery-discharge" data-i18n-fallback="Batterieentladung durch Wallbox">Batterieentladung durch Wallbox</div>
 
         <div style="display:flex; align-items:center; justify-content:space-between; font-size:13px;">
-          <span>Im Sonnenmodus</span>
+          <span data-i18n="widget.ui.wallbox.in-sun-mode" data-i18n-fallback="Im Sonnenmodus">Im Sonnenmodus</span>
           <div style="display:flex; gap:4px;">
-            <button id="sun-allow" class="toggle-btn small">Erlaubt</button>
-            <button id="sun-block" class="toggle-btn small">Unterbunden</button>
+            <button id="sun-allow" class="toggle-btn small" data-i18n="widget.ui.wallbox.allowed" data-i18n-fallback="Erlaubt">Erlaubt</button>
+            <button id="sun-block" class="toggle-btn small" data-i18n="widget.ui.wallbox.blocked" data-i18n-fallback="Unterbunden">Unterbunden</button>
           </div>
         </div>
 
         <div style="display:flex; align-items:center; justify-content:space-between; font-size:13px; margin-top:1px; margin-bottom:1px;">
-          <span>Bis Ladezustand</span>
+          <span data-i18n="widget.ui.wallbox.until-soc" data-i18n-fallback="Bis Ladezustand">Bis Ladezustand</span>
           <div style="display:flex; align-items:center; gap:3px;">
             <input id="discharge-input" type="number" min="0" max="100" step="1" style="width:42px; font-size:14px; padding:1px 2px;"> %
-            <button id="set-discharge" class="set-btn">Setzen</button>
+            <button id="set-discharge" class="set-btn" data-i18n="widget.ui.set" data-i18n-fallback="Setzen">Setzen</button>
           </div>
         </div>
 
         <div style="display:flex; align-items:center; justify-content:space-between; font-size:13px;">
-          <span style="line-height:1.05; font-size:12px;">Während Mischmodus, Haltezeit, Zeitfunktion</span>
+          <span style="line-height:1.05; font-size:12px;" data-i18n="widget.ui.wallbox.during-mix" data-i18n-fallback="Während Mischmodus, Haltezeit, Zeitfunktion">Während Mischmodus, Haltezeit, Zeitfunktion</span>
           <div style="display:flex; gap:4px;">
-            <button id="mix-allow" class="toggle-btn small">Erlaubt</button>
-            <button id="mix-block" class="toggle-btn small">Unterbunden</button>
+            <button id="mix-allow" class="toggle-btn small" data-i18n="widget.ui.wallbox.allowed" data-i18n-fallback="Erlaubt">Erlaubt</button>
+            <button id="mix-block" class="toggle-btn small" data-i18n="widget.ui.wallbox.blocked" data-i18n-fallback="Unterbunden">Unterbunden</button>
           </div>
         </div>
       </div>
@@ -256,7 +256,7 @@
 
     <div class="values">
       <div class="value-row">
-        <span class="v-label">Leistung</span>
+        <span class="v-label" data-i18n="widget.ui.wallbox.power" data-i18n-fallback="Leistung">Leistung</span>
         <span id="power" class="v-value">-</span>
         <select id="current-input" style="width:50px; font-size:15px; padding:2px;">
           <option value="6">6</option>
@@ -272,12 +272,12 @@
           <option value="16">16</option>
         </select> A
       </div>
-      <div class="value-row"><span class="v-label">Solaranteil</span><span id="solarshare" class="v-value">-</span></div>
-      <div class="value-row"><span class="v-label">Fahrzeug SOC</span><span id="vehicle-soc" class="v-value">-</span></div>
-      <div class="value-row"><span class="v-label">Eingesteckt</span><span id="plugged" class="v-value">-</span></div>
-      <div class="value-row"><span class="v-label">Phasen</span><span id="phases" class="v-value">-</span></div>
-      <div class="value-row"><span class="v-label">Stecker verriegelt</span><span id="plug-locked" class="v-value">-</span></div>
-      <div class="value-row"><span class="v-label">Schuko</span><span id="schuko" class="v-value">-</span></div>
+      <div class="value-row"><span class="v-label" data-i18n="widget.ui.wallbox.solar-share" data-i18n-fallback="Solaranteil">Solaranteil</span><span id="solarshare" class="v-value">-</span></div>
+      <div class="value-row"><span class="v-label" data-i18n="widget.ui.wallbox.vehicle-soc" data-i18n-fallback="Fahrzeug SOC">Fahrzeug SOC</span><span id="vehicle-soc" class="v-value">-</span></div>
+      <div class="value-row"><span class="v-label" data-i18n="widget.ui.wallbox.plugged" data-i18n-fallback="Eingesteckt">Eingesteckt</span><span id="plugged" class="v-value">-</span></div>
+      <div class="value-row"><span class="v-label" data-i18n="widget.ui.wallbox.phases" data-i18n-fallback="Phasen">Phasen</span><span id="phases" class="v-value">-</span></div>
+      <div class="value-row"><span class="v-label" data-i18n="widget.ui.wallbox.plug-locked" data-i18n-fallback="Stecker verriegelt">Stecker verriegelt</span><span id="plug-locked" class="v-value">-</span></div>
+      <div class="value-row"><span class="v-label" data-i18n="widget.ui.wallbox.schuko" data-i18n-fallback="Schuko">Schuko</span><span id="schuko" class="v-value">-</span></div>
     </div>
 
     <div id="info" class="info"></div>
@@ -286,6 +286,32 @@
   <script type="text/javascript">
     const SYNC_INTERVAL = 8000;
     const WIDGET_HEIGHT = 500;
+    let widgetHomey = null;
+
+    function tx(key, fallback, tags) {
+      var value = null;
+      try {
+        if (widgetHomey && typeof widgetHomey.__ === 'function') {
+          value = tags ? widgetHomey.__(key, tags) : widgetHomey.__(key);
+        }
+      } catch (e) {}
+      if (!value || value === key) value = fallback;
+      if (tags && value) {
+        value = String(value).replace(/__([A-Z0-9_]+)__/g, function (_, name) {
+          return tags[name] == null ? '' : String(tags[name]);
+        });
+      }
+      return value;
+    }
+
+    function applyStaticI18n() {
+      document.querySelectorAll('[data-i18n]').forEach(function (el) {
+        var key = el.getAttribute('data-i18n');
+        var fallback = el.getAttribute('data-i18n-fallback');
+        if (fallback == null) fallback = el.textContent;
+        el.textContent = tx(key, fallback);
+      });
+    }
 
     let currentStationId = null;
     let lastLadePrioSet = 0;
@@ -332,12 +358,14 @@
     }
 
     function onHomeyReady(Homey) {
+      widgetHomey = Homey;
+      applyStaticI18n();
       // Signal ready immediately so it doesn't load forever
       Homey.ready({ height: WIDGET_HEIGHT });
 
       resolvePlantId(Homey).then(plantId => {
         if (!plantId) {
-          document.getElementById('info').textContent = 'Widget-Einstellungen öffnen und Hauskraftwerk auswählen.';
+          document.getElementById('info').textContent = tx('widget.ui.wallbox.select-plant', 'Widget-Einstellungen öffnen und Hauskraftwerk auswählen.');
           return;
         }
         currentStationId = plantId;
@@ -359,20 +387,20 @@
           ladenCircle.classList.toggle('active');
           const ladenStatus = document.getElementById('laden-status');
           const originalStatus = ladenStatus ? ladenStatus.textContent : '';
-          if (ladenStatus) ladenStatus.textContent = 'Wird gesendet...';
+          if (ladenStatus) ladenStatus.textContent = tx('widget.ui.sending', 'Wird gesendet...');
           try {
             await Homey.api('POST', '/toggle', { stationId: currentStationId, type: 'charging' });
             // re-sync to get verified state
             await sync(Homey, currentStationId);
-            if (ladenStatus) ladenStatus.textContent = 'Gesendet';
+            if (ladenStatus) ladenStatus.textContent = tx('widget.ui.sent', 'Gesendet');
             setTimeout(() => {
-              if (ladenStatus) ladenStatus.textContent = originalStatus || (ladenCircle.classList.contains('active') ? 'An' : 'Aus');
+              if (ladenStatus) ladenStatus.textContent = originalStatus || (ladenCircle.classList.contains('active') ? tx('widget.ui.on', 'An') : tx('widget.ui.off', 'Aus'));
             }, 1500);
           } catch (e) {
             console.error('Toggle Fehler:', e);
             // revert on error
             ladenCircle.classList.toggle('active', originalActive);
-            if (ladenStatus) ladenStatus.textContent = 'Fehler';
+            if (ladenStatus) ladenStatus.textContent = tx('widget.ui.error', 'Fehler');
             setTimeout(() => {
               if (ladenStatus) ladenStatus.textContent = originalStatus;
             }, 2000);
@@ -387,18 +415,18 @@
           sonneCircle.classList.toggle('active');
           const sonneStatus = document.getElementById('sonne-status');
           const originalStatus = sonneStatus ? sonneStatus.textContent : '';
-          if (sonneStatus) sonneStatus.textContent = 'Wird gesendet...';
+          if (sonneStatus) sonneStatus.textContent = tx('widget.ui.sending', 'Wird gesendet...');
           try {
             await Homey.api('POST', '/toggle', { stationId: currentStationId, type: 'sunMode' });
             await sync(Homey, currentStationId);
-            if (sonneStatus) sonneStatus.textContent = 'Gesendet';
+            if (sonneStatus) sonneStatus.textContent = tx('widget.ui.sent', 'Gesendet');
             setTimeout(() => {
-              if (sonneStatus) sonneStatus.textContent = originalStatus || (sonneCircle.classList.contains('active') ? 'An' : 'Aus');
+              if (sonneStatus) sonneStatus.textContent = originalStatus || (sonneCircle.classList.contains('active') ? tx('widget.ui.on', 'An') : tx('widget.ui.off', 'Aus'));
             }, 1500);
           } catch (e) {
             console.error('Toggle Fehler:', e);
             sonneCircle.classList.toggle('active', originalActive);
-            if (sonneStatus) sonneStatus.textContent = 'Fehler';
+            if (sonneStatus) sonneStatus.textContent = tx('widget.ui.error', 'Fehler');
             setTimeout(() => {
               if (sonneStatus) sonneStatus.textContent = originalStatus;
             }, 2000);
@@ -413,7 +441,7 @@
           if (!currentStationId) return;
           const val = parseInt(currentInput.value, 10);
           if (isNaN(val) || val < 6 || val > 16) {
-            alert('Max Ladestrom muss zwischen 6 und 16 A sein.');
+            alert(tx('widget.ui.wallbox.current-range', 'Max Ladestrom muss zwischen 6 und 16 A sein.'));
             return;
           }
           try {
@@ -421,7 +449,7 @@
             await sync(Homey, currentStationId);
           } catch (e) {
             console.error(e);
-            alert('Fehler beim Setzen: ' + (e.message || e));
+            alert(tx('widget.ui.error-set', 'Fehler beim Setzen: ' + (e.message || e), { DETAIL: e.message || e }));
           }
         };
       }
@@ -434,7 +462,7 @@
           if (dischargeInput.disabled) return;  // grayed out when Sonnenmodus is Unterbunden
           const val = parseInt(dischargeInput.value, 10);
           if (isNaN(val) || val < 0 || val > 100) {
-            alert('Batterie entladen bis muss zwischen 0 und 100 % sein.');
+            alert(tx('widget.ui.wallbox.discharge-range', 'Batterie entladen bis muss zwischen 0 und 100 % sein.'));
             return;
           }
           setDischargeBtn.disabled = true;
@@ -445,10 +473,10 @@
             await sync(Homey, currentStationId);
           } catch (e) {
             console.error(e);
-            alert('Fehler beim Setzen: ' + (e.message || e));
+            alert(tx('widget.ui.error-set', 'Fehler beim Setzen: ' + (e.message || e), { DETAIL: e.message || e }));
           }
           setDischargeBtn.disabled = false;
-          setDischargeBtn.textContent = origText || 'Setzen';
+          setDischargeBtn.textContent = origText || tx('widget.ui.set', 'Setzen');
         };
       }
 
@@ -475,7 +503,7 @@
             prioBattery.classList.remove('active');
             prioWallbox.classList.add('active');
             console.error(e);
-            alert('Fehler: ' + (e.message || e));
+            alert(tx('widget.ui.error-detail', 'Fehler: ' + (e.message || e), { DETAIL: e.message || e }));
           }
         };
       }
@@ -501,7 +529,7 @@
             prioWallbox.classList.remove('active');
             prioBattery.classList.add('active');
             console.error(e);
-            alert('Fehler: ' + (e.message || e));
+            alert(tx('widget.ui.error-detail', 'Fehler: ' + (e.message || e), { DETAIL: e.message || e }));
           }
         };
       }
@@ -523,7 +551,7 @@
           } catch (e) {
             sunAllow.classList.remove('active');
             sunBlock.classList.add('active');
-            alert('Fehler: ' + (e.message || e));
+            alert(tx('widget.ui.error-detail', 'Fehler: ' + (e.message || e), { DETAIL: e.message || e }));
           }
         };
       }
@@ -542,7 +570,7 @@
           } catch (e) {
             sunBlock.classList.remove('active');
             sunAllow.classList.add('active');
-            alert('Fehler: ' + (e.message || e));
+            alert(tx('widget.ui.error-detail', 'Fehler: ' + (e.message || e), { DETAIL: e.message || e }));
           }
         };
       }
@@ -562,7 +590,7 @@
           } catch (e) {
             mixAllow.classList.remove('active');
             mixBlock.classList.add('active');
-            alert('Fehler: ' + (e.message || e));
+            alert(tx('widget.ui.error-detail', 'Fehler: ' + (e.message || e), { DETAIL: e.message || e }));
           }
         };
       }
@@ -579,7 +607,7 @@
           } catch (e) {
             mixBlock.classList.remove('active');
             mixAllow.classList.add('active');
-            alert('Fehler: ' + (e.message || e));
+            alert(tx('widget.ui.error-detail', 'Fehler: ' + (e.message || e), { DETAIL: e.message || e }));
           }
         };
       }
@@ -603,7 +631,7 @@
           return single.id;
         }
         if (plants.length > 1) {
-          document.getElementById('info').textContent = 'Mehrere HKW gefunden – es wird das erste verwendet.';
+          document.getElementById('info').textContent = tx('widget.ui.wallbox.several-plants', 'Mehrere HKW gefunden – es wird das erste verwendet.');
           return plants[0].id;
         }
       } catch (e) {
@@ -617,7 +645,7 @@
         const wallboxes = await Homey.api('GET', `/wallbox?stationId=${encodeURIComponent(plantId)}`);
 
         if (!wallboxes || wallboxes.length === 0) {
-          document.getElementById('info').textContent = 'Für das gewählte HKW ist keine Wallbox konfiguriert.';
+          document.getElementById('info').textContent = tx('widget.ui.wallbox.no-wallbox', 'Für das gewählte HKW ist keine Wallbox konfiguriert.');
           return;
         }
 
@@ -629,10 +657,10 @@
         if (ladenCircle && ladenStatus) {
           if (wb.charging) {
             ladenCircle.classList.add('active');
-            ladenStatus.textContent = 'An';
+            ladenStatus.textContent = tx('widget.ui.on', 'An');
           } else {
             ladenCircle.classList.remove('active');
-            ladenStatus.textContent = 'Aus';
+            ladenStatus.textContent = tx('widget.ui.off', 'Aus');
           }
         }
 
@@ -642,10 +670,10 @@
         if (sonneCircle && sonneStatus) {
           if (wb.sunMode) {
             sonneCircle.classList.add('active');
-            sonneStatus.textContent = 'An';
+            sonneStatus.textContent = tx('widget.ui.on', 'An');
           } else {
             sonneCircle.classList.remove('active');
-            sonneStatus.textContent = 'Aus';
+            sonneStatus.textContent = tx('widget.ui.off', 'Aus');
           }
         }
 
@@ -653,10 +681,10 @@
         setEl('power', wb.power !== undefined ? `${Math.round(wb.power)} W` : '-');
         setEl('solarshare', wb.solarShare !== undefined ? `${Math.round(wb.solarShare)} W` : '-');
         setEl('vehicle-soc', (wb.vehicleSoc !== null && wb.vehicleSoc !== undefined) ? `${wb.vehicleSoc} %` : '-');
-        setEl('plugged', wb.plugged ? 'Ja' : 'Nein');
+        setEl('plugged', wb.plugged ? tx('widget.ui.yes', 'Ja') : tx('widget.ui.no', 'Nein'));
         setEl('phases', wb.phases !== undefined ? String(wb.phases) : '-');
-        setEl('plug-locked', wb.plugLocked ? 'Ja' : 'Nein');
-        setEl('schuko', wb.schuko ? 'Ja' : 'Nein');
+        setEl('plug-locked', wb.plugLocked ? tx('widget.ui.yes', 'Ja') : tx('widget.ui.no', 'Nein'));
+        setEl('schuko', wb.schuko ? tx('widget.ui.yes', 'Ja') : tx('widget.ui.no', 'Nein'));
 
         // Ladepriorisierung button states (matching E3DC "Ladepriorisierung" screen)
         // Within cooldown after user action: strongly prefer the last user-chosen value
@@ -730,7 +758,7 @@
         if (info) info.textContent = '';
       } catch (err) {
         console.error(err);
-        document.getElementById('info').textContent = 'API-Fehler. Widget-Einstellungen prüfen.';
+        document.getElementById('info').textContent = tx('widget.ui.wallbox.api-error', 'API-Fehler. Widget-Einstellungen prüfen.');
       }
     }
 

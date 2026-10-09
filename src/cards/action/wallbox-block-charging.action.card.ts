@@ -1,6 +1,6 @@
 import {RunListener} from '../run-listener';
 import {Wallbox} from '../../model/wallbox';
-import {resolveWallboxFlowResult} from './wallbox-flow-result';
+import {flowText, resolveWallboxFlowResult} from './wallbox-flow-result';
 import {formatError} from '../../utils/error-utils';
 
 export class WallboxBlockChargingActionCard implements RunListener {
@@ -9,7 +9,7 @@ export class WallboxBlockChargingActionCard implements RunListener {
             const wallbox: Wallbox = args.device as Wallbox;
 
             if (!wallbox || typeof wallbox.applyChargingAllowed !== 'function') {
-                reject('Invalid wallbox device');
+                reject(flowText(wallbox, 'messages.invalid-wallbox-device', 'Invalid wallbox device'));
                 return;
             }
 
@@ -24,7 +24,7 @@ export class WallboxBlockChargingActionCard implements RunListener {
                 resolveWallboxFlowResult(
                     result,
                     {},
-                    'Wallbox rejected block charging',
+                    flowText(wallbox, 'messages.wallbox-block-rejected', 'Wallbox rejected block charging'),
                     resolve,
                     reject,
                 );

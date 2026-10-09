@@ -1,7 +1,7 @@
 import {RunListener} from '../run-listener';
 import {Wallbox} from '../../model/wallbox';
 import {DEFAULT_WALLBOX_CURRENT_A} from '../../model/wallbox-control';
-import {resolveWallboxFlowResult} from './wallbox-flow-result';
+import {flowText} from './wallbox-flow-result';
 import {formatError} from '../../utils/error-utils';
 
 export class WallboxAllowChargingActionCard implements RunListener {
@@ -14,7 +14,7 @@ export class WallboxAllowChargingActionCard implements RunListener {
                 : DEFAULT_WALLBOX_CURRENT_A;
 
             if (!wallbox || typeof wallbox.applyChargingAllowed !== 'function') {
-                throw new Error('Invalid wallbox device');
+                throw new Error(flowText(wallbox, 'messages.invalid-wallbox-device', 'Invalid wallbox device'));
             }
 
             if (typeof wallbox.hasActivePlan === 'function' && wallbox.hasActivePlan()) {
@@ -27,7 +27,7 @@ export class WallboxAllowChargingActionCard implements RunListener {
                 return resolveWallboxFlowResultForAsync(
                     result,
                     { current },
-                    'Wallbox rejected allow charging',
+                    flowText(wallbox, 'messages.wallbox-allow-rejected', 'Wallbox rejected allow charging'),
                 );
             } catch (e) {
                 wallbox.error && wallbox.error('Failed to allow wallbox charging: ' + formatError(e));

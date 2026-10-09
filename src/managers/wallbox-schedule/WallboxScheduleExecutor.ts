@@ -1,5 +1,6 @@
 import { formatError } from '../../utils/error-utils';
 import { WallboxSchedule } from '../../model/wallbox';
+import { deviceText } from '../../utils/device-i18n';
 
 /** Rich info stored per triggered plan so we can restore side-effects like dischargeSoc. */
 export interface TriggeredWallboxScheduleInfo {
@@ -33,6 +34,8 @@ export class WallboxScheduleExecutor {
       invalidateAssociatedEmsCache?(): void;
       /** Post to Homey timeline for important plan actions like global setting changes. */
       postTimelineNotification?(excerpt: string): void;
+      translate?: (key: string, tags?: Record<string, string | number>) => string;
+      homey?: { __?: (key: string, tags?: Record<string, string | number>) => string };
       setBatteryToCar(enabled: boolean): Promise<boolean>;
       setBatteryBeforeCar(enabled: boolean): Promise<boolean>;
       setDisableBatteryAtMixMode(enabled: boolean): Promise<boolean>;
@@ -121,8 +124,8 @@ export class WallboxScheduleExecutor {
     await this.device.setDischargeBatteryUntil(percent);
     this.device.invalidateAssociatedEmsCache?.();
     const text = restore
-      ? `Ladeplan beendet – "Batterie entladen bis" auf ${percent}% zurückgesetzt`
-      : `Ladeplan hat "Batterie entladen bis" auf ${percent}% gesetzt`;
+      ? deviceText(this.device, 'timeline.plan-discharge-restored', { PERCENT: percent }, `Ladeplan beendet – "Batterie entladen bis" auf ${percent}% zurückgesetzt`)
+      : deviceText(this.device, 'timeline.plan-discharge-set', { PERCENT: percent }, `Ladeplan hat "Batterie entladen bis" auf ${percent}% gesetzt`);
     this.device.postTimelineNotification?.(text);
   }
 

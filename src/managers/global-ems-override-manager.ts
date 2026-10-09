@@ -1,4 +1,5 @@
 import { WallboxEmsSettings } from '../model/wallbox-ems-settings';
+import { deviceText } from '../utils/device-i18n';
 
 /**
  * GlobalEmsOverrideManager
@@ -21,8 +22,26 @@ export class GlobalEmsOverrideManager {
       postTimelineNotification?(excerpt: string): void;
       log(msg: string): void;
       error(msg: string): void;
+      translate?: (key: string, tags?: Record<string, string | number>) => string;
+      homey?: { __?: (key: string, tags?: Record<string, string | number>) => string };
     }
   ) {}
+
+  private text(key: string, tags: Record<string, string | number> | undefined, fallback: string): string {
+    return deviceText(this.device, key, tags, fallback);
+  }
+
+  private yesNo(value: boolean): string {
+    return value
+      ? this.text('timeline.state-yes', undefined, 'Ja')
+      : this.text('timeline.state-no', undefined, 'Nein');
+  }
+
+  private blockedWord(blocked: boolean): string {
+    return blocked
+      ? this.text('timeline.state-blocked', undefined, 'gesperrt')
+      : this.text('timeline.state-allowed', undefined, 'erlaubt');
+  }
 
   async applyOverrides(planId: string, overrides: Partial<WallboxEmsSettings>): Promise<void> {
     const original: Partial<WallboxEmsSettings> = {};
@@ -33,7 +52,11 @@ export class GlobalEmsOverrideManager {
         original.dischargeBatteryUntilPercent = current;
       }
       await this.device.setDischargeBatteryUntil(overrides.dischargeBatteryUntilPercent);
-      this.device.postTimelineNotification?.(`Ladeplan hat "Batterie entladen bis" auf ${overrides.dischargeBatteryUntilPercent}% gesetzt`);
+      this.device.postTimelineNotification?.(this.text(
+        'timeline.plan-discharge-set',
+        { PERCENT: overrides.dischargeBatteryUntilPercent },
+        `Ladeplan hat "Batterie entladen bis" auf ${overrides.dischargeBatteryUntilPercent}% gesetzt`,
+      ));
     }
 
     if (typeof overrides.batteryToCarAllowed === 'boolean') {
@@ -42,7 +65,11 @@ export class GlobalEmsOverrideManager {
         original.batteryToCarAllowed = current;
       }
       await this.device.setBatteryToCar(overrides.batteryToCarAllowed);
-      this.device.postTimelineNotification?.(`Ladeplan hat "Batterie für Auto" auf ${overrides.batteryToCarAllowed} gesetzt`);
+      this.device.postTimelineNotification?.(this.text(
+        'timeline.plan-battery-to-car-set',
+        { STATE: this.yesNo(overrides.batteryToCarAllowed) },
+        `Ladeplan hat "Batterie für Auto" auf ${overrides.batteryToCarAllowed} gesetzt`,
+      ));
     }
 
     if (typeof overrides.batteryBeforeCar === 'boolean') {
@@ -51,7 +78,11 @@ export class GlobalEmsOverrideManager {
         original.batteryBeforeCar = current;
       }
       await this.device.setBatteryBeforeCar(overrides.batteryBeforeCar);
-      this.device.postTimelineNotification?.(`Ladeplan hat "Auto vor Batterie" auf ${overrides.batteryBeforeCar} gesetzt`);
+      this.device.postTimelineNotification?.(this.text(
+        'timeline.plan-battery-before-car-set',
+        { STATE: this.yesNo(overrides.batteryBeforeCar) },
+        `Ladeplan hat "Auto vor Batterie" auf ${overrides.batteryBeforeCar} gesetzt`,
+      ));
     }
 
     if (typeof overrides.batteryDischargeMixBlocked === 'boolean') {
@@ -60,7 +91,11 @@ export class GlobalEmsOverrideManager {
         original.batteryDischargeMixBlocked = !current; // store as blocked
       }
       await this.device.setDisableBatteryAtMixMode(overrides.batteryDischargeMixBlocked);
-      this.device.postTimelineNotification?.(`Ladeplan hat Mix-Modus-Entladung auf ${overrides.batteryDischargeMixBlocked ? 'gesperrt' : 'erlaubt'} gesetzt`);
+      this.device.postTimelineNotification?.(this.text(
+        'timeline.plan-mix-set',
+        { STATE: this.blockedWord(overrides.batteryDischargeMixBlocked) },
+        `Ladeplan hat Mix-Modus-Entladung auf ${overrides.batteryDischargeMixBlocked ? 'gesperrt' : 'erlaubt'} gesetzt`,
+      ));
     }
 
     if (Object.keys(original).length > 0) {
@@ -76,19 +111,35 @@ export class GlobalEmsOverrideManager {
 
     if (typeof original.dischargeBatteryUntilPercent === 'number') {
       await this.device.setDischargeBatteryUntil(original.dischargeBatteryUntilPercent);
-      this.device.postTimelineNotification?.(`Ladeplan beendet – "Batterie entladen bis" auf ${original.dischargeBatteryUntilPercent}% zurückgesetzt`);
+      this.device.postTimelineNotification?.(this.text(
+        'timeline.plan-discharge-restored',
+        { PERCENT: original.dischargeBatteryUntilPercent },
+        `Ladeplan beendet – "Batterie entladen bis" auf ${original.dischargeBatteryUntilPercent}% zurückgesetzt`,
+      ));
     }
     if (typeof original.batteryToCarAllowed === 'boolean') {
       await this.device.setBatteryToCar(original.batteryToCarAllowed);
-      this.device.postTimelineNotification?.(`Ladeplan beendet – "Batterie für Auto" auf ${original.batteryToCarAllowed} zurückgesetzt`);
+      this.device.postTimelineNotification?.(this.text(
+        'timeline.plan-battery-to-car-restored',
+        { STATE: this.yesNo(original.batteryToCarAllowed) },
+        `Ladeplan beendet – "Batterie für Auto" auf ${original.batteryToCarAllowed} zurückgesetzt`,
+      ));
     }
     if (typeof original.batteryBeforeCar === 'boolean') {
       await this.device.setBatteryBeforeCar(original.batteryBeforeCar);
-      this.device.postTimelineNotification?.(`Ladeplan beendet – "Auto vor Batterie" auf ${original.batteryBeforeCar} zurückgesetzt`);
+      this.device.postTimelineNotification?.(this.text(
+        'timeline.plan-battery-before-car-restored',
+        { STATE: this.yesNo(original.batteryBeforeCar) },
+        `Ladeplan beendet – "Auto vor Batterie" auf ${original.batteryBeforeCar} zurückgesetzt`,
+      ));
     }
     if (typeof original.batteryDischargeMixBlocked === 'boolean') {
       await this.device.setDisableBatteryAtMixMode(original.batteryDischargeMixBlocked);
-      this.device.postTimelineNotification?.(`Ladeplan beendet – Mix-Modus-Entladung zurückgesetzt`);
+      this.device.postTimelineNotification?.(this.text(
+        'timeline.plan-mix-restored',
+        undefined,
+        'Ladeplan beendet – Mix-Modus-Entladung zurückgesetzt',
+      ));
     }
 
     this.overrides.delete(planId);

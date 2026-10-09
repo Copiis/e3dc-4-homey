@@ -190,7 +190,7 @@ class PvForecastDevice extends Homey.Device {
       await this.addCapability(HOUSE_FORECAST_CAPABILITY);
     }
     await this.setCapabilityOptions(HOUSE_FORECAST_CAPABILITY, {
-      title: {en: 'House consumption forecast', de: 'Hausverbrauch Prognose'},
+      title: {en: 'House consumption forecast', de: 'Haus Prognose'},
       units: {en: 'kWh', de: 'kWh'},
       decimals: 1,
     }).catch(reason => {

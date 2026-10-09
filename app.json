@@ -591,12 +591,12 @@
               "id": "emsSchedules",
               "type": "textarea",
               "label": {
-                "en": "EMS / Ladepläne (JSON, für Widget + Scheduler)",
+                "en": "EMS / charge plans (JSON, for widget + scheduler)",
                 "de": "EMS / Ladepläne (JSON, für Widget + Scheduler)"
               },
               "value": "[]",
               "hint": {
-                "en": "Internal storage for HKW Ladeplaner schedules. Normally managed only via the dashboard widget. Do not edit manually unless you know what you are doing.",
+                "en": "Internal storage for HPS charge planner schedules. Normally managed only via the dashboard widget. Do not edit manually unless you know what you are doing.",
                 "de": "Interner Speicher für HKW-Ladeplaner-Zeitpläne. Wird normalerweise nur über das Dashboard-Widget verwaltet. Nur manuell ändern, wenn du weißt, was du tust."
               },
               "uiComponent": null
@@ -3378,7 +3378,7 @@
     },
     "hkw-ladeplaner": {
       "name": {
-        "en": "HKW Ladeplaner",
+        "en": "HPS charge planner",
         "de": "HKW Ladeplaner"
       },
       "transparent": false,
@@ -3484,7 +3484,7 @@
     },
     "wallbox-ladeplaner": {
       "name": {
-        "en": "Wallbox Ladeplaner",
+        "en": "Wallbox charge planner",
         "de": "Wallbox Ladeplaner"
       },
       "transparent": false,
@@ -3560,7 +3560,8 @@
     "debug_log": {
       "type": "string",
       "title": {
-        "en": "Debug Log"
+        "en": "Debug Log",
+        "de": "Debug-Log"
       },
       "getable": true,
       "setable": false,

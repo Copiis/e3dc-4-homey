@@ -1,6 +1,7 @@
 import {RunListener} from '../run-listener';
 import {formatError} from '../../utils/error-utils';
 import {isPlausibleVehicleSocPercent, normalizeVehicleSocPercent} from '../../utils/vehicle-soc';
+import {flowText} from './wallbox-flow-result';
 
 /**
  * Flow action: set wallbox vehicle SOC from an external source
@@ -8,7 +9,7 @@ import {isPlausibleVehicleSocPercent, normalizeVehicleSocPercent} from '../../ut
  */
 export class WallboxSetVehicleSocActionCard implements RunListener {
   run(
-    args: {device?: {applyCloudVehicleSoc?: (n: number) => void; log?: (m: string) => void; error?: (m: string) => void}; percent?: number; [key: string]: unknown},
+    args: {device?: {applyCloudVehicleSoc?: (n: number) => void; log?: (m: string) => void; error?: (m: string) => void; translate?: (key: string) => string}; percent?: number; [key: string]: unknown},
     _state: unknown,
   ): Promise<unknown> {
     return new Promise((resolve, reject) => {
@@ -17,11 +18,11 @@ export class WallboxSetVehicleSocActionCard implements RunListener {
       const soc = normalizeVehicleSocPercent(typeof raw === 'number' ? raw : Number(raw));
 
       if (!wallbox || typeof wallbox.applyCloudVehicleSoc !== 'function') {
-        reject(new Error('Invalid wallbox device'));
+        reject(new Error(flowText(wallbox, 'messages.invalid-wallbox-device', 'Invalid wallbox device')));
         return;
       }
       if (!isPlausibleVehicleSocPercent(soc)) {
-        reject(new Error('SOC must be between 1 and 100 %'));
+        reject(new Error(flowText(wallbox, 'messages.vehicle-soc-range', 'SOC must be between 1 and 100 %')));
         return;
       }
 

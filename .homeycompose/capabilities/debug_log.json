@@ -1,7 +1,8 @@
 {
   "type": "string",
   "title": {
-    "en": "Debug Log"
+    "en": "Debug Log",
+    "de": "Debug-Log"
   },
   "getable": true,
   "setable": false,

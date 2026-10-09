@@ -2,6 +2,7 @@ import { WallboxSchedule } from '../model/wallbox';
 import { WallboxScheduleStore } from './wallbox-schedule/WallboxScheduleStore';
 import { WallboxScheduleValidator } from './wallbox-schedule/WallboxScheduleValidator';
 import { WallboxScheduleExecutor, TriggeredWallboxScheduleInfo } from './wallbox-schedule/WallboxScheduleExecutor';
+import { deviceText } from '../utils/device-i18n';
 
 /**
  * WallboxScheduleHandler (Koordinator)
@@ -27,7 +28,9 @@ export class WallboxScheduleHandler {
       homey: {
         setInterval(fn: () => void, ms: number): NodeJS.Timeout;
         setTimeout(fn: () => void, ms: number): NodeJS.Timeout;
+        __?: (key: string, tags?: Record<string, string | number>) => string;
       };
+      translate?: (key: string, tags?: Record<string, string | number>) => string;
       getCapabilityValue(key: string): unknown;
       applyChargingAllowed(enabled: boolean, maxCurrentA?: number, force?: boolean): Promise<unknown>;
       applySunMode(enabled: boolean, maxCurrentA?: number, force?: boolean): Promise<unknown>;
@@ -204,9 +207,23 @@ export class WallboxScheduleHandler {
     for (const s of schedules) {
       const id = this.validator.getId(s);
       if (!triggered.has(id)) continue;
-      let part = s.action === 'allow' ? 'Laden' : (s.action || '');
+      const actionKey = s.action === 'allow' ? 'wallbox-plan.charging'
+        : s.action === 'block' ? 'wallbox-plan.block'
+        : s.action === 'sun_on' ? 'wallbox-plan.sun-on'
+        : s.action === 'sun_off' ? 'wallbox-plan.sun-off'
+        : '';
+      let part = actionKey
+        ? deviceText(this.device, actionKey, undefined, s.action === 'allow' ? 'Laden' : (s.action || ''))
+        : (s.action || '');
       if (s.current) part += ` ${s.current}A`;
-      if (typeof s.dischargeSoc === 'number') part += ` • Entladen bis ${s.dischargeSoc}%`;
+      if (typeof s.dischargeSoc === 'number') {
+        part += ' • ' + deviceText(
+          this.device,
+          'wallbox-plan.discharge-until',
+          { PERCENT: s.dischargeSoc },
+          `Entladen bis ${s.dischargeSoc}%`,
+        );
+      }
       parts.push(part);
     }
     return parts.length > 0 ? parts.join(' | ') : null;

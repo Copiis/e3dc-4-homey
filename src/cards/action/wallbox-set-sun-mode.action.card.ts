@@ -1,7 +1,7 @@
 import {RunListener} from '../run-listener';
 import {Wallbox} from '../../model/wallbox';
 import {DEFAULT_WALLBOX_CURRENT_A} from '../../model/wallbox-control';
-import {resolveWallboxFlowResult} from './wallbox-flow-result';
+import {flowText, resolveWallboxFlowResult} from './wallbox-flow-result';
 import {formatError} from '../../utils/error-utils';
 
 export class WallboxSetSunModeActionCard implements RunListener {
@@ -14,7 +14,7 @@ export class WallboxSetSunModeActionCard implements RunListener {
                 : DEFAULT_WALLBOX_CURRENT_A;
 
             if (!wallbox || typeof wallbox.applySunMode !== 'function') {
-                reject('Invalid wallbox device');
+                reject(flowText(wallbox, 'messages.invalid-wallbox-device', 'Invalid wallbox device'));
                 return;
             }
 
@@ -29,7 +29,7 @@ export class WallboxSetSunModeActionCard implements RunListener {
                 resolveWallboxFlowResult(
                     result,
                     { enabled, current },
-                    'Wallbox rejected the sun mode command',
+                    flowText(wallbox, 'messages.wallbox-sun-mode-rejected', 'Wallbox rejected the sun mode command'),
                     resolve,
                     reject,
                 );

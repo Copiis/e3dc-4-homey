@@ -2,6 +2,7 @@ import {Wallbox} from '../../model/wallbox';
 import {isBatteryFirst} from '../../utils/wallbox-e3dc-settings';
 import {RunListener} from '../run-listener';
 import {formatError} from '../../utils/error-utils';
+import {flowText} from './wallbox-flow-result';
 
 export class WallboxBatteryBeforeCarActionCard implements RunListener {
     run(args: Record<string, unknown>, state: Record<string, unknown>): Promise<unknown> {
@@ -10,7 +11,7 @@ export class WallboxBatteryBeforeCarActionCard implements RunListener {
             const batteryFirst = isBatteryFirst(args.priority, args.enabled);
 
             if (!wallbox || typeof wallbox.setBatteryBeforeCar !== 'function') {
-                reject('Invalid wallbox device');
+                reject(flowText(wallbox, 'messages.invalid-wallbox-device', 'Invalid wallbox device'));
                 return;
             }
 
@@ -20,7 +21,7 @@ export class WallboxBatteryBeforeCarActionCard implements RunListener {
                 if (ok) {
                     resolve({ priority: batteryFirst ? 'batterie_zuerst' : 'wallbox_zuerst' });
                 } else {
-                    reject('E3/DC hat „Ladepriorität“ abgelehnt');
+                    reject(flowText(wallbox, 'messages.wallbox-priority-rejected', 'E3/DC hat „Ladepriorität“ abgelehnt'));
                 }
             } catch (e) {
                 wallbox.error && wallbox.error('Ladepriorität failed: ' + formatError(e));

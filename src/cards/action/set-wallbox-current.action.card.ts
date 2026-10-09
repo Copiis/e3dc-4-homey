@@ -1,6 +1,7 @@
 import {RunListener} from '../run-listener';
 import {Wallbox} from '../../model/wallbox';
 import {formatError} from '../../utils/error-utils';
+import {flowText} from './wallbox-flow-result';
 
 export class SetWallboxCurrentActionCard implements RunListener {
     run(args: Record<string, unknown>, state: Record<string, unknown>): Promise<unknown> {
@@ -9,7 +10,7 @@ export class SetWallboxCurrentActionCard implements RunListener {
             const current: number = (args.current as number) ?? 0;
 
             if (!wallbox || typeof wallbox.setCurrentLimit !== 'function') {
-                reject('Invalid wallbox device');
+                reject(flowText(wallbox, 'messages.invalid-wallbox-device', 'Invalid wallbox device'));
                 return;
             }
 
@@ -26,7 +27,7 @@ export class SetWallboxCurrentActionCard implements RunListener {
                     wallbox.log && wallbox.log('Wallbox current set successfully');
                     resolve({ current });
                 } else {
-                    reject('Wallbox rejected the command (check RSCP connection / permissions)');
+                    reject(flowText(wallbox, 'messages.wallbox-current-rejected', 'Wallbox rejected the command (check RSCP connection / permissions)'));
                 }
             } catch (e) {
                 wallbox.error && wallbox.error('Failed to set wallbox current: ' + formatError(e));

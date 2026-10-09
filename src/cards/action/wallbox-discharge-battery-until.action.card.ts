@@ -1,6 +1,7 @@
 import {Wallbox} from '../../model/wallbox';
 import {RunListener} from '../run-listener';
 import {formatError} from '../../utils/error-utils';
+import {flowText} from './wallbox-flow-result';
 
 export class WallboxDischargeBatteryUntilActionCard implements RunListener {
     run(args: { device: Wallbox; percent?: number; [key: string]: unknown }, state: Record<string, unknown>): Promise<unknown> {
@@ -9,7 +10,7 @@ export class WallboxDischargeBatteryUntilActionCard implements RunListener {
             const percent: number = args.percent ?? 0;
 
             if (!wallbox || typeof wallbox.setDischargeBatteryUntil !== 'function') {
-                reject('Invalid wallbox device');
+                reject(flowText(wallbox, 'messages.invalid-wallbox-device', 'Invalid wallbox device'));
                 return;
             }
 
@@ -19,7 +20,7 @@ export class WallboxDischargeBatteryUntilActionCard implements RunListener {
                 if (ok) {
                     resolve({ percent });
                 } else {
-                    reject('E3/DC hat „Batterie Entladegrenze“ abgelehnt');
+                    reject(flowText(wallbox, 'messages.wallbox-discharge-until-rejected', 'E3/DC hat „Batterie Entladegrenze“ abgelehnt'));
                 }
             } catch (e) {
                 wallbox.error && wallbox.error('Batterie Entladegrenze failed: ' + formatError(e));
