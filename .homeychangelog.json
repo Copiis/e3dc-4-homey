@@ -593,5 +593,9 @@
   "1.8.84": {
     "en": "**Language:** Wallbox and charge-planner widgets, charge-plan messages, and flow errors are now available in German and English. The forecast tile is titled Haus Prognose.",
     "de": "**Sprache:** Wallbox- und Ladeplaner-Widgets, Ladeplan-Meldungen und Flow-Fehler gibt es jetzt auf Deutsch und Englisch. Die Prognose-Kachel heißt Haus Prognose."
+  },
+  "1.8.85": {
+    "en": "Connection settings apply immediately. A wallbox pause is not undone by a second command. A charge plan until a battery level stops at the target. Long offline gaps are no longer added to the energy counters. The PV forecast reads weather hours in local time.",
+    "de": "Verbindungsdaten am Hauskraftwerk gelten sofort. Eine Wallbox-Pause wird nicht durch einen zweiten Befehl aufgehoben. Ein Ladeplan bis zum Batteriestand stoppt am Ziel. Lange Offline-Lücken landen nicht mehr in den Energiezählern. Die PV-Prognose rechnet die Wetterstunden in Ortszeit."
   }
 }
