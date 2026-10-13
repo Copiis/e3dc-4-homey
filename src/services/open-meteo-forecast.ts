@@ -1,5 +1,74 @@
 import {formatError} from '../utils/error-utils';
 
+/**
+ * YYYY-MM-DDTHH:mm[:ss] as wall-clock time in an IANA zone, returned as UTC epoch ms.
+ * Open-Meteo timezone=Europe/Berlin strings have no offset. Two offset corrections cover DST.
+ * Invalid zone or text yields NaN.
+ */
+export function parseZonedLocalDateTimeMs(isoLocal: string, timeZone: string): number {
+  if (!isoLocal || !timeZone) {
+    return NaN;
+  }
+  const match = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?/.exec(isoLocal.trim());
+  if (!match) {
+    return NaN;
+  }
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const hour = Number(match[4]);
+  const minute = Number(match[5]);
+  const second = match[6] ? Number(match[6]) : 0;
+  if (month < 1 || month > 12 || day < 1 || day > 31 || hour > 23 || minute > 59 || second > 59) {
+    return NaN;
+  }
+  const utcGuess = Date.UTC(year, month - 1, day, hour, minute, second);
+  const offset1 = zoneOffsetMs(timeZone, utcGuess);
+  if (!Number.isFinite(offset1)) {
+    return NaN;
+  }
+  let utc = utcGuess - offset1;
+  const offset2 = zoneOffsetMs(timeZone, utc);
+  if (!Number.isFinite(offset2)) {
+    return NaN;
+  }
+  if (offset2 !== offset1) {
+    utc = utcGuess - offset2;
+  }
+  return utc;
+}
+
+function zoneOffsetMs(timeZone: string, instantMs: number): number {
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      hourCycle: 'h23',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    }).formatToParts(new Date(instantMs));
+    const pick = (type: string) => Number(parts.find(part => part.type === type)?.value);
+    const year = pick('year');
+    const month = pick('month');
+    const day = pick('day');
+    let hour = pick('hour');
+    const minute = pick('minute');
+    const second = pick('second');
+    if ([year, month, day, hour, minute, second].some(value => !Number.isFinite(value))) {
+      return NaN;
+    }
+    if (hour === 24) {
+      hour = 0;
+    }
+    return Date.UTC(year, month - 1, day, hour, minute, second) - instantMs;
+  } catch {
+    return NaN;
+  }
+}
+
 export interface HourlyIrradiance {
   time: string;
   globalTiltedIrradianceWm2: number;
@@ -81,6 +150,7 @@ export async function fetchSunsetMs(
   timezone: string,
   nowMs = Date.now()
 ): Promise<number | null> {
+  void nowMs;
   try {
     const params = new URLSearchParams({
       latitude: String(latitude),
@@ -104,12 +174,12 @@ export async function fetchSunsetMs(
       return null;
     }
 
-    // Format ist z.B. "2026-07-12T21:18" in der angegebenen Zeitzone
-    const sunsetDate = new Date(sunsets[0]);
-    if (isNaN(sunsetDate.getTime())) {
+    // Format ist z.B. "2026-07-12T21:18" ohne Offset, Wanduhrzeit der angefragten Zone
+    const sunsetMs = parseZonedLocalDateTimeMs(sunsets[0], body.timezone ?? timezone);
+    if (!Number.isFinite(sunsetMs)) {
       return null;
     }
-    return sunsetDate.getTime();
+    return sunsetMs;
   } catch {
     return null;
   }

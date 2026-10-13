@@ -31,8 +31,8 @@ export class SetMaxDischargingPowerActionCard implements RunListener {
                             hps.log('Rejected max discharging power configuration. Requested value is higher than the allowed max of the HPS. Requested: ' + requestedWattLimit + ', HPS-max: ' + config.maxPossibleDischargingPower)
                             reject(hps.translate('messages.requested-max-discharging-power-to-high', {REQUESTED: requestedWattLimit, MAX: config.maxPossibleDischargingPower}))
                         }
-                        else if (requestedWattLimit < config.minPossibleChargingPower) {
-                            hps.log('Rejected max charging power configuration. Requested value is lower than the allowed min of the HPS. Requested: ' + requestedWattLimit + ', HPS-min: ' + config.minPossibleDischargingPower)
+                        else if (requestedWattLimit < config.minPossibleDischargingPower) {
+                            hps.log('Rejected max discharging power configuration. Requested value is lower than the allowed min of the HPS. Requested: ' + requestedWattLimit + ', HPS-min: ' + config.minPossibleDischargingPower)
                             reject(hps.translate('messages.requested-max-discharging-power-to-low', {REQUESTED: requestedWattLimit, MIN: config.minPossibleDischargingPower}))
                         }
                         else {

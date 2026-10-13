@@ -200,15 +200,25 @@ export class CapabilityManager {
   }
 
   handleManualChargeStateChanges(result: LiveData) {
-    const change = updateCapabilityValue('manual_charge_state', result.manualChargeState, this.device);
-    if (change) {
-      this.currentManualChargeState = result.manualChargeState;
-      if (result.manualChargeState && result.manualChargeState.active) {
-        try {
-          this.device.manualBatteryChargingStartedTrigger?.trigger(result.manualChargeState.chargedEnergyWh);
-        } catch (e) {
-          this.device.error('manualBatteryChargingStartedTrigger failed: ' + formatError(e));
-        }
+    // manual_charge_state is intentionally not a Homey capability. Comparing the
+    // in-memory state avoids updateCapabilityValue, which would add the capability.
+    const next = result.manualChargeState ?? null;
+    const prev = this.currentManualChargeState;
+    const wasActive = Boolean(prev?.active);
+    const isActive = Boolean(next?.active);
+    this.currentManualChargeState = next;
+    if (!wasActive && isActive) {
+      try {
+        this.device.manualBatteryChargingStartedTrigger?.trigger(next?.chargedEnergyWh);
+      } catch (e) {
+        this.device.error('manualBatteryChargingStartedTrigger failed: ' + formatError(e));
+      }
+    } else if (wasActive && !isActive) {
+      try {
+        const loaded = prev?.chargedEnergyWh ?? next?.chargedEnergyWh ?? 0;
+        this.device.manualBatteryChargingStoppedTrigger?.trigger(loaded);
+      } catch (e) {
+        this.device.error('manualBatteryChargingStoppedTrigger failed: ' + formatError(e));
       }
     }
   }

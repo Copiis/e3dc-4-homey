@@ -260,7 +260,7 @@ async function loadPlans() {
       c.style.marginTop = plans.length > 0 ? '4px' : '0';
     }
 
-    plans.forEach((p, i) => {
+    plans.forEach((p) => {
       const d = document.createElement('div');
       d.className = 'plan';
       const end = p.untilFull
@@ -268,28 +268,45 @@ async function loadPlans() {
         : (p.end ? new Date(p.end).toLocaleString() : '');
       const displayAction = p.action === 'allow'
         ? tx('widget.ui.wb-plan.charging', 'Laden')
-        : p.action;
+        : String(p.action ?? '');
       let details = displayAction;
-      if (p.current) details += ` ${p.current}A`;
-
-      let dischargePart = '';
-      let dischargeNote = '';
+      if (p.current !== undefined && p.current !== null && p.current !== '') details += ' ' + p.current + 'A';
       if (typeof p.dischargeSoc === 'number' && !isNaN(p.dischargeSoc)) {
-        dischargePart = ' • ' + tx('widget.ui.wb-plan.discharge', 'Entladen bis ' + p.dischargeSoc + '%', { PERCENT: p.dischargeSoc });
-        dischargeNote = `
-          <div class="small" style="color:#9cf; margin-top:1px;">
-            ${tx('widget.ui.wb-plan.restore-note', '(wird nach Plan-Ende auf Ursprungswert zurückgesetzt)')}
-          </div>`;
+        details += ' • ' + tx('widget.ui.wb-plan.discharge', 'Entladen bis ' + p.dischargeSoc + '%', { PERCENT: p.dischargeSoc });
       }
 
-      d.innerHTML = `
-        <div class="plan-header">
-          <strong>${new Date(p.start).toLocaleString()}</strong>
-          <button onclick="del(${i})" style="background:#5BC244; padding:1px 6px; font-size:10px; width: auto;">✕</button>
-        </div>
-        <div class="small">${details}${dischargePart} → ${end}</div>
-        ${dischargeNote}
-      `;
+      const header = document.createElement('div');
+      header.className = 'plan-header';
+      const strong = document.createElement('strong');
+      strong.textContent = p.start ? new Date(p.start).toLocaleString() : '';
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = '✕';
+      button.style.background = '#5BC244';
+      button.style.padding = '1px 6px';
+      button.style.fontSize = '10px';
+      button.style.width = 'auto';
+      if (!p.id) {
+        button.disabled = true;
+      } else {
+        button.onclick = () => del(p.id);
+      }
+      header.appendChild(strong);
+      header.appendChild(button);
+
+      const line = document.createElement('div');
+      line.className = 'small';
+      line.textContent = details + ' → ' + end;
+      d.appendChild(header);
+      d.appendChild(line);
+      if (typeof p.dischargeSoc === 'number' && !isNaN(p.dischargeSoc)) {
+        const note = document.createElement('div');
+        note.className = 'small';
+        note.style.color = '#9cf';
+        note.style.marginTop = '1px';
+        note.textContent = tx('widget.ui.wb-plan.restore-note', '(wird nach Plan-Ende auf Ursprungswert zurückgesetzt)');
+        d.appendChild(note);
+      }
       if (c) c.appendChild(d);
     });
   } catch (err) {
@@ -355,7 +372,11 @@ async function addPlan() {
     const list = res.schedules || [];
     list.push(plan);
 
-    await Homey.api('POST', '/wallbox-schedules', { wallboxId, schedules: list });
+    const saved = await Homey.api('POST', '/wallbox-schedules', { wallboxId, schedules: list });
+    if (!saved || saved.success === false) {
+      alert(tx('widget.ui.wb-plan.add-error', 'Fehler beim Hinzufügen des Plans'));
+      return;
+    }
     loadPlans();
   } catch (err) {
     console.error('addPlan failed:', err);
@@ -363,28 +384,27 @@ async function addPlan() {
   }
 }
 
-async function del(index) {
+async function del(id) {
   try {
+    if (!id) return;
     const wbSel = document.getElementById('wallbox');
     const wallboxId = wbSel.value;
     if (!wallboxId) return;
 
     const res = await Homey.api('GET', `/wallbox-schedules?wallboxId=${wallboxId}`);
     const plans = res.schedules || [];
-    const planToDelete = plans[index];
+    const planToDelete = plans.find(p => p && p.id === id);
     if (!planToDelete) {
       loadPlans();
       return;
     }
-    await Homey.api('POST', '/log', { widget: 'wallbox-ladeplaner', message: `Wallbox-Plan manuell gelöscht id=${planToDelete.id || index}` });
-    let list = plans;
-    if (planToDelete.id) {
-      list = list.filter(p => (p.id || '') !== planToDelete.id);
-    } else {
-      list = list.slice();
-      list.splice(index, 1);
+    await Homey.api('POST', '/log', { widget: 'wallbox-ladeplaner', message: `Wallbox-Plan manuell gelöscht id=${planToDelete.id}` });
+    const list = plans.filter(p => !p || p.id !== id);
+    const saved = await Homey.api('POST', '/wallbox-schedules', { wallboxId, schedules: list });
+    if (!saved || saved.success === false) {
+      alert(tx('widget.ui.wb-plan.delete-error', 'Fehler beim Löschen des Plans'));
+      return;
     }
-    await Homey.api('POST', '/wallbox-schedules', { wallboxId, schedules: list });
     loadPlans();
   } catch (err) {
     console.error('del failed:', err);

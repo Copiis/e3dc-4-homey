@@ -108,11 +108,7 @@ class BatterModuleDevice extends Homey.Device implements BatteryModule{
     }
     const currentSumA = data.dcbs.reduce((sum, dcb) => sum + (Number(dcb.currentA) || 0), 0);
     if (!Number.isFinite(currentSumA) || currentSumA === 0) {
-      // Idle / no current tags: show 0 on module tile rather than system total (P3 clarity)
-      if (Math.abs(stationBatteryPowerW) < 50) {
-        return 0;
-      }
-      return stationBatteryPowerW;
+      return 0;
     }
     const magnitudeW = Math.abs(data.voltage * currentSumA);
     const sign = stationBatteryPowerW < 0 ? -1 : stationBatteryPowerW > 0 ? 1 : (currentSumA < 0 ? -1 : 1);

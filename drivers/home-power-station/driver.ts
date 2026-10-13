@@ -5,6 +5,7 @@ import {
   E3dcConnectionData,
 } from 'easy-rscp';
 import {RscpApi} from '../../src/rscp-api';
+import {pooledSessionKey} from '../../src/rscp-connection-pool';
 import {formatError} from '../../src/utils/error-utils';
 
 class HomePowerStationDriver extends Homey.Driver {
@@ -63,7 +64,15 @@ class HomePowerStationDriver extends Homey.Driver {
         ...(device.getSettings() as PowerStationConfig),
       };
 
-      this.registerConnectionHandlers(session, () => repairSettings);
+      let connectionVerified = false;
+      this.registerConnectionHandlers(session, () => repairSettings, {
+        onSettingsChanged: () => {
+          connectionVerified = false;
+        },
+        onConnectionChecked: (result: string) => {
+          connectionVerified = result === this.homey.__('setup.connection-test.success');
+        },
+      });
 
       // Persist credentials when the user finishes the repair wizard.
       // Homey does not auto-emit "done" for the system done template — save on
@@ -73,33 +82,40 @@ class HomePowerStationDriver extends Homey.Driver {
         if (saved) {
           return true;
         }
-        try {
-          repairSettings.stationPort = parseInt(String(repairSettings.stationPort), 10);
-          if (repairSettings.timeout == undefined || Number.isNaN(Number(repairSettings.timeout))) {
-            repairSettings.timeout = 5;
-          } else {
-            repairSettings.timeout = parseInt(String(repairSettings.timeout), 10);
-          }
-          await device.setSettings(repairSettings);
-
-          if (!device.getAvailable()) {
-            await device.setAvailable().catch(() => {});
-          }
-
-          // Force a sync after repair so data comes back quickly
-          const maybeSync = (device as Homey.Device & { sync?: () => Promise<void> }).sync;
-          if (typeof maybeSync === 'function') {
-            maybeSync.call(device).catch(() => {});
-          }
-
-          saved = true;
-          this.log(`Repair completed (${reason}) for device ${device.getName()}`);
-          return true;
-        } catch (e) {
-          this.error(`Repair save (${reason}) failed: ` + formatError(e));
-          await device.setAvailable().catch(() => {});
-          return true; // don't let the flow crash
+        const validationError = this.validateSettings(repairSettings);
+        if (validationError || !connectionVerified) {
+          const message = validationError
+            ?? this.homey.__('setup.connection-test.failed');
+          this.error(`Repair save (${reason}) rejected: ` + message);
+          throw new Error(message);
         }
+        if (repairSettings.timeout == undefined || Number.isNaN(Number(repairSettings.timeout))) {
+          repairSettings.timeout = 5;
+        } else {
+          repairSettings.timeout = parseInt(String(repairSettings.timeout), 10);
+        }
+        const previous = device.getSettings() as PowerStationConfig;
+        await device.setSettings(repairSettings);
+        const oldKey = pooledSessionKey(previous.stationAddress, previous.stationPort);
+        const newKey = pooledSessionKey(repairSettings.stationAddress, repairSettings.stationPort);
+        RscpApi.dropPooledSession(oldKey, this);
+        if (newKey && newKey !== oldKey) {
+          RscpApi.dropPooledSession(newKey, this);
+        }
+
+        if (!device.getAvailable()) {
+          await device.setAvailable().catch(() => {});
+        }
+
+        // Force a sync after repair so data comes back quickly
+        const maybeSync = (device as Homey.Device & { sync?: () => Promise<void> }).sync;
+        if (typeof maybeSync === 'function') {
+          maybeSync.call(device).catch(() => {});
+        }
+
+        saved = true;
+        this.log(`Repair completed (${reason}) for device ${device.getName()}`);
+        return true;
       };
 
       session.setHandler('showView', async (viewId: string) => {
@@ -116,10 +132,18 @@ class HomePowerStationDriver extends Homey.Driver {
     return Promise.resolve();
   }
 
-  private registerConnectionHandlers(session: PairSession, getSettings: () => PowerStationConfig) {
+  private registerConnectionHandlers(
+    session: PairSession,
+    getSettings: () => PowerStationConfig,
+    hooks?: {
+      onSettingsChanged?: () => void;
+      onConnectionChecked?: (result: string) => void;
+    },
+  ) {
     // Wrap every handler so one bad emit doesn't kill the entire pair/repair flow
     session.setHandler('settingsChanged', async (data: PowerStationConfig) => {
       try {
+        hooks?.onSettingsChanged?.();
         return await this.onSettingsChanged(data, getSettings);
       } catch (e) {
         this.error('settingsChanged handler error: ' + formatError(e));
@@ -129,7 +153,9 @@ class HomePowerStationDriver extends Homey.Driver {
 
     session.setHandler('checkConnection', async (data: PowerStationConfig) => {
       try {
-        return await this.onCheckConnection(data, getSettings);
+        const result = await this.onCheckConnection(data, getSettings);
+        hooks?.onConnectionChecked?.(result);
+        return result;
       } catch (e) {
         this.error('checkConnection handler error: ' + formatError(e));
         return 'Unexpected error during connection check';
@@ -148,15 +174,20 @@ class HomePowerStationDriver extends Homey.Driver {
 
   async onCheckConnection(data: PowerStationConfig, settingsTarget?: { (): PowerStationConfig }) {
     return new Promise<string>(async (resolve) => {
+      let api: RscpApi | undefined;
+      let result = 'Unexpected error during connection test';
       try {
         this.settings = data;
         if (settingsTarget) {
           Object.assign(settingsTarget(), data);
         }
 
-        const validationError = this.validateSettings();
+        const validationError = this.validateSettings(this.settings);
+        if (settingsTarget) {
+          settingsTarget().stationPort = this.settings.stationPort;
+        }
         if (validationError) {
-          resolve(validationError);
+          result = validationError;
           return;
         }
 
@@ -174,20 +205,29 @@ class HomePowerStationDriver extends Homey.Driver {
           readTimeoutMillis: this.settings.timeout * 1000
         };
 
-        const api = new RscpApi();
+        const key = pooledSessionKey(this.settings.stationAddress, this.settings.stationPort);
+        RscpApi.dropPooledSession(key, this);
+        api = new RscpApi();
         api.init(easyRscpConnectionData, this);
 
         // More defensive: don't let a bad connection crash the whole pair flow
         try {
           await api.readLiveData(true, this);
-          resolve(this.homey.__('setup.connection-test.success'));
+          result = this.homey.__('setup.connection-test.success');
         } catch (e) {
-          resolve(this.homey.__('setup.connection-test.failed-detail', { detail: formatError(e) }));
+          result = this.homey.__('setup.connection-test.failed-detail', { detail: formatError(e) });
         }
       } catch (e) {
         this.error('onCheckConnection crashed: ' + formatError(e));
-        resolve('Unexpected error during connection test: ' + formatError(e));
+        result = 'Unexpected error during connection test: ' + formatError(e);
+      } finally {
+        if (api) {
+          await api.closeOwnConnection(this).catch(reason => {
+            this.log('onCheckConnection: closing test connection failed: ' + formatError(reason));
+          });
+        }
       }
+      resolve(result);
     });
   }
 
@@ -199,26 +239,48 @@ class HomePowerStationDriver extends Homey.Driver {
     return true
   }
 
-  private validateSettings(): string | undefined {
-    if (this.settings.portalUsername === null || this.settings.portalUsername.trim() === '') {
+  private validateSettings(target?: PowerStationConfig): string | undefined {
+    const settings = target ?? this.settings
+    if (settings.portalUsername === null || settings.portalUsername.trim() === '') {
       return this.homey.__('setup.validation.required', {input: this.homey.__('setup.field.portal-username.title')})
     }
-    if (this.settings.portalPassword === null || this.settings.portalPassword.trim() === '') {
+    if (settings.portalPassword === null || settings.portalPassword.trim() === '') {
       return this.homey.__('setup.validation.required', {input: this.homey.__('setup.field.portal-password.title')})
     }
-    if (this.settings.rscpKey === null || this.settings.rscpKey.trim() === '') {
+    if (settings.rscpKey === null || settings.rscpKey.trim() === '') {
       return this.homey.__('setup.validation.required', {input: this.homey.__('setup.field.rscp-key.title')})
     }
-    if (this.settings.stationAddress === null || this.settings.stationAddress.trim() === '') {
+    if (settings.stationAddress === null || settings.stationAddress.trim() === '') {
       return this.homey.__('setup.validation.required', {input: this.homey.__('setup.field.station-address.title')})
     }
-    if (this.settings.stationPort == null || this.settings.stationPort < 0 || this.settings.stationPort > 65535) {
+    const port = this.parseStationPort(settings.stationPort)
+    if (port === undefined) {
       return this.homey.__('setup.validation.required', {input: this.homey.__('setup.field.station-port.title')})
     }
-    if (this.settings.timeout == null || this.settings.timeout < 5 || this.settings.timeout > 30) {
+    settings.stationPort = port
+    if (settings === this.settings) {
+      this.settings.stationPort = port
+    }
+    if (settings.timeout == null || settings.timeout < 5 || settings.timeout > 30) {
       return this.homey.__('setup.validation.required', {input: this.homey.__('setup.field.timeout.title')})
     }
     return undefined
+  }
+
+  /** Integer TCP port 1..65535. Empty, NaN and text such as "abc" are rejected. */
+  private parseStationPort(value: unknown): number | undefined {
+    if (value === null || value === undefined) {
+      return undefined
+    }
+    const text = String(value).trim()
+    if (!/^\d+$/.test(text)) {
+      return undefined
+    }
+    const port = parseInt(text, 10)
+    if (!Number.isFinite(port) || !Number.isInteger(port) || port < 1 || port > 65535) {
+      return undefined
+    }
+    return port
   }
 
   async onPairListDevices() {

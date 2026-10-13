@@ -18,6 +18,7 @@ import { EmsScheduleValidator } from './EmsScheduleValidator';
  */
 export class EmsScheduleExecutor {
   private scheduledExpireTimers: Map<string, NodeJS.Timeout> = new Map();
+  private rejectedRetryTimer: NodeJS.Timeout | null = null;
 
   constructor(
     private readonly device: IHpsDevice,
@@ -29,6 +30,7 @@ export class EmsScheduleExecutor {
 
   /** Delegiert State an PowerModeManager (wenn vorhanden) oder fällt zurück */
   setPowerModeState(state: PowerModeState | null): void {
+    this.clearRejectedRetryTimer();
     if (this.powerModeManager) {
       this.powerModeManager.setPowerModeState(state);
     } else {
@@ -61,19 +63,39 @@ export class EmsScheduleExecutor {
    * Führt den eigentlichen setPowerMode Aufruf aus (inkl. kleiner Retry bei false).
    */
   async executeSetPowerMode(mode: number, powerW: number, scheduleId?: string): Promise<void> {
+    this.clearRejectedRetryTimer();
     try {
       const result = await this.apiFactory().setPowerMode(mode, powerW, true, this.device);
       this.logger.log(`[Ladeplan] setPowerMode result for ${scheduleId || 'manual'}: ${result}`);
       if (result === false) {
         this.device.recordAnalysisEvent('warn', `Power Mode abgelehnt durch HKW (AI360-Modus / Entladesperre / interne Optimierung möglich). Mode=${mode} schedule=${scheduleId || 'manual'}`);
-        setTimeout(() => {
+        this.rejectedRetryTimer = setTimeout(() => {
+          this.rejectedRetryTimer = null;
+          const current = this.getPowerModeState();
+          if (!current) {
+            return;
+          }
+          if (scheduleId && current.scheduleId !== scheduleId) {
+            return;
+          }
+          if (current.mode !== mode || current.powerW !== powerW) {
+            return;
+          }
           this.apiFactory().setPowerMode(mode, powerW, true, this.device)
             .then((r: unknown) => this.logger.log(`[Ladeplan] setPowerMode retry result: ${r}`))
             .catch(() => {});
         }, 2000);
+        this.rejectedRetryTimer.unref?.();
       }
     } catch (e) {
       this.logger.error('[Ladeplan] setPowerMode failed: ' + formatError(e));
+    }
+  }
+
+  clearRejectedRetryTimer(): void {
+    if (this.rejectedRetryTimer) {
+      clearTimeout(this.rejectedRetryTimer);
+      this.rejectedRetryTimer = null;
     }
   }
 
@@ -125,12 +147,16 @@ export class EmsScheduleExecutor {
     if (!state) return;
 
     if (state.untilSoc) {
-      const currentSoc = this.device.getCurrentSOC() * 100;
-      if (currentSoc >= state.untilSoc) {
+      const socFraction = this.device.getCurrentSOC();
+      const socKnown = typeof socFraction === 'number' && Number.isFinite(socFraction);
+      const currentSoc = socKnown ? socFraction * 100 : null;
+      const expired = typeof state.expiresAt === 'number' && Date.now() >= state.expiresAt;
+      if (socKnown && currentSoc !== null && currentSoc >= state.untilSoc) {
         this.logger.log(`[Ladeplan] untilSoc ${state.untilSoc}% reached (current ${currentSoc}%), reverting to AUTO (scheduleId=${state.scheduleId || 'none'})`);
         if (state.scheduleId) {
           removeCompleted(state.scheduleId);
         }
+        this.clearRejectedRetryTimer();
         this.setPowerModeState(null);
         try {
           await this.apiFactory().setPowerMode(this.validator.POWER_MODE_AUTO, 0, true, this.device);
@@ -139,7 +165,10 @@ export class EmsScheduleExecutor {
         }
         return;
       }
-      // keep charging until SOC — do not fall through to clock expiry
+      if (expired) {
+        await this.revertPowerMode(state.scheduleId, removeCompleted);
+        return;
+      }
     } else if (state.expiresAt && Date.now() >= state.expiresAt) {
       await this.revertPowerMode(state.scheduleId, removeCompleted);
       return;

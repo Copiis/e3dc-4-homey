@@ -32,12 +32,26 @@ export class PowerModeManager {
   private powerModeState: PowerModeState | null = null;
   private powerModeLoopId: NodeJS.Timeout | null = null;
   private consecutiveFailures = 0;
+  private onStateCleared?: () => void;
+  private onUntilSocFinished?: (scheduleId?: string) => void;
 
   constructor(
     private readonly device: IHpsDevice,
     private readonly apiFactory: () => RscpApi,
     private readonly logger: { log: (msg: string) => void; error: (msg: string) => void },
   ) {}
+
+  /**
+   * EmsScheduleManager registers these after the executor exists.
+   * onStateCleared drops a pending false-retry. onUntilSocFinished removes the plan.
+   */
+  setLifecycleHooks(hooks: {
+    onStateCleared?: () => void;
+    onUntilSocFinished?: (scheduleId?: string) => void;
+  }): void {
+    this.onStateCleared = hooks.onStateCleared;
+    this.onUntilSocFinished = hooks.onUntilSocFinished;
+  }
 
   /**
    * Setzt den aktuellen Power-Mode-State.
@@ -55,6 +69,8 @@ export class PowerModeManager {
     if (state !== null) {
       this.schedulePowerModeRefresh();
       // Expire timer scheduling for schedule-based plans is handled by EmsScheduleExecutor
+    } else {
+      this.onStateCleared?.();
     }
   }
 
@@ -77,29 +93,45 @@ export class PowerModeManager {
     }
 
     if (state.untilSoc) {
-      const currentSoc = this.device.getCurrentSOC() * 100;
-      if (currentSoc >= state.untilSoc) {
+      const socFraction = this.device.getCurrentSOC();
+      const socKnown = typeof socFraction === 'number' && Number.isFinite(socFraction);
+      const currentSoc = socKnown ? socFraction * 100 : null;
+      const expired = typeof state.expiresAt === 'number' && Date.now() >= state.expiresAt;
+      if (socKnown && currentSoc !== null && currentSoc >= state.untilSoc) {
         this.logger.log(`[Ladeplan] untilSoc ${state.untilSoc}% reached (current ${currentSoc}%), reverting to AUTO (scheduleId=${state.scheduleId || 'none'})`);
-        if (state.scheduleId) {
-          // delegate to caller if needed
-        }
-        // expire timer is managed by caller (EmsScheduleExecutor) for schedule plans
-        this.powerModeState = null;
-        this.apiFactory().setPowerMode(POWER_MODE_AUTO, 0, true, this.device)
-          .catch((e: unknown) => this.logger.error('[Ladeplan] untilSoc revert failed: ' + formatError(e)));
+        this.finishUntilSoc(state);
         return;
       }
-      // SOC target not yet reached: keep charging, ignore clock expiry
+      if (expired) {
+        const socText = socKnown ? `${currentSoc}%` : 'unbekannt';
+        this.logger.log(`[Ladeplan] untilSoc ${state.untilSoc}% not reached (current ${socText}), expiresAt abgelaufen, reverting to AUTO (scheduleId=${state.scheduleId || 'none'})`);
+        this.finishUntilSoc(state);
+        return;
+      }
     } else if (state.expiresAt && Date.now() >= state.expiresAt) {
       this.revertPowerMode(state.scheduleId);
       return;
     }
     this.logger.log(`[Ladeplan] refreshPowerMode: sending mode=${state.mode} power=${state.powerW} (scheduleId=${state.scheduleId || 'none'})`);
 
+    const planScheduleId = state.scheduleId;
+    const planMode = state.mode;
+    const planPowerW = state.powerW;
+    const stillRunning = () => {
+      const current = this.powerModeState;
+      return !!current
+        && current.scheduleId === planScheduleId
+        && current.mode === planMode
+        && current.powerW === planPowerW;
+    };
+
     const sendAndScheduleNext = () => {
       this.apiFactory()
         .setPowerMode(state.mode, state.powerW, true, this.device)
         .then((result: unknown) => {
+          if (!stillRunning()) {
+            return;
+          }
           if (result === false) {
             this.consecutiveFailures++;
             this.logger.log(`[Ladeplan] refreshPowerMode result for ${state.scheduleId || 'unknown'}: false (failures=${this.consecutiveFailures})`);
@@ -108,22 +140,45 @@ export class PowerModeManager {
             // Throttle on repeated failures (point 2)
             if (this.consecutiveFailures >= 3) {
               this.logger.log(`[Ladeplan] Too many consecutive Power Mode rejections (${this.consecutiveFailures}), pausing refresh for 60s`);
+              if (!stillRunning()) {
+                return;
+              }
               this.powerModeLoopId = this.device.homey.setTimeout(() => this.refreshPowerMode(), 60 * 1000);
               return;
             }
           } else {
             this.consecutiveFailures = 0;
           }
-          this.schedulePowerModeRefresh();
+          if (stillRunning()) {
+            this.schedulePowerModeRefresh();
+          }
         })
         .catch((e: unknown) => {
           this.consecutiveFailures++;
           this.logger.error('[Ladeplan] Power mode refresh failed: ' + formatError(e));
-          this.schedulePowerModeRefresh();
+          if (stillRunning()) {
+            this.schedulePowerModeRefresh();
+          }
         });
     };
 
     sendAndScheduleNext();
+  }
+
+  private finishUntilSoc(state: PowerModeState): void {
+    this.clearLoop();
+    this.powerModeState = null;
+    this.onStateCleared?.();
+    this.onUntilSocFinished?.(state.scheduleId);
+    this.apiFactory().setPowerMode(POWER_MODE_AUTO, 0, true, this.device)
+      .catch((e: unknown) => this.logger.error('[Ladeplan] untilSoc revert failed: ' + formatError(e)));
+  }
+
+  private clearLoop(): void {
+    if (this.powerModeLoopId) {
+      clearTimeout(this.powerModeLoopId);
+      this.powerModeLoopId = null;
+    }
   }
 
   /**
@@ -136,15 +191,14 @@ export class PowerModeManager {
     if (scheduleId) {
       // caller (EMS) should clear its expire timer + remove schedule
     }
+    this.clearLoop();
     this.powerModeState = null;
+    this.onStateCleared?.();
     this.apiFactory().setPowerMode(POWER_MODE_AUTO, 0, true, this.device)
       .catch((e: unknown) => this.logger.error('[Ladeplan] auto revert failed: ' + formatError(e)));
   }
 
   stop() {
-    if (this.powerModeLoopId) {
-      clearTimeout(this.powerModeLoopId);
-      this.powerModeLoopId = null;
-    }
+    this.clearLoop();
   }
 }

@@ -60,6 +60,21 @@ export class EmsScheduleManager {
     this.validator = new EmsScheduleValidator();
     this.store = new EmsScheduleStore(device, logger);
     this.executor = new EmsScheduleExecutor(device, apiFactory, logger, powerModeManager, this.validator);
+    if (this.powerModeManager) {
+      this.powerModeManager.setLifecycleHooks({
+        onStateCleared: () => this.executor.clearRejectedRetryTimer(),
+        onUntilSocFinished: (scheduleId?: string) => {
+          this.executor.clearRejectedRetryTimer();
+          if (!scheduleId) {
+            return;
+          }
+          this.executor.clearExpireTimer(scheduleId);
+          this.store.markFinished(scheduleId);
+          this.store.deleteTriggered(scheduleId);
+          this.store.removeCompleted(scheduleId);
+        },
+      });
+    }
     this.scheduler = new EmsScheduleScheduler(
       device,
       logger,
@@ -122,7 +137,9 @@ export class EmsScheduleManager {
     if (schedules.length === 0) return;
 
     const now = Date.now();
-    const currentSocPct = this.device.getCurrentSOC() * 100;
+    const socFraction = this.device.getCurrentSOC();
+    const socKnown = typeof socFraction === 'number' && Number.isFinite(socFraction);
+    const currentSocPct = socKnown ? socFraction * 100 : null;
 
     for (const s of schedules) {
       if (!s || !s.start || !s.mode) continue;
@@ -134,20 +151,30 @@ export class EmsScheduleManager {
       const endTs = this.validator.computeEndTsForSchedule(s, startTs);
       // Use the clean isInWindow from validator/utils
       const inWindow = this.validator.isInWindow(s, now);
+      const untilSoc = typeof s.untilSoc === 'number' && s.untilSoc > 0;
 
-      if (typeof s.untilSoc === 'number' && s.untilSoc > 0 && this.store.hasTriggered(id)) {
-        if (currentSocPct >= s.untilSoc) {
-          this.logger.log(`[Ladeplan] untilSoc ${s.untilSoc}% reached (current ${currentSocPct}%), removing plan ${id}`);
-          this.store.removeCompleted(id);
-          this.store.deleteTriggered(id);
-          const active = this.getPowerModeState();
-          if (active?.scheduleId === id) {
-            this.executor.forceRevertToAuto().catch(() => {});
-          }
-          continue;
+      if (untilSoc && this.store.hasFinished(id)) {
+        continue;
+      }
+
+      if (untilSoc && socKnown && currentSocPct !== null && currentSocPct >= s.untilSoc!) {
+        this.logger.log(`[Ladeplan] untilSoc ${s.untilSoc}% reached (current ${currentSocPct}%), removing plan ${id}`);
+        this.store.markFinished(id);
+        this.store.removeCompleted(id);
+        this.store.deleteTriggered(id);
+        const active = this.getPowerModeState();
+        if (active?.scheduleId === id) {
+          this.executor.clearRejectedRetryTimer();
+          this.executor.forceRevertToAuto().catch(() => {});
         }
-        // SOC not reached: if keep-alive died, allow re-trigger below
-        if (!this.getPowerModeState()?.scheduleId) {
+        continue;
+      }
+
+      if (untilSoc && this.store.hasTriggered(id)) {
+        const active = this.getPowerModeState();
+        const keepAliveAlive = active?.scheduleId === id;
+        // Restart only after a real keep-alive death while the target is still open.
+        if (!keepAliveAlive && socKnown && currentSocPct !== null && currentSocPct < s.untilSoc!) {
           this.store.deleteTriggered(id);
         }
       }

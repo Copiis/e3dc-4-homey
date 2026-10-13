@@ -2,11 +2,11 @@ import Homey, { SimpleClass } from 'homey';
 import { PowerStationConfig } from '../../src/model/power-station.config';
 import {
   ChargingConfiguration,
-  E3dcConnectionData,
   EmergencyPowerState,
   ManualChargeState
 } from 'easy-rscp';
 import { RscpApi } from '../../src/rscp-api';
+import { pooledSessionKey } from '../../src/rscp-connection-pool';
 import { HomePowerStation, PowerModeState } from '../../src/model/home-power-station';
 import { updateCapabilityValue } from '../../src/utils/capability-utils';
 import { ValueChanged } from '../../src/model/value-changed';
@@ -196,12 +196,12 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
       error: (m: string) => this.error('[Cloud] ' + m),
     })
   }
-  getCurrentSOC(): number {
+  getCurrentSOC(): number | null {
     const number = this.getCapabilityValue('measure_battery')
-    if (number) {
-      return number / 100.0;
+    if (typeof number !== 'number' || !Number.isFinite(number)) {
+      return null
     }
-    return  0.0
+    return number / 100.0
   }
   getManualChargeState(): ManualChargeState | null {
     return this.capabilityManager?.currentManualChargeState ?? null;
@@ -598,12 +598,14 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
     changedKeys: string[];
   }): Promise<string | void> {
     this.log("HomePowerStationDevice settings where changed");
-    const e3dcData: E3dcConnectionData = {
-      address: (newSettings.stationAddress as string) || '',
-      port: parseInt(String(newSettings.stationPort || '502')),
-      portalUser: (newSettings.portalUsername as string) || '',
-      portalPassword: (newSettings.portalPassword as string) || '',
-      rscpPassword: (newSettings.rscpKey as string) || '',
+    const credentialKeys = ['stationAddress', 'stationPort', 'portalUsername', 'portalPassword', 'rscpKey']
+    if (changedKeys.some(key => credentialKeys.includes(key))) {
+      const oldKey = pooledSessionKey(oldSettings.stationAddress, oldSettings.stationPort)
+      const newKey = pooledSessionKey(newSettings.stationAddress, newSettings.stationPort)
+      RscpApi.dropPooledSession(oldKey, this)
+      if (newKey && newKey !== oldKey) {
+        RscpApi.dropPooledSession(newKey, this)
+      }
     }
     if (changedKeys.includes('emsSchedules')) {
       this.log('[Ladeplan] emsSchedules setting changed, reloading')

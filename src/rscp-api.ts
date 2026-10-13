@@ -3,6 +3,7 @@ import {
     ChargingConfigurationConverter,
     ChargingLimits,
     DailySummaryConverter,
+    Data,
     DataBuilder,
     DataType,
     DBTag,
@@ -43,7 +44,7 @@ import {SummaryData} from './model/summary-data';
 import {SummaryType} from './model/summary.config';
 import {Logger} from './internal-api/logger';
 import {formatError, formatErrorMessage, normalizeError, rejectAsError} from './utils/error-utils';
-import {isBenignNetworkError} from './net-socket-safety';
+import {isBenignNetworkError, isConnectionNeverEstablished} from './net-socket-safety';
 import {SafeSocketFactory} from './rscp-safe-socket-factory';
 import {startOfLocalCalendarDay} from './utils/grid-cumulative-archive';
 import {BatteryData, DCBData} from './model/battery-data';
@@ -58,7 +59,13 @@ import {
 import {WallboxEmsSettings} from './model/wallbox-ems-settings';
 import { RscpTagRegistry } from './model/rscp-tag-registry';
 import {resolveUsableCapacityWh} from './utils/battery-capacity';
-import { sharedRscpConnectionPool } from './rscp-connection-pool';
+import {findDataByTag} from './utils/rscp-data-utils';
+import {
+    credentialsMatch,
+    pooledSessionKey,
+    PooledCredentialIdentity,
+    sharedRscpConnectionPool,
+} from './rscp-connection-pool';
 
 const {
     EMS_GET_WALLBOX_ENFORCE_POWER_ASSIGNMENT,
@@ -83,17 +90,56 @@ export class RscpApi {
     private connectionData: E3dcConnectionData | undefined = undefined
 
     init(data: E3dcConnectionData, log: Logger) {
+        const nextKey = pooledSessionKey(data.address, data.port) ?? `${data.address}:${data.port}`
+        const nextIdentity = RscpApi.identityFrom(data)
         if (this.connectionData) {
-            const currentConnection = pool.getConnection(this.getKey())
-            this.closeConnection(currentConnection, log).then()
+            const oldKey = pooledSessionKey(this.connectionData.address, this.connectionData.port)
+            if (oldKey) {
+                RscpApi.dropPooledSession(oldKey, log)
+            }
+        }
+        const stored = pool.getIdentity(nextKey)
+        if (stored && !credentialsMatch(stored, nextIdentity)) {
+            RscpApi.dropPooledSession(nextKey, log)
         }
         this.connectionData = data
+        pool.setIdentity(nextKey, nextIdentity)
         const newFactory = new DefaultHomePowerPlantConnectionFactory(
             this.connectionData,
             undefined,
             new SafeSocketFactory(),
         )
-        pool.setFactory(this.getKey(), newFactory)
+        pool.setFactory(nextKey, newFactory)
+    }
+
+    /**
+     * Evict the pooled socket for host:port immediately and disconnect it on the
+     * same serial chain as send(). Safe to call when the key is unknown.
+     */
+    static dropPooledSession(key: string | undefined, log: Logger): void {
+        if (!key || key === ':' || key.startsWith(':') || key.endsWith(':')) {
+            return
+        }
+        const existing = pool.invalidateSession(key)
+        if (!existing) {
+            return
+        }
+        log.log('dropPooledSession: closing pooled session for ' + key)
+        pool.runExclusive(key, () =>
+            existing.disconnect().catch(reason => {
+                log.log('dropPooledSession: disconnect error (ignored): ' + formatError(reason))
+            }),
+        ).catch(() => undefined)
+    }
+
+    private static identityFrom(data: E3dcConnectionData): PooledCredentialIdentity {
+        return {
+            address: data.address,
+            port: Number(data.port),
+            portalUser: data.portalUser,
+            portalPassword: data.portalPassword,
+            rscpPassword: data.rscpPassword,
+        }
     }
 
     private getKey(): string {
@@ -113,9 +159,24 @@ export class RscpApi {
     private getOpenConnection(log: Logger): Promise<HomePowerPlantConnection> {
         const key = this.getKey()
         const currentConnection = pool.getConnection(key)
-        if (currentConnection?.isConnected()) {
+        const storedIdentity = pool.getIdentity(key)
+        const ownIdentity = RscpApi.identityFrom(this.connectionData!!)
+        if (currentConnection?.isConnected() && storedIdentity && credentialsMatch(storedIdentity, ownIdentity)) {
             log.log('getOpenConnection: Returning existing connection')
             return Promise.resolve(pool.wrapSerialSend(key, currentConnection))
+        }
+        if (currentConnection && (!currentConnection.isConnected() || !storedIdentity || !credentialsMatch(storedIdentity, ownIdentity))) {
+            pool.evictConnection(key, currentConnection)
+            const credsDiffer = !storedIdentity || !credentialsMatch(storedIdentity, ownIdentity)
+            if (credsDiffer) {
+                pool.clearPendingOpen(key)
+                pool.bumpEpoch(key)
+            }
+            pool.runExclusive(key, () =>
+                currentConnection.disconnect().catch(reason => {
+                    log.log('getOpenConnection: disconnect stale session ignored: ' + formatError(reason))
+                }),
+            ).catch(() => undefined)
         }
 
         const pendingOpen = pool.getPendingOpen(key)
@@ -125,32 +186,56 @@ export class RscpApi {
         }
 
         log.log('getOpenConnection: Creating new connection')
-        const openPromise = this.getConnectionFactory()
-            .openConnection()
-            .then(con => {
-                log.log('getOpenConnection: Returning new connection (serial send wrapped)')
-                const serial = pool.wrapSerialSend(key, con)
-                pool.setConnection(key, serial)
-                return serial
-            })
-            .catch(e => {
-                const normalized = normalizeError(e)
-                // Offline HKW / timeout: info log only — error()+stack becomes Homey crash mail
-                if (isBenignNetworkError(normalized)) {
-                    log.log('getOpenConnection: Creating new connection failed (network): '
-                        + formatErrorMessage(normalized))
-                } else {
-                    log.error('getOpenConnection: Creating new connection failed')
-                    log.error(formatError(normalized))
-                }
-                pool.evictConnection(key)
-                throw normalized
-            })
-            .finally(() => {
-                pool.clearPendingOpen(key)
-            })
-
+        const epoch = pool.getEpoch(key)
+        let resolveOpen: (connection: HomePowerPlantConnection) => void = () => undefined
+        let rejectOpen: (reason?: unknown) => void = () => undefined
+        const openPromise = new Promise<HomePowerPlantConnection>((resolve, reject) => {
+            resolveOpen = resolve
+            rejectOpen = reject
+        })
+        // Register before openConnection() so a second caller waits instead of opening another socket.
         pool.setPendingOpen(key, openPromise)
+
+        const finishPending = () => {
+            if (pool.getPendingOpen(key) === openPromise) {
+                pool.clearPendingOpen(key)
+            }
+        }
+        const failOpen = (e: unknown) => {
+            const normalized = normalizeError(e)
+            if (isBenignNetworkError(normalized)) {
+                log.log('getOpenConnection: Creating new connection failed (network): '
+                    + formatErrorMessage(normalized))
+            } else {
+                log.error('getOpenConnection: Creating new connection failed')
+                log.error(formatError(normalized))
+            }
+            finishPending()
+            pool.evictConnection(key)
+            rejectOpen(normalized)
+        }
+
+        try {
+            this.getConnectionFactory()
+                .openConnection()
+                .then(con => {
+                    if (pool.getEpoch(key) !== epoch) {
+                        log.log('getOpenConnection: discarded superseded connection')
+                        finishPending()
+                        pool.runExclusive(key, () => con.disconnect().catch(() => undefined)).catch(() => undefined)
+                        rejectOpen(new Error('connection superseded'))
+                        return
+                    }
+                    log.log('getOpenConnection: Returning new connection (serial send wrapped)')
+                    const serial = pool.wrapSerialSend(key, con)
+                    pool.setConnection(key, serial)
+                    finishPending()
+                    resolveOpen(serial)
+                })
+                .catch(e => failOpen(e))
+        } catch (e) {
+            failOpen(e)
+        }
         return openPromise
     }
 
@@ -166,19 +251,21 @@ export class RscpApi {
                 resolve(undefined)
                 return
             }
+            const key = this.getKey()
             log.log('closeConnection: closing connection')
-            connection
-                .disconnect()
-                .catch(reason => {
+            // Evict before disconnect so isConnected() cannot hand the socket out again.
+            this.evictConnection(connection)
+            pool.runExclusive(key, () =>
+                connection.disconnect().catch(reason => {
                     log.log('closeConnection: disconnect error (ignored): ' + formatError(reason))
-                })
-                .finally(() => {
-                    this.evictConnection(connection)
-                    setTimeout(() => {
-                        log.log('closeConnection: Connection closed')
-                        resolve(undefined)
-                    }, 2000)
-                })
+                }),
+            ).finally(() => {
+                // Keep the settle delay outside the exclusive lock so other sends are not blocked.
+                setTimeout(() => {
+                    log.log('closeConnection: Connection closed')
+                    resolve(undefined)
+                }, 2000)
+            })
         })
     }
 
@@ -453,7 +540,7 @@ export class RscpApi {
                                     }
                                     else {
                                         log.error('readBatteryData: DCB Readout failed. Spec and status did not match')
-                                        reject('DCB Readout failed')
+                                        rejectAsError(reject, new Error('DCB Readout failed'))
                                     }
 
                                 })
@@ -485,8 +572,15 @@ export class RscpApi {
                                         log.error(formatError(reason1))
                                         rejectAsError(reject, reason)
                                     })
+                            } else {
+                                rejectAsError(reject, reason)
                             }
                         })
+                })
+                .catch(reason => {
+                    log.error('readBatteryData: Failed to open connection')
+                    log.error(formatError(reason))
+                    rejectAsError(reject, reason)
                 })
         })
     }
@@ -662,21 +756,23 @@ export class RscpApi {
                         })
                         .catch(reason => this.handleStartManualChargeError(
                             amountWh,
-                            false,
+                            allowReconnect,
                             reason,
                             resolve,
                             reject,
-                            log
+                            log,
+                            false,
                         ))
 
                 })
                 .catch(reason => this.handleStartManualChargeError(
                     amountWh,
-                    false,
+                    allowReconnect,
                     reason,
                     resolve,
                     reject,
-                    log
+                    log,
+                    true,
                 ))
         })
     }
@@ -688,9 +784,9 @@ export class RscpApi {
         resolve: ((value: boolean | PromiseLike<boolean>) => void),
         reject: ((reason?: unknown) => void),
         log: Logger,
-
+        failedBeforeSend: boolean,
     ) {
-        if (allowReconnect) {
+        if (this.shouldRetryUnsentWrite(allowReconnect, failedBeforeSend, causingError)) {
             log.log('startManualCharge(' + amountWh + ': Received error. Try to reconnect ... (Error: ' + causingError + ')')
             log.log(causingError)
             const currentConnection = pool.getConnection(this.getKey())
@@ -736,11 +832,11 @@ export class RscpApi {
                             resolve(result)
                         })
                         .catch(reason => this.handleSetPowerModeError(
-                            mode, powerW, allowReconnect, reason, resolve, reject, log
+                            mode, powerW, allowReconnect, reason, resolve, reject, log, false
                         ))
                 })
                 .catch(reason => this.handleSetPowerModeError(
-                    mode, powerW, allowReconnect, reason, resolve, reject, log
+                    mode, powerW, allowReconnect, reason, resolve, reject, log, true
                 ))
         })
     }
@@ -753,8 +849,9 @@ export class RscpApi {
         resolve: ((value: boolean | PromiseLike<boolean>) => void),
         reject: ((reason?: unknown) => void),
         log: Logger,
+        failedBeforeSend: boolean,
     ) {
-        if (allowReconnect) {
+        if (this.shouldRetryUnsentWrite(allowReconnect, failedBeforeSend, causingError)) {
             log.log('setPowerMode(' + mode + ', ' + powerW + 'W): Received error. Try to reconnect ... (Error: ' + causingError + ')')
             log.log(causingError)
             const currentConnection = pool.getConnection(this.getKey())
@@ -768,6 +865,71 @@ export class RscpApi {
             log.log('setPowerMode(' + mode + ', ' + powerW + 'W): Received error. Error: ' + causingError)
             log.log(causingError)
             rejectAsError(reject, causingError)
+        }
+    }
+
+    /**
+     * One retry only when the write never left the process.
+     * `failedBeforeSend` is the getOpenConnection failure. A send error retries only
+     * for connect failures (EHOSTUNREACH, connect timeout), not read/write timeouts.
+     */
+    private shouldRetryUnsentWrite(allowReconnect: boolean, failedBeforeSend: boolean, causingError: unknown): boolean {
+        if (!allowReconnect) {
+            return false
+        }
+        if (failedBeforeSend) {
+            return true
+        }
+        return isConnectionNeverEstablished(causingError)
+    }
+
+    private responseData(frame: Frame, tag: string): Data | undefined {
+        if (!frame?.data) {
+            return undefined
+        }
+        return findDataByTag(frame.data, tag, frame.parser)
+    }
+
+    /** SET_EXTERN has no payload. Present and not an error tag is success. */
+    private wallboxExternAccepted(frame: Frame): boolean {
+        const block = this.responseData(frame, WBTag.SET_EXTERN)
+        return !!block && !block.isErrorResponse()
+    }
+
+    /** SET_MODE value 0 means the mode was applied. Missing tag is not success. */
+    private wallboxModeAccepted(frame: Frame): boolean {
+        const block = this.responseData(frame, WBTag.SET_MODE)
+        if (!block || block.isErrorResponse()) {
+            return false
+        }
+        try {
+            return block.valueAsNumber() === 0
+        } catch {
+            return false
+        }
+    }
+
+    private uchar8WriteAccepted(frame: Frame, tag: string, value: number): boolean {
+        const block = this.responseData(frame, tag)
+        if (!block || block.isErrorResponse()) {
+            return false
+        }
+        try {
+            return block.valueAsNumber() === value
+        } catch {
+            return false
+        }
+    }
+
+    private booleanWriteAccepted(frame: Frame, tag: string, value: boolean): boolean {
+        const block = this.responseData(frame, tag)
+        if (!block || block.isErrorResponse()) {
+            return false
+        }
+        try {
+            return block.valueAsBoolean() === value
+        } catch {
+            return false
         }
     }
 
@@ -1297,13 +1459,13 @@ export class RscpApi {
                         )
                         .build()
                     con.send(request)
-                        .then(_ => {
+                        .then(response => {
                             log.log('setWallboxExtern: Answer received')
-                            resolve(true)
+                            resolve(this.wallboxExternAccepted(response))
                         })
-                        .catch(e => this.handleSetWallboxExternError(wallboxId, externBytes, allowReconnect, e, resolve, reject, log))
+                        .catch(e => this.handleSetWallboxExternError(wallboxId, externBytes, allowReconnect, e, resolve, reject, log, false))
                 })
-                .catch(e => this.handleSetWallboxExternError(wallboxId, externBytes, allowReconnect, e, resolve, reject, log))
+                .catch(e => this.handleSetWallboxExternError(wallboxId, externBytes, allowReconnect, e, resolve, reject, log, true))
         })
     }
 
@@ -1367,8 +1529,9 @@ export class RscpApi {
         resolve: ((value: boolean | PromiseLike<boolean>) => void),
         reject: ((reason?: unknown) => void),
         log: Logger,
+        failedBeforeSend: boolean,
     ) {
-        if (allowReconnect) {
+        if (this.shouldRetryUnsentWrite(allowReconnect, failedBeforeSend, causingError)) {
             log.log(`setWallboxExtern: Received error. Try to reconnect ... (Error: ${causingError})`)
             const currentConnection = pool.getConnection(this.getKey())
             this.closeConnection(currentConnection, log)
@@ -1420,8 +1583,7 @@ export class RscpApi {
                     con.send(request)
                         .then(response => {
                             log.log('setWallboxMode: Answer received')
-                            // Response may be in SET_MODE or generic result. Treat non-error as success for now.
-                            resolve(true)
+                            resolve(this.wallboxModeAccepted(response))
                         })
                         .catch(e => this.handleSetWallboxModeError(wallboxId, mode, maxCurrentA, allowReconnect, e, resolve, reject, log))
                 })
@@ -1627,12 +1789,7 @@ export class RscpApi {
                     con.send(request)
                         .then(response => {
                             log.log(`${operationName}: answer received`)
-                            try {
-                                const result = response.numberByTag(rspTag)
-                                resolve(result === value)
-                            } catch {
-                                resolve(true)
-                            }
+                            resolve(this.uchar8WriteAccepted(response, rspTag, value))
                         })
                         .catch(e => this.handleEmsRequestError(
                             () => this.emsSetUchar8(reqTag, rspTag, value, operationName, false, log),
@@ -1673,12 +1830,7 @@ export class RscpApi {
                     con.send(request)
                         .then(response => {
                             log.log(`${operationName}: answer received`)
-                            try {
-                                const result = response.booleanByTag(rspTag)
-                                resolve(result === value)
-                            } catch {
-                                resolve(true)
-                            }
+                            resolve(this.booleanWriteAccepted(response, rspTag, value))
                         })
                         .catch(e => this.handleEmsRequestError(
                             () => this.emsSetBoolean(reqTag, rspTag, value, operationName, false, log),

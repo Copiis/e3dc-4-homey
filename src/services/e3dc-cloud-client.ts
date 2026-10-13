@@ -150,9 +150,11 @@ export class E3dcCloudClient {
         'Accept': 'application/json',
       },
       body: form.toString(),
+      signal: AbortSignal.timeout(15_000),
     });
 
     if (!res.ok) {
+      this.clearJwtOnAuthStatus(res.status);
       throw new Error(`Auth failed: ${res.status}`);
     }
 
@@ -169,7 +171,7 @@ export class E3dcCloudClient {
       (typeof data === 'string' ? data : null);
 
     if (!token) {
-      throw new Error('No JWT returned from auth. Raw: ' + JSON.stringify(data).slice(0, 200));
+      throw new Error('No JWT returned from auth');
     }
 
     this.jwt = token;
@@ -202,9 +204,13 @@ export class E3dcCloudClient {
         authorization: this.jwt,
         'Accept': 'application/json',
       },
+      signal: AbortSignal.timeout(15_000),
     });
 
-    if (!res.ok) throw new Error(`systemList failed: ${res.status}`);
+    if (!res.ok) {
+      this.clearJwtOnAuthStatus(res.status);
+      throw new Error(`systemList failed: ${res.status}`);
+    }
 
     const data: any = await res.json();
     const list = data?.result || data?.systems || [];
@@ -220,9 +226,13 @@ export class E3dcCloudClient {
         authorization: this.jwt,
         'Accept': 'application/json',
       },
+      signal: AbortSignal.timeout(15_000),
     });
 
-    if (!res.ok) throw new Error(`systemState failed: ${res.status}`);
+    if (!res.ok) {
+      this.clearJwtOnAuthStatus(res.status);
+      throw new Error(`systemState failed: ${res.status}`);
+    }
 
     return res.json();
   }
@@ -277,23 +287,90 @@ export class E3dcCloudClient {
     return undefined;
   }
 
-  private deepFindPlausibleSoc(obj: any, depth: number): number | undefined {
+  private clearJwtOnAuthStatus(status: number): void {
+    if (status === 401 || status === 403) {
+      this.jwt = null;
+      this.jwtExpiry = 0;
+    }
+  }
+
+  private isHouseSocKey(lower: string): boolean {
+    if (lower === 'soc' || lower === 'batsoc' || lower === 'batterysoc') {
+      return true;
+    }
+    if (lower.includes('battery') && lower.includes('soc')) {
+      return true;
+    }
+    if ((lower.includes('house') || lower.includes('home') || lower.includes('haus')) && lower.includes('soc')) {
+      return true;
+    }
+    return false;
+  }
+
+  /** Explicit vehicle SoC names only. Substring "soc" (socket) and charge+state do not match. */
+  private isVehicleSocField(key: string, parentKey?: string): boolean {
+    const lower = key.toLowerCase();
+    if (lower.includes('socket')) {
+      return false;
+    }
+    if (lower.includes('charge') && lower.includes('state')) {
+      return false;
+    }
+    if (lower === 'soc') {
+      if (!parentKey) {
+        return false;
+      }
+      const parent = parentKey.toLowerCase();
+      if (parent.includes('socket') || parent.includes('battery') || parent.includes('haus') || parent.includes('house')) {
+        return false;
+      }
+      return /(vehicle|fahrzeug|auto|car|ev|wallbox|ladepunkt)/.test(parent)
+        && !parent.includes('automat')
+        && !parent.includes('socket');
+    }
+    if (this.isHouseSocKey(lower)) {
+      return false;
+    }
+    const explicit = new Set([
+      'vehiclesoc',
+      'fahrzeugsoc',
+      'autosoc',
+      'socvehicle',
+      'wallboxsoc',
+      'wbsoc',
+      'wb_soc',
+      'ladestand',
+      'carsoc',
+      'evsoc',
+    ]);
+    if (explicit.has(lower)) {
+      return true;
+    }
+    if ((lower.includes('vehicle') || lower.includes('fahrzeug')) && (lower.includes('soc') || lower.includes('ladestand'))) {
+      return true;
+    }
+    if (lower.includes('wallbox') && lower.includes('soc')) {
+      return true;
+    }
+    if (lower.includes('ladestand')) {
+      return true;
+    }
+    return false;
+  }
+
+  private deepFindPlausibleSoc(obj: any, depth: number, parentKey?: string): number | undefined {
     if (depth <= 0 || !obj || typeof obj !== 'object') return undefined;
 
     for (const [key, value] of Object.entries(obj)) {
-      const lower = key.toLowerCase();
-      if (lower.includes('soc') || lower.includes('ladestand') || (lower.includes('charge') && lower.includes('state')) || lower.includes('fahrzeug')) {
-        // Skip main house battery SOC fields
-        if (lower === 'soc' || lower === 'batsoc' || lower.includes('battery') && lower.includes('soc')) continue;
-
+      if (this.isVehicleSocField(key, parentKey)) {
         const n = this.normalizeSoc(value);
         if (n !== undefined && n > 0 && n <= 100) {
           return n;
         }
       }
 
-      if (typeof value === 'object') {
-        const deeper = this.deepFindPlausibleSoc(value, depth - 1);
+      if (value && typeof value === 'object') {
+        const deeper = this.deepFindPlausibleSoc(value, depth - 1, key);
         if (deeper !== undefined) return deeper;
       }
     }

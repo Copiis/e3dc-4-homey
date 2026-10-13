@@ -15,7 +15,8 @@ fi
 echo "=== Build ==="
 homey app build
 
-echo "=== Lokal installieren (Homey) ==="
+echo "=== Lokal installieren (Homey 2023, nicht Sputnik) ==="
+homey select --id 65842b5c96f4880701e8c663
 homey app install
 
 if [[ -n "$(git status --porcelain)" ]]; then

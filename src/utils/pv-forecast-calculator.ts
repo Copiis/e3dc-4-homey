@@ -1,4 +1,4 @@
-import {HourlyIrradiance} from '../services/open-meteo-forecast';
+import {HourlyIrradiance, parseZonedLocalDateTimeMs} from '../services/open-meteo-forecast';
 
 const DEFAULT_PERFORMANCE_RATIO = 0.85;
 /**
@@ -278,6 +278,8 @@ export interface PvForecastInputs {
   performanceRatio?: number;
   nowMs?: number;
   actualKwhSoFar?: number;
+  /** IANA zone of the Open-Meteo hour strings (no offset). */
+  timezone?: string;
 }
 
 export interface PvForecastResult {
@@ -296,8 +298,11 @@ function performanceRatio(value?: number): number {
   return DEFAULT_PERFORMANCE_RATIO;
 }
 
-function hourTimestampMs(isoLocalHour: string): number {
-  return new Date(isoLocalHour).getTime();
+function hourTimestampMs(isoLocalHour: string, timeZone?: string): number {
+  if (!timeZone) {
+    return NaN;
+  }
+  return parseZonedLocalDateTimeMs(isoLocalHour, timeZone);
 }
 
 export function irradianceHourToKwh(
@@ -323,12 +328,12 @@ export function sumIrradianceKwh(
   );
 }
 
-function filterHoursUpTo(hours: HourlyIrradiance[], endMs: number): HourlyIrradiance[] {
-  return hours.filter(hour => hourTimestampMs(hour.time) <= endMs);
+function filterHoursUpTo(hours: HourlyIrradiance[], endMs: number, timeZone?: string): HourlyIrradiance[] {
+  return hours.filter(hour => hourTimestampMs(hour.time, timeZone) <= endMs);
 }
 
-function filterHoursAfter(hours: HourlyIrradiance[], startMs: number): HourlyIrradiance[] {
-  return hours.filter(hour => hourTimestampMs(hour.time) > startMs);
+function filterHoursAfter(hours: HourlyIrradiance[], startMs: number, timeZone?: string): HourlyIrradiance[] {
+  return hours.filter(hour => hourTimestampMs(hour.time, timeZone) > startMs);
 }
 
 export interface PvForecastSegmentInput {
@@ -342,6 +347,7 @@ export function calculateMultiSegmentPvForecast(
   performanceRatio: number | undefined,
   nowMs: number,
   actualKwhSoFar: number,
+  timezone?: string,
 ): PvForecastResult {
   let baselineKwh = 0;
   let expectedKwhSoFar = 0;
@@ -355,6 +361,7 @@ export function calculateMultiSegmentPvForecast(
       performanceRatio,
       nowMs,
       actualKwhSoFar: 0,
+      timezone,
     });
     baselineKwh += partial.baselineKwh;
     expectedKwhSoFar += partial.expectedKwhSoFar;
@@ -385,8 +392,8 @@ export function calculatePvForecast(inputs: PvForecastInputs): PvForecastResult 
   const nowMs = inputs.nowMs ?? Date.now();
   const pr = performanceRatio(inputs.performanceRatio);
   const baselineKwh = sumIrradianceKwh(inputs.hours, inputs.installedKwp, inputs.calibrationFactor, pr);
-  const elapsedHours = filterHoursUpTo(inputs.hours, nowMs);
-  const remainingHours = filterHoursAfter(inputs.hours, nowMs);
+  const elapsedHours = filterHoursUpTo(inputs.hours, nowMs, inputs.timezone);
+  const remainingHours = filterHoursAfter(inputs.hours, nowMs, inputs.timezone);
   const expectedKwhSoFar = sumIrradianceKwh(elapsedHours, inputs.installedKwp, inputs.calibrationFactor, pr);
   const remainingWeatherKwh = sumIrradianceKwh(remainingHours, inputs.installedKwp, inputs.calibrationFactor, pr);
   const actualKwh = Math.max(0, inputs.actualKwhSoFar ?? 0);
@@ -662,17 +669,20 @@ export function getLocalHour(timezone: string, nowMs = Date.now()): number {
 }
 
 /** Geschätztes Ende der PV-Produktion anhand der Forecast-Stunden */
-export function estimateProductionEndMs(hours: HourlyIrradiance[], nowMs: number): number {
+export function estimateProductionEndMs(hours: HourlyIrradiance[], nowMs: number, timeZone?: string): number {
   if (!hours || hours.length === 0) {
     return nowMs + 4 * 3600 * 1000;
   }
   for (let i = hours.length - 1; i >= 0; i--) {
     if ((hours[i].globalTiltedIrradianceWm2 || 0) > 15) {
-      const candidate = hourTimestampMs(hours[i].time) + 30 * 60 * 1000;
-      return Math.min(candidate, nowMs + 5 * 3600 * 1000);
+      const candidate = hourTimestampMs(hours[i].time, timeZone) + 30 * 60 * 1000;
+      if (!Number.isFinite(candidate) || candidate < nowMs) {
+        return nowMs + 3.5 * 3600 * 1000;
+      }
+      return candidate;
     }
   }
-  return Math.min(nowMs + 3.5 * 3600 * 1000, nowMs + 5 * 3600 * 1000);
+  return nowMs + 3.5 * 3600 * 1000;
 }
 
 /**

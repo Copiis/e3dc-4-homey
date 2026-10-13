@@ -240,20 +240,38 @@ async function loadPlans() {
       'idle': tx('widget.ui.hkw-plan.idle', 'Sperren')
     };
 
-    plans.forEach((p, i) => {
+    plans.forEach((p) => {
       const div = document.createElement('div');
       div.className = 'plan';
-      let endInfo = p.untilSoc
+      const endInfo = p.untilSoc
         ? tx('widget.ui.hkw-plan.until-percent', 'bis ' + p.untilSoc + '%', { PERCENT: p.untilSoc })
         : (p.end ? new Date(p.end).toLocaleString() : tx('widget.ui.hkw-plan.open', 'offen'));
-      const displayMode = modeLabels[p.mode] || p.mode;
-      div.innerHTML = `
-        <div class="plan-header">
-          <strong>${new Date(p.start).toLocaleString()}</strong>
-          <button onclick="removePlan(${i})" style="background:#5BC244; padding:1px 6px; font-size:10px">✕</button>
-        </div>
-        <div class="small">${displayMode} @ ${p.powerW || 0}W → ${endInfo}</div>
-      `;
+      const displayMode = modeLabels[p.mode] || String(p.mode ?? '');
+      const powerText = Number.isFinite(Number(p.powerW)) ? String(p.powerW) : '0';
+
+      const header = document.createElement('div');
+      header.className = 'plan-header';
+      const strong = document.createElement('strong');
+      strong.textContent = p.start ? new Date(p.start).toLocaleString() : '';
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = '✕';
+      button.style.background = '#5BC244';
+      button.style.padding = '1px 6px';
+      button.style.fontSize = '10px';
+      if (!p.id) {
+        button.disabled = true;
+      } else {
+        button.onclick = () => removePlan(p.id);
+      }
+      header.appendChild(strong);
+      header.appendChild(button);
+
+      const line = document.createElement('div');
+      line.className = 'small';
+      line.textContent = displayMode + ' @ ' + powerText + 'W → ' + endInfo;
+      div.appendChild(header);
+      div.appendChild(line);
       container.appendChild(div);
     });
   } catch(e) { console.error(e); }
@@ -298,7 +316,11 @@ async function addPlan() {
     const res = await Homey.api('GET', `/hkw-schedules?plantId=${plantId}`);
     let list = res.schedules || [];
     list.push(plan);
-    await Homey.api('POST', '/hkw-schedules', { plantId, schedules: list });
+    const saved = await Homey.api('POST', '/hkw-schedules', { plantId, schedules: list });
+    if (!saved || saved.success === false) {
+      alert(tx('widget.ui.hkw-plan.save-error', 'Fehler beim Speichern'));
+      return;
+    }
     await Homey.api('POST', '/log', { widget: 'hkw-ladeplaner', message: `addPlan: saved successfully, now calling loadPlans()` });
     loadPlans();
   } catch(e) { 
@@ -307,24 +329,22 @@ async function addPlan() {
   }
 }
 
-async function removePlan(index) {
+async function removePlan(id) {
+  if (!id) return;
   const resBefore = await Homey.api('GET', `/hkw-schedules?plantId=${plantId}`);
   const displayedPlans = resBefore.schedules || [];
-  const planToDelete = displayedPlans[index];
+  const planToDelete = displayedPlans.find(p => p && p.id === id);
   if (!planToDelete) {
     loadPlans();
     return;
   }
-  await Homey.api('POST', '/log', { widget: 'hkw-ladeplaner', message: `removePlan: deleting ${planToDelete.id || index}` });
-  // Delete by id if present, else fall back to index on the current list
-  let list = displayedPlans;
-  if (planToDelete.id) {
-    list = list.filter(p => (p.id || '') !== planToDelete.id);
-  } else {
-    list = list.slice();
-    list.splice(index, 1);
+  await Homey.api('POST', '/log', { widget: 'hkw-ladeplaner', message: `removePlan: deleting ${planToDelete.id}` });
+  const list = displayedPlans.filter(p => !p || p.id !== id);
+  const saved = await Homey.api('POST', '/hkw-schedules', { plantId, schedules: list });
+  if (!saved || saved.success === false) {
+    alert(tx('widget.ui.hkw-plan.save-error', 'Fehler beim Speichern'));
+    return;
   }
-  await Homey.api('POST', '/hkw-schedules', { plantId, schedules: list });
   loadPlans();
 }
 </script>

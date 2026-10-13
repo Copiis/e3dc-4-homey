@@ -51,9 +51,12 @@ module.exports = {
 
   async saveWallboxSchedules({ homey, body }) {
     const wallboxId = body.wallboxId;
-    const schedules = body.schedules || [];
+    const schedules = body.schedules;
 
     if (!wallboxId) return { success: false, error: 'No wallboxId' };
+    if (!Array.isArray(schedules) || !wallboxSchedulesValid(schedules)) {
+      return { success: false, error: 'Invalid schedules' };
+    }
 
     const wallboxDriver = homey.drivers.getDriver('wallbox');
     const wb = wallboxDriver.getDevices().find(d => String(d.getData().id) === String(wallboxId));
@@ -68,3 +71,16 @@ module.exports = {
     return homey.app.logFromWidget(body.widget, body.message);
   }
 };
+
+const WALLBOX_ACTIONS = new Set(['allow', 'block', 'sun_on', 'sun_off']);
+
+function wallboxSchedulesValid(schedules) {
+  return schedules.every(plan => plan && typeof plan === 'object' && wallboxPlanValid(plan));
+}
+
+function wallboxPlanValid(plan) {
+  if (!WALLBOX_ACTIONS.has(String(plan.action || ''))) return false;
+  if (plan.current === undefined || plan.current === null || plan.current === '') return true;
+  const current = typeof plan.current === 'number' ? plan.current : Number(plan.current);
+  return Number.isFinite(current) && current >= 6 && current <= 32;
+}

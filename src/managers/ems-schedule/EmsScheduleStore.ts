@@ -19,6 +19,8 @@ import { getScheduleId, parseDateTime, pruneExpiredSchedules } from '../../utils
 export class EmsScheduleStore {
   private emsSchedules: EmsSchedule[] = [];
   private triggeredEmsSchedules: Set<string> = new Set();
+  /** Plans that already reached untilSoc. Must not be restarted in the same process. */
+  private finishedScheduleIds: Set<string> = new Set();
 
   constructor(
     private readonly device: IHpsDevice,
@@ -45,6 +47,16 @@ export class EmsScheduleStore {
 
   deleteTriggered(id: string): void {
     this.triggeredEmsSchedules.delete(id);
+  }
+
+  markFinished(id: string): void {
+    if (id) {
+      this.finishedScheduleIds.add(id);
+    }
+  }
+
+  hasFinished(id: string): boolean {
+    return this.finishedScheduleIds.has(id);
   }
 
   clearTriggered(): void {

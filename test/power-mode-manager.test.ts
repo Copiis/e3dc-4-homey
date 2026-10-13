@@ -118,7 +118,7 @@ describe('PowerModeManager', () => {
     assert.ok(sendCount >= 1);
   });
 
-  it('does not revert an untilSoc plan just because expiresAt is already past', () => {
+  it('keeps an untilSoc plan while SOC is below target and expiresAt is still in the future', () => {
     const setPowerCalls: number[] = [];
     const mockDevice = {
       getCurrentSOC: () => 0.70, // 70%, target 95%
@@ -136,13 +136,67 @@ describe('PowerModeManager', () => {
     manager.setPowerModeState({
       mode: 4,
       powerW: 3000,
-      expiresAt: Date.now() - 1000, // already past
+      expiresAt: Date.now() + 60 * 60 * 1000,
       untilSoc: 95,
       scheduleId: 'soc-plan',
     });
     (manager as any).refreshPowerMode();
     assert.ok(manager.getPowerModeState(), 'untilSoc plan must stay active while SOC is below target');
     assert.ok(!setPowerCalls.includes(0), 'must not send AUTO while untilSoc is unfulfilled');
+  });
+
+  it('reverts an untilSoc plan when expiresAt is already past even if SOC is below target', () => {
+    const setPowerCalls: number[] = [];
+    const mockDevice = {
+      getCurrentSOC: () => 0.70,
+      homey: { setTimeout: () => 0 },
+      recordAnalysisEvent: () => {},
+      log: () => {},
+    } as any;
+    const mockApi = () => ({
+      setPowerMode: (mode: number) => {
+        setPowerCalls.push(mode);
+        return Promise.resolve(true);
+      },
+    } as any);
+    const manager = new PowerModeManager(mockDevice, mockApi, mockDevice);
+    manager.setPowerModeState({
+      mode: 4,
+      powerW: 3000,
+      expiresAt: Date.now() - 1000,
+      untilSoc: 95,
+      scheduleId: 'soc-plan',
+    });
+    (manager as any).refreshPowerMode();
+    assert.strictEqual(manager.getPowerModeState(), null);
+    assert.ok(setPowerCalls.includes(0), 'expired untilSoc plan must revert to AUTO');
+  });
+
+  it('does not treat an unknown SOC as 0% for an untilSoc plan', () => {
+    const setPowerCalls: number[] = [];
+    const mockDevice = {
+      getCurrentSOC: () => null,
+      homey: { setTimeout: () => 0 },
+      recordAnalysisEvent: () => {},
+      log: () => {},
+    } as any;
+    const mockApi = () => ({
+      setPowerMode: (mode: number) => {
+        setPowerCalls.push(mode);
+        return Promise.resolve(true);
+      },
+    } as any);
+    const manager = new PowerModeManager(mockDevice, mockApi, mockDevice);
+    manager.setPowerModeState({
+      mode: 4,
+      powerW: 3000,
+      expiresAt: Date.now() + 60 * 60 * 1000,
+      untilSoc: 95,
+      scheduleId: 'soc-unknown',
+    });
+    (manager as any).refreshPowerMode();
+    assert.ok(manager.getPowerModeState(), 'unknown SOC must not finish the plan before expiresAt');
+    assert.ok(!setPowerCalls.includes(0));
   });
 
   it('does not schedule refresh when state is cleared (auto)', () => {

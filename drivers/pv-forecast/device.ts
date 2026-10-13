@@ -490,6 +490,7 @@ class PvForecastDevice extends Homey.Device {
         settings.performanceRatio,
         nowMs,
         actualKwh,
+        timezone,
       );
 
       const learnedScale = dayState?.dayScale ?? this.loadLearnedDayScale();
@@ -518,7 +519,7 @@ class PvForecastDevice extends Homey.Device {
       // Last meaningful PV from irradiance series (GTI>15); residual tapered in last 2 h
       let productionEndMs = nowMs;
       for (const segment of segmentInputs) {
-        productionEndMs = Math.max(productionEndMs, estimateProductionEndMs(segment.hours, nowMs));
+        productionEndMs = Math.max(productionEndMs, estimateProductionEndMs(segment.hours, nowMs, timezone));
       }
       const hoursUntilProductionEnd = (productionEndMs - nowMs) / 3600000;
 

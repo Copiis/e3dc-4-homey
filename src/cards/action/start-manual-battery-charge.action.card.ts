@@ -47,6 +47,10 @@ export class StartManualBatteryChargeActionPercentageCard implements RunListener
                     .then(capacity => {
                         const wh = capacity * (amount / 100.0)
                         const soc = hps.getCurrentSOC()
+                        if (soc === null || !Number.isFinite(soc)) {
+                            reject(hps.translate('messages.manual-charge-capacity-unknown'))
+                            return
+                        }
                         const alreadyLoadedWh = capacity * soc
                         const whToLoad = wh - alreadyLoadedWh
                         if (whToLoad > 0) {

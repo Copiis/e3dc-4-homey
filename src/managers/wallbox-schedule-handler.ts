@@ -99,10 +99,19 @@ export class WallboxScheduleHandler {
   }
 
   private async handleUntilFull(schedules: WallboxSchedule[], now: number) {
-    let currentPower = 0;
+    let rawPower: unknown;
     try {
-      currentPower = Number(this.device.getCapabilityValue('measure_power')) || 0;
-    } catch {}
+      rawPower = this.device.getCapabilityValue('measure_power');
+    } catch {
+      return;
+    }
+    if (rawPower === null || rawPower === undefined) {
+      return;
+    }
+    const currentPower = Number(rawPower);
+    if (!Number.isFinite(currentPower)) {
+      return;
+    }
     const absPower = Math.abs(currentPower);
 
     const plansToRemove: string[] = [];

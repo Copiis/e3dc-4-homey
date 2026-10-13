@@ -18,8 +18,12 @@ export class StopManualBatteryChargeActionCard implements RunListener {
             if (state && state.active) {
                 hps.getApi()
                     .startManualCharge(0, true, hps)
-                    .then(_ => {
-                        resolve(undefined)
+                    .then(stopped => {
+                        if (stopped) {
+                            resolve(undefined)
+                        } else {
+                            reject(hps.translate('messages.manual-charge-rejected-by-hps'))
+                        }
                     })
                     .catch(reason => {
                         hps.log('StopManualBatteryChargeActionCard: failed')

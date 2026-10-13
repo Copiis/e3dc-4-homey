@@ -66,3 +66,37 @@ export function isBenignNetworkError(err: unknown): boolean {
   return /EHOSTUNREACH|ENETUNREACH|ECONNREFUSED|ECONNRESET|ETIMEDOUT|EPIPE|EAI_AGAIN|ENOTFOUND|CONNECTION_TIMEOUT|READ_TIMEOUT|Unable to establish an connection|No response from the home power station|Authentication failed/i
     .test(msg);
 }
+
+/**
+ * Verbindung kam nicht zustande, der Schreibbefehl lag also noch nicht auf der Leitung.
+ * Read-Timeout und „keine Antwort“ zählen nicht: der Frame kann schon ausgeführt sein.
+ */
+export function isConnectionNeverEstablished(err: unknown): boolean {
+  const e = err as NodeJS.ErrnoException & { name?: string };
+  const name = e?.name ?? '';
+  const msg = String(e?.message ?? err ?? '');
+  if (name === 'READ_TIMEOUT' || /READ_TIMEOUT|No response from the home power station/i.test(msg)) {
+    return false;
+  }
+  if (/authentication failed/i.test(msg)) {
+    return false;
+  }
+  const code = e?.code ?? '';
+  if (
+    code === 'EHOSTUNREACH'
+    || code === 'ENETUNREACH'
+    || code === 'ECONNREFUSED'
+    || code === 'EAI_AGAIN'
+    || code === 'ENOTFOUND'
+  ) {
+    return true;
+  }
+  if (code === 'ETIMEDOUT') {
+    return name === 'CONNECTION_TIMEOUT' || /connect|CONNECTION_TIMEOUT|Unable to establish/i.test(msg);
+  }
+  if (name === 'CONNECTION_TIMEOUT') {
+    return true;
+  }
+  return /EHOSTUNREACH|ENETUNREACH|ECONNREFUSED|EAI_AGAIN|ENOTFOUND|CONNECTION_TIMEOUT|Unable to establish an connection|not connected/i
+    .test(msg);
+}

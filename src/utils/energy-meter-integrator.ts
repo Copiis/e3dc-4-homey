@@ -69,8 +69,12 @@ export class EnergyMeterIntegrator {
     field: 'chargedKwh' | 'dischargedKwh' | 'generatedKwh' | 'importedKwh' | 'exportedKwh',
   ): void {
     if (state.lastSampleMs !== undefined && nowMs > state.lastSampleMs && powerW > 0) {
-      const deltaHours = (nowMs - state.lastSampleMs) / 3_600_000;
-      state[field] += (powerW * deltaHours) / 1000;
+      const deltaMs = nowMs - state.lastSampleMs;
+      // Gaps longer than 3 minutes are not energy (offline / restart). Still advance the cursor.
+      if (deltaMs <= 3 * 60 * 1000) {
+        const deltaHours = deltaMs / 3_600_000;
+        state[field] += (powerW * deltaHours) / 1000;
+      }
     }
     state.lastSampleMs = nowMs;
     this.save(state);

@@ -233,26 +233,24 @@ class WallboxDevice extends Homey.Device implements Wallbox {
     this.registerCapabilityListener('wallbox_sun_mode', this.onWallboxSunModeSet.bind(this));
   }
 
-  private async onWallboxChargingSet(): Promise<void> {
-    const current = this.getCapabilityValue('wallbox_charging') === true;
-    const newValue = !current;
+  private async onWallboxChargingSet(value: boolean): Promise<void> {
+    const newValue = value === true;
     const result = await this.applyChargingAllowed(newValue);
     if (!result.ok) {
       this.error('Wallbox charging set via tile failed');
       throw new Error('Charging command failed or not verified');
     }
-    this.log(`Wallbox charging toggled via button to ${newValue}`);
+    this.log(`Wallbox charging set via button to ${newValue}`);
   }
 
-  private async onWallboxSunModeSet(): Promise<void> {
-    const current = this.getCapabilityValue('wallbox_sun_mode') === true;
-    const newValue = !current;
+  private async onWallboxSunModeSet(value: boolean): Promise<void> {
+    const newValue = value === true;
     const result = await this.applySunMode(newValue);
     if (!result.ok) {
       this.error('Wallbox sun mode set via tile failed');
       throw new Error('Sun mode command failed or not verified');
     }
-    this.log(`Wallbox sun mode toggled via button to ${newValue}`);
+    this.log(`Wallbox sun mode set via button to ${newValue}`);
   }
 
   /**

@@ -20,6 +20,9 @@ export class LiveDataPoller {
   private initialTimer: NodeJS.Timeout | null = null;
   private lastData: LiveData | null = null;
   private lastFetch = 0;
+  private fetching = false;
+  private stopped = false;
+  private epoch = 0;
   private readonly listeners: Array<(data: LiveData) => void> = [];
   private readonly errorListeners: Array<(err: unknown) => void> = [];
 
@@ -55,6 +58,7 @@ export class LiveDataPoller {
    */
   start(intervalMs: number): void {
     this.stop();
+    this.stopped = false;
     // initial fetch shortly after start (matches old 2s delay in device)
     this.initialTimer = setTimeout(() => {
       this.initialTimer = null;
@@ -64,6 +68,8 @@ export class LiveDataPoller {
   }
 
   stop(): void {
+    this.stopped = true;
+    this.epoch += 1;
     if (this.initialTimer) {
       clearTimeout(this.initialTimer);
       this.initialTimer = null;
@@ -87,6 +93,9 @@ export class LiveDataPoller {
   }
 
   private async fetch(force = false): Promise<LiveData | undefined> {
+    if (this.stopped) {
+      return undefined;
+    }
     const now = Date.now();
     const DEBOUNCE_MS = 5000;
 
@@ -94,11 +103,20 @@ export class LiveDataPoller {
       this.logger.log('LiveDataPoller: skipping fetch (debounce)');
       return this.lastData;
     }
+    if (this.fetching) {
+      this.logger.log('LiveDataPoller: skipping fetch (in flight)');
+      return this.lastData ?? undefined;
+    }
 
+    const epoch = this.epoch;
+    this.fetching = true;
     try {
       const api = this.apiFactory();
       const readWallboxes = this.shouldReadWallboxes();
       const data = await api.readLiveData(true, this.logger, readWallboxes);
+      if (this.stopped || epoch !== this.epoch) {
+        return undefined;
+      }
 
       this.lastData = data;
       this.lastFetch = now;
@@ -113,6 +131,9 @@ export class LiveDataPoller {
 
       return data;
     } catch (err) {
+      if (this.stopped || epoch !== this.epoch) {
+        return undefined;
+      }
       // HKW offline / timeout: log only — this.error() + stack triggers Homey crash mails
       if (isBenignNetworkError(err)) {
         this.logger.log('LiveDataPoller fetch failed (network): ' + formatErrorMessage(err));
@@ -127,6 +148,8 @@ export class LiveDataPoller {
         }
       });
       return undefined;
+    } finally {
+      this.fetching = false;
     }
   }
 }

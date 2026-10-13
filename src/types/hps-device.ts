@@ -69,5 +69,5 @@ export interface IHpsDevice extends SimpleClass, Homey.Device {
   getAppVersion(): string;
   isDetailedDiagnosticsEnabled(): boolean;
   getData(): { id: string };
-  getCurrentSOC(): number;
+  getCurrentSOC(): number | null;
 }

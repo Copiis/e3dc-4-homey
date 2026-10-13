@@ -61,7 +61,7 @@ export interface HomePowerStation extends InternalDevice{
     validateUnit(value: number, unit: CardUnit): string | undefined
     getBatteryCapacity(): Promise<number>
     getManualChargeState(): ManualChargeState | null
-    getCurrentSOC(): number
+    getCurrentSOC(): number | null
     getEmergencyPowerState(): EmergencyPowerState | null
     buildDiagnosticReport(): Promise<string>
     setPowerModeState(state: PowerModeState | null): void
