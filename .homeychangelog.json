@@ -597,5 +597,9 @@
   "1.8.85": {
     "en": "Connection settings apply immediately. A wallbox pause is not undone by a second command. A charge plan until a battery level stops at the target. Long offline gaps are no longer added to the energy counters. The PV forecast reads weather hours in local time.",
     "de": "Verbindungsdaten am Hauskraftwerk gelten sofort. Eine Wallbox-Pause wird nicht durch einen zweiten Befehl aufgehoben. Ein Ladeplan bis zum Batteriestand stoppt am Ziel. Lange Offline-Lücken landen nicht mehr in den Energiezählern. Die PV-Prognose rechnet die Wetterstunden in Ortszeit."
+  },
+  "1.8.86": {
+    "en": "A wallbox plan starts only once, and the discharge limit returns to the value from before the plan. Saving a home power station plan no longer brings back a plan that just ended. A pause longer than three minutes is not counted as wallbox energy.",
+    "de": "Ein Wallbox-Plan startet nur einmal, und „Batterie entladen bis“ kommt auf den Wert von vor dem Plan zurück. Beim Speichern eines Hauskraftwerk-Plans kommt ein gerade beendeter Plan nicht zurück. Eine Pause über drei Minuten zählt nicht als Wallbox-Energie."
   }
 }
