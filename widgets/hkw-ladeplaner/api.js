@@ -1,6 +1,7 @@
 'use strict';
 
 const { readHomePowerPlantsForHomey, listHomePowerPlantIds } = require('../../src/utils/home-power-plants.js');
+const { updateEmsSchedules } = require('../../src/utils/ems-schedule-write.js');
 
 module.exports = {
   async readHomePowerPlants({ homey }) {
@@ -33,10 +34,9 @@ module.exports = {
 
   async saveHkwSchedules({ homey, body }) {
     const stationId = body.plantId;
-    const schedules = body.schedules;
 
     if (!stationId) return { success: false, error: 'No plantId' };
-    if (!Array.isArray(schedules) || !hkwSchedulesValid(schedules)) {
+    if (body.op !== 'add' && body.op !== 'remove') {
       return { success: false, error: 'Invalid schedules' };
     }
 
@@ -45,17 +45,26 @@ module.exports = {
 
     if (!hps) return { success: false, error: 'HKW not found' };
 
-    // Merge with existing wallbox schedules if any
-    const existingJson = hps.getSetting('emsSchedules') || '[]';
-    let existing = [];
-    try { existing = JSON.parse(existingJson); } catch (e) { existing = []; }
+    if (body.op === 'add') {
+      const plan = body.plan;
+      if (!plan || !hkwPlanValid(plan)) return { success: false, error: 'Invalid schedules' };
+      const stored = { ...plan, target: 'hps' };
+      await updateEmsSchedules(hps, current => {
+        const id = String(stored.id || '');
+        const rest = current.filter(item => String(item.id || '') !== id);
+        return [...rest, stored];
+      });
+      return { success: true };
+    }
 
-    // Keep wallbox schedules, replace hps ones
-    const wallboxSchedules = existing.filter(s => s.target && s.target.startsWith('wallbox:'));
-    const newSchedules = [...wallboxSchedules, ...schedules.map(s => ({ ...s, target: 'hps' }))];
+    if (body.op === 'remove') {
+      const id = String(body.id || '');
+      if (!id) return { success: false, error: 'No id' };
+      await updateEmsSchedules(hps, current => current.filter(item => String(item.id || '') !== id));
+      return { success: true };
+    }
 
-    await hps.setSettings({ emsSchedules: JSON.stringify(newSchedules) });
-    return { success: true };
+    return { success: false, error: 'Invalid schedules' };
   },
 
   async log({ homey, body }) {
@@ -64,10 +73,6 @@ module.exports = {
 };
 
 const HKW_MODES = new Set(['charge', 'discharge', 'grid_charge', 'gridcharge', 'idle']);
-
-function hkwSchedulesValid(schedules) {
-  return schedules.every(plan => plan && typeof plan === 'object' && hkwPlanValid(plan));
-}
 
 function hkwPlanValid(plan) {
   if (!HKW_MODES.has(String(plan.mode || ''))) return false;

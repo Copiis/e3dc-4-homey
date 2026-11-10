@@ -17,6 +17,7 @@ export class WallboxScheduleHandler {
   private validator: WallboxScheduleValidator;
   private executor: WallboxScheduleExecutor;
   private lastScheduleCheck = 0;
+  private checking = false;
   private _lastHasActivePlan: boolean = false;
 
   constructor(
@@ -69,30 +70,36 @@ export class WallboxScheduleHandler {
   }
 
   async check() {
+    if (this.checking) return;
     const now = Date.now();
     if (now - (this.lastScheduleCheck || 0) < 5000) return;
+    this.checking = true;
     this.lastScheduleCheck = now;
+    try {
+      let schedules = this.store.getSchedules();
 
-    let schedules = this.store.getSchedules();
+      this.store.revertDeleted(schedules, async (id, info) => {
+        const infoObj = typeof info === 'string' ? { action: info } : info;
+        await this.executor.revertActionForInfo(id, infoObj, true);
+      });
 
-    this.store.revertDeleted(schedules, async (id, info) => {
-      const infoObj = typeof info === 'string' ? { action: info } : info;
-      await this.executor.revertActionForInfo(id, infoObj, true);
-    });
+      if (schedules.length === 0) return;
 
-    if (schedules.length === 0) return;
-
-    await this.applyActive(schedules, now);
-    await this.handleUntilFull(schedules, now);
-    await this.cleanExpired(schedules, now);
-    this.updateTile();
+      await this.applyActive(schedules, now);
+      await this.handleUntilFull(schedules, now);
+      await this.cleanExpired(schedules, now);
+      this.updateTile();
+    } finally {
+      this.checking = false;
+    }
   }
 
   private async applyActive(schedules: WallboxSchedule[], now: number) {
     for (const s of schedules) {
       if (!this.validator.isActive(s, now)) continue;
       const id = this.validator.getId(s);
-      if (!this.store.getTriggered().has(id)) {
+      const known = this.store.getTriggered().get(id);
+      if (!known?.applied && !known?.applying) {
         await this.executor.execute(s, id, this.store.getTriggered());
       }
     }

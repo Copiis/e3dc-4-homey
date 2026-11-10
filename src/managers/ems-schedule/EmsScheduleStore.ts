@@ -2,6 +2,7 @@ import { EmsSchedule } from '../../model/home-power-station';
 import { IHpsDevice } from '../../types/hps-device';
 import { formatError } from '../../utils/error-utils';
 import { getScheduleId, parseDateTime, pruneExpiredSchedules } from '../../utils/ems-schedule-utils';
+import { updateEmsSchedules } from '../../utils/ems-schedule-write';
 
 /**
  * EmsScheduleStore
@@ -18,6 +19,8 @@ import { getScheduleId, parseDateTime, pruneExpiredSchedules } from '../../utils
  */
 export class EmsScheduleStore {
   private emsSchedules: EmsSchedule[] = [];
+  /** Ids seen at the last read. A later save only removes ids from this set. */
+  private baselineIds: Set<string> = new Set();
   private triggeredEmsSchedules: Set<string> = new Set();
   /** Plans that already reached untilSoc. Must not be restarted in the same process. */
   private finishedScheduleIds: Set<string> = new Set();
@@ -70,6 +73,7 @@ export class EmsScheduleStore {
       let parsed: unknown = JSON.parse(json);
       if (!Array.isArray(parsed)) parsed = [];
       this.emsSchedules = parsed as EmsSchedule[];
+      this.rememberBaseline();
 
       this.logger.log(`[Ladeplan] device=${this.device.getData().id} raw json length: ${json.length}, parsed ${this.emsSchedules.length} plans`);
       this.device.recordAnalysisEvent('info', `[Ladeplan] Loaded ${this.emsSchedules.length} plans from settings (device=${this.device.getData().id})`);
@@ -107,6 +111,7 @@ export class EmsScheduleStore {
           this.logger.log(`[Ladeplan] refreshed from setting: ${fresh.length} plans (was ${this.emsSchedules.length})`);
         }
         this.emsSchedules = fresh;
+        this.rememberBaseline();
       }
     } catch (_) {
       // ignore parse errors here – handled on next full load
@@ -132,10 +137,32 @@ export class EmsScheduleStore {
     return false;
   }
 
-  /** Persistiert den aktuellen Stand */
+  /** Ids that were in the last read and are no longer in memory. */
+  private removedSinceRead(): Set<string> {
+    const keep = new Set(this.emsSchedules.map(schedule => getScheduleId(schedule)));
+    const removed = new Set<string>();
+    this.baselineIds.forEach(id => {
+      if (id && !keep.has(id)) removed.add(id);
+    });
+    return removed;
+  }
+
+  private rememberBaseline(): void {
+    this.baselineIds = new Set(this.emsSchedules.map(schedule => getScheduleId(schedule)));
+  }
+
+  /**
+   * Drops finished plans from the list that is stored right now.
+   * A plan added in the meantime stays. An already removed plan is not put back.
+   */
   persist(): void {
-    this.device.setSettings({ emsSchedules: JSON.stringify(this.emsSchedules) })
-      .catch((e: unknown) => this.logger.error('Failed to persist schedules: ' + formatError(e)));
+    const removed = this.removedSinceRead();
+    if (removed.size === 0) return;
+    updateEmsSchedules(this.device, current =>
+      current.filter(schedule => !removed.has(getScheduleId(schedule))),
+    ).then(() => {
+      removed.forEach(id => this.baselineIds.delete(id));
+    }).catch((e: unknown) => this.logger.error('Failed to persist schedules: ' + formatError(e)));
   }
 
   /** Entfernt einen abgeschlossenen Plan und persistiert */

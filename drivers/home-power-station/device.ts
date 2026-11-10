@@ -296,15 +296,13 @@ class HomePowerStationDevice extends Homey.Device implements HomePowerStation{
    */
   private updateBatteryCapacitySettings(battery: BatteryData): void {
     try {
-      const storedSettings: PowerStationConfig = this.getSettings();
       const usableWh = resolveUsableCapacityWh(battery);
-      const updated: PowerStationConfig = {
-        ...storedSettings,
+      // Only these three keys. A full settings copy would write an old plan list back.
+      this.setSettings({
         rscpCapacity: Math.round(battery.capacity).toString(),
         rscpAsoc: Math.round(usableWh).toString(),
         rscpSoh: formatSohPercent(usableWh, battery.capacity),
-      };
-      this.setSettings(updated).catch(reason => {
+      }).catch(reason => {
         this.log('Failed to store battery capacity settings: ' + formatError(reason));
       });
     } catch (e) {

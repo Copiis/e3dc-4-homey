@@ -161,7 +161,12 @@ function integrateWallboxSupplement(
   ) {
     return;
   }
-  const deltaHours = (nowMs - state.lastSampleMs) / 3_600_000;
+  const deltaMs = nowMs - state.lastSampleMs;
+  // Same rule as the house meter: a long gap is offline time, not energy.
+  if (deltaMs > 3 * 60 * 1000) {
+    return;
+  }
+  const deltaHours = deltaMs / 3_600_000;
   state.supplementKwh += (effectivePowerW * deltaHours) / 1000;
 }
 

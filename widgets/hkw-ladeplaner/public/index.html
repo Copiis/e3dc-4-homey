@@ -313,10 +313,7 @@ async function addPlan() {
 
   try {
     await Homey.api('POST', '/log', { widget: 'hkw-ladeplaner', message: `addPlan: plantId=${plantId}, saving plan ${JSON.stringify({start: plan.start, end: plan.end, mode, powerW: plan.powerW, untilSoc: plan.untilSoc})}` });
-    const res = await Homey.api('GET', `/hkw-schedules?plantId=${plantId}`);
-    let list = res.schedules || [];
-    list.push(plan);
-    const saved = await Homey.api('POST', '/hkw-schedules', { plantId, schedules: list });
+    const saved = await Homey.api('POST', '/hkw-schedules', { plantId, op: 'add', plan });
     if (!saved || saved.success === false) {
       alert(tx('widget.ui.hkw-plan.save-error', 'Fehler beim Speichern'));
       return;
@@ -331,16 +328,8 @@ async function addPlan() {
 
 async function removePlan(id) {
   if (!id) return;
-  const resBefore = await Homey.api('GET', `/hkw-schedules?plantId=${plantId}`);
-  const displayedPlans = resBefore.schedules || [];
-  const planToDelete = displayedPlans.find(p => p && p.id === id);
-  if (!planToDelete) {
-    loadPlans();
-    return;
-  }
-  await Homey.api('POST', '/log', { widget: 'hkw-ladeplaner', message: `removePlan: deleting ${planToDelete.id}` });
-  const list = displayedPlans.filter(p => !p || p.id !== id);
-  const saved = await Homey.api('POST', '/hkw-schedules', { plantId, schedules: list });
+  await Homey.api('POST', '/log', { widget: 'hkw-ladeplaner', message: `removePlan: deleting ${id}` });
+  const saved = await Homey.api('POST', '/hkw-schedules', { plantId, op: 'remove', id });
   if (!saved || saved.success === false) {
     alert(tx('widget.ui.hkw-plan.save-error', 'Fehler beim Speichern'));
     return;

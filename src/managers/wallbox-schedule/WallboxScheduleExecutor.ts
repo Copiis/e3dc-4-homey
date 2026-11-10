@@ -10,6 +10,10 @@ export interface TriggeredWallboxScheduleInfo {
   savedBatteryToCar?: boolean;
   savedBatteryBeforeCar?: boolean;
   savedMixBlocked?: boolean;
+  /** Set before the plant write, so a second check does not take a new snapshot. */
+  applying?: boolean;
+  /** Plant commands for this start have finished. */
+  applied?: boolean;
 }
 
 /**
@@ -45,22 +49,30 @@ export class WallboxScheduleExecutor {
   ) {}
 
   async execute(s: WallboxSchedule, id: string, triggered: Map<string, TriggeredWallboxScheduleInfo>) {
+    const existing = triggered.get(id);
+    if (existing?.applied || existing?.applying) return;
     try {
-      const info: TriggeredWallboxScheduleInfo = { action: s.action };
+      const info: TriggeredWallboxScheduleInfo = existing ?? { action: s.action };
 
       // Snapshot "Batterie entladen bis" before any override so untilFull and
       // manual deletion can put the user value back. The live device applies
       // the override through GlobalEmsOverrideManager (one RSCP write). Without
       // that manager the executor writes the percent itself.
+      // A retry keeps the first snapshot. The plan value must not become the original.
       const planOverrides: any = {};
-      if (typeof s.dischargeSoc === 'number') {
+      if (!existing && typeof s.dischargeSoc === 'number') {
         const current = this.currentDischargePercent();
         if (typeof current === 'number') info.savedDischargeSoc = current;
+      }
+      if (typeof s.dischargeSoc === 'number') {
         planOverrides.dischargeBatteryUntilPercent = s.dischargeSoc;
       }
       if (s.batteryToCar !== undefined) planOverrides.batteryToCarAllowed = s.batteryToCar;
       if (s.batteryBeforeCar !== undefined) planOverrides.batteryBeforeCar = s.batteryBeforeCar;
       if (s.batteryDischargeMixBlocked !== undefined) planOverrides.batteryDischargeMixBlocked = s.batteryDischargeMixBlocked;
+
+      info.applying = true;
+      triggered.set(id, info);
 
       if (Object.keys(planOverrides).length > 0 && this.device.globalEmsOverrideManager) {
         await this.device.globalEmsOverrideManager.applyOverrides(id, planOverrides);
@@ -79,10 +91,12 @@ export class WallboxScheduleExecutor {
       } else if (s.action === 'sun_off') {
         await this.device.applySunMode(false);
       }
-
-      triggered.set(id, info);
+      info.applied = true;
     } catch (e) {
       this.device.error('Schedule apply error: ' + formatError(e));
+    } finally {
+      const current = triggered.get(id);
+      if (current) current.applying = false;
     }
   }
 
